@@ -1,6 +1,8 @@
 name: Release after upstream sync
 
-# Runs when a sync-upstream.yml PR (branch `sync/upstream`) is merged. Re-runs CI
+# Runs when a sync-upstream.yml PR (branch `sync/upstream`) is merged. Needs the
+# RELEASE_TOKEN secret that release.yml's dispatch path requires — without it the
+# dispatch fails fast rather than tagging a version nothing releases. Re-runs CI
 # against the merged result and, only if it's green, kicks off release.yml for an
 # automatic patch release. If CI fails, no release is cut and an issue is filed
 # instead — a bad upstream merge should never become an installable release.

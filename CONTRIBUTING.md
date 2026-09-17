@@ -140,6 +140,27 @@ nix develop
 npx wdio run ./wdio.conf.mts --spec test/specs/rpc-latency.e2e.ts
 ```
 
+## Releasing
+
+Only a tag push releases. `obsidianmd/obsidian-workflows` reads `GITHUB_REF` and
+refuses to publish unless it starts with `refs/tags/`, so a run that creates a tag
+cannot also release from it — the ref it started on does not change.
+
+```bash
+npm version <patch|minor|major>   # bumps manifest/versions/package + CHANGELOG, tags
+git push origin master --follow-tags
+```
+
+`.npmrc` sets `tag-version-prefix=""`, so tags are bare (`0.151.0`), which is what
+Obsidian requires of a release tag.
+
+The `workflow_dispatch` path on `release.yml` does the same bump in CI and pushes
+the tag, letting the tag push start the release run. That push needs the
+`RELEASE_TOKEN` secret — a PAT with `contents:write` — because GitHub starts no
+workflow run for a push made with the default `GITHUB_TOKEN`. Without the secret
+the dispatch fails immediately instead of tagging a version that never releases.
+`post-sync-release.yml` uses that dispatch path, so it needs the same secret.
+
 ## Codebase structure
 
 ```

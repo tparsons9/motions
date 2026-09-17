@@ -1,5 +1,20 @@
 name: Release Obsidian plugin
 
+# Two entry points, and they do different jobs:
+#
+# - A tag push builds that tag and publishes the release. This is the only path
+#   that releases, because obsidianmd/obsidian-workflows reads GITHUB_REF and
+#   refuses to run unless it starts with refs/tags/.
+# - workflow_dispatch bumps the version, commits and pushes the tag. It does not
+#   release: creating a tag inside a run does not change that run's GITHUB_REF,
+#   so a release step here would fail at the end of an otherwise successful bump.
+#   Pushing the tag is what starts the release run.
+#
+# That push has to carry RELEASE_TOKEN, a PAT with contents:write. GitHub does
+# not start workflow runs for pushes made with the default GITHUB_TOKEN, so with
+# the default token the tag lands and nothing follows it — which is exactly how
+# 0.151.0 ended up tagged with no release.
+
 on:
     push:
         tags:
@@ -24,28 +39,45 @@ jobs:
             id-token: write
             attestations: write
         steps:
+            # Fail before touching the repository, rather than after the version
+            # commit is already pushed and only the release is missing.
+            # The secrets context is not available in a step `if`, so the
+            # check runs in the shell.
+            - name: Require a release token for the bump path
+              if: github.event_name == 'workflow_dispatch'
+              env:
+                  RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+              run: |
+                  if [ -z "$RELEASE_TOKEN" ]; then
+                      echo "::error::workflow_dispatch needs RELEASE_TOKEN (a PAT with contents:write) so the tag push starts the release run. Without it, bump and tag locally instead: npm version <patch|minor|major> && git push origin master --follow-tags"
+                      exit 1
+                  fi
+
             - uses: actions/checkout@v7
               with:
                   fetch-depth: 0
+                  # Persisted for the pushes below; the tag push must not use the
+                  # default token, or it starts no release run.
+                  token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
             - uses: actions/setup-node@v7
               with:
                   node-version: 24
                   cache: npm
 
-            # Only for workflow_dispatch: a tag push already has the version bumped
-            # and the tag created by whoever pushed it. Bump and tag here instead,
-            # then let the existing release step below build from that new tag.
             - name: Bump version and tag
               if: github.event_name == 'workflow_dispatch'
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   npm version "${{ github.event.inputs.release_type }}"
+                  version="$(node -p "require('./package.json').version")"
                   git push origin HEAD:refs/heads/${{ github.ref_name }}
-                  git push origin --tags
+                  git push origin "refs/tags/${version}"
+                  echo "Tagged ${version}. The release runs from the tag push." >> "$GITHUB_STEP_SUMMARY"
 
             - uses: obsidianmd/obsidian-workflows@v1
+              if: startsWith(github.ref, 'refs/tags/')
               with:
                   mode: release
               env:
