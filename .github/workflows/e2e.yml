@@ -1,10 +1,8 @@
 name: E2E Tests
 
+# Manual-only on this personal fork: the full suite is 36 shards on Ubuntu plus a
+# macOS/Windows cross-platform matrix on the same shards, too heavy to run on every push.
 on:
-    push:
-        branches: ['main', 'master']
-    pull_request:
-        branches: ['main', 'master']
     workflow_dispatch:
 
 jobs:

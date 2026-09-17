@@ -5,6 +5,7 @@ on:
         branches: ['**']
     pull_request:
         branches: ['**']
+    workflow_call:
 
 jobs:
     build:
@@ -12,8 +13,9 @@ jobs:
 
         strategy:
             matrix:
-                node-version: [22.x, 24.x, 26.x]
-                # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+                node-version: [24.x]
+                # Trimmed from [22.x, 24.x, 26.x]: this fork is for personal, single-environment
+                # use, so cross-version compatibility checks aren't needed. 24.x matches release.yml.
 
         steps:
             - uses: actions/checkout@v6

@@ -1,0 +1,38 @@
+name: Release after upstream sync
+
+# Runs when a sync-upstream.yml PR (branch `sync/upstream`) is merged. Re-runs CI
+# against the merged result and, only if it's green, kicks off release.yml for an
+# automatic patch release. If CI fails, no release is cut and an issue is filed
+# instead — a bad upstream merge should never become an installable release.
+
+on:
+    pull_request:
+        types: [closed]
+    workflow_dispatch:
+
+jobs:
+    test:
+        if: >
+            github.event_name == 'workflow_dispatch' ||
+            (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'sync/upstream')
+        uses: ./.github/workflows/lint.yml
+
+    release:
+        needs: test
+        runs-on: ubuntu-latest
+        steps:
+            - env:
+                  GH_TOKEN: ${{ github.token }}
+              run: gh workflow run release.yml --repo ${{ github.repository }} -f release_type=patch
+
+    notify-failure:
+        needs: test
+        if: failure()
+        runs-on: ubuntu-latest
+        steps:
+            - env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh issue create \
+                      --title "Upstream sync merge failed CI — no release cut" \
+                      --body "The upstream sync merge (PR #${{ github.event.pull_request.number }}) passed review but failed CI after merging. No release was cut. See the failed run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

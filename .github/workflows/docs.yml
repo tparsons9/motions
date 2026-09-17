@@ -1,14 +1,7 @@
 name: Deploy docs
 
+# Manual-only on this personal fork: not auto-publishing a docs site on every doc change.
 on:
-    push:
-        branches: [main, master]
-        paths:
-            - 'docs/**'
-            - 'quartz.config.yaml'
-            - 'CHANGELOG.md'
-            - 'KNOWN_LIMITATIONS.md'
-            - '.github/workflows/docs.yml'
     workflow_dispatch:
 
 permissions:

@@ -1,5 +1,7 @@
 # Contributing
 
+> **Note:** This fork is maintained for personal use and does not accept outside contributions. If you'd like to contribute to Vim Motions itself, please open issues/PRs against [saberzero1/motions](https://github.com/saberzero1/motions) instead.
+
 Thank you for considering contributing to Vim Motions. This guide covers the development workflow, codebase conventions, and how to add new features.
 
 ## Getting started
@@ -118,6 +120,16 @@ npm run test:e2e
 ```
 
 The tests run in a headless Obsidian instance with Xvfb. The test vault is in `test-vault/`.
+
+The full suite takes tens of minutes locally. To check one area, pass the specs you
+care about — `npm run test:e2e -- --spec test/specs/navigation.e2e.ts` — or filter by
+test name with `--mochaOpts.grep`. `npm run test:e2e:api` is the standing set for the
+[editor provider API](docs/development/editor-api.md): the API itself plus the ex
+commands, navigation, buffer, gutter, which-key and Lua specs it can affect.
+
+On macOS, a Homebrew `xattr` on `PATH` (the PyPI package, which has no `-r`) breaks
+the Obsidian installer setup with `option -r not recognized`. Run with
+`PATH=/usr/bin:$PATH` or remove the shim.
 
 **CI infrastructure**: In CI, the e2e workflow shards spec files into 36 groups (matching the GitHub Actions concurrent job limit) and runs each shard inside a custom Docker image (`ghcr.io/<repo>/e2e-runner:latest`) that includes Xvfb, herbstluftwm, Node.js 24, and Electron system dependencies. The discover job distributes specs round-robin; each runner executes 2–3 specs sequentially. This keeps the matrix under the 256-job GitHub Actions cap. The entrypoint starts the virtual display with readiness polling — no manual `apt-get install` or `sleep`-based setup needed per runner. The image is defined in `.github/docker/e2e-runner/Dockerfile` and built by `.github/workflows/docker-e2e-runner.yml` on Dockerfile changes or manual dispatch. The same sharded spec distribution also runs on `macos-latest` (ARM) and `windows-latest` runners via the `e2e-cross-platform` job — no virtual display setup is needed on those platforms since GitHub macOS/Windows runners provide native GUI sessions. `wdio-obsidian-service` handles Obsidian download, ChromeDriver version matching, and platform-specific launch. Windows shards retry up to 3 times on `EPERM` errors (Windows NTFS file locking during `obsidian-launcher`'s atomic rename).
 

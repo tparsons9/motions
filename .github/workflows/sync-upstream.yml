@@ -1,0 +1,106 @@
+name: Sync from upstream
+
+# This fork doesn't push back to saberzero1/motions (see README's "Personal fork"
+# note). This workflow pulls the other direction instead: on a schedule, it tries
+# to merge new upstream commits into this fork.
+#
+# - Clean merge -> pushes a `sync/upstream` branch and opens a PR. Merging that PR
+#   (see post-sync-release.yml) runs CI and, if it passes, cuts a new release.
+# - Conflicting merge -> aborts cleanly and files (or updates) a tracking issue
+#   instead of leaving a broken branch around. Expect conflicts in manifest.json /
+#   versions.json / package.json specifically, since both sides bump those
+#   independently — see CONTRIBUTING.md for how to resolve them.
+# - No new upstream commits -> no-op, no branch/PR/issue noise.
+
+on:
+    schedule:
+        - cron: '0 */6 * * *'
+    workflow_dispatch:
+
+permissions:
+    contents: write
+    pull-requests: write
+    issues: write
+
+concurrency:
+    group: sync-upstream
+    cancel-in-progress: false
+
+jobs:
+    sync:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+                  ref: master
+
+            - name: Configure git identity
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            - name: Add upstream remote
+              run: git remote add upstream https://github.com/saberzero1/motions.git
+
+            - name: Fetch upstream
+              run: git fetch upstream master
+
+            - name: Check for new upstream commits
+              id: check
+              run: |
+                  count=$(git rev-list origin/master..upstream/master --count)
+                  echo "count=$count" >> "$GITHUB_OUTPUT"
+
+            - name: Attempt merge
+              id: merge
+              if: steps.check.outputs.count != '0'
+              run: |
+                  git switch -C sync/upstream origin/master
+                  if git merge --no-edit upstream/master; then
+                      echo "conflict=false" >> "$GITHUB_OUTPUT"
+                  else
+                      git merge --abort
+                      echo "conflict=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Push sync branch and open PR
+              if: steps.check.outputs.count != '0' && steps.merge.outputs.conflict == 'false'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  git push origin sync/upstream --force
+                  existing=$(gh pr list --head sync/upstream --state open --json number --jq '.[0].number')
+                  if [ -z "$existing" ]; then
+                      cat > /tmp/pr-body.md <<'EOF'
+                  Automated merge of new commits from upstream. Review the diff before merging.
+
+                  Merging this PR triggers CI and, if it passes, an automatic patch release (see post-sync-release.yml). Re-running this workflow while this PR is open force-updates this branch with the latest upstream commits.
+                  EOF
+                      gh pr create --base master --head sync/upstream \
+                          --title "Sync from upstream (saberzero1/motions)" \
+                          --body-file /tmp/pr-body.md
+                  fi
+
+            - name: File or update conflict issue
+              if: steps.check.outputs.count != '0' && steps.merge.outputs.conflict == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  cat > /tmp/issue-body.md <<'EOF'
+                  Automated sync from upstream (saberzero1/motions) hit a merge conflict and could not proceed automatically.
+
+                  To resolve locally:
+                  ```
+                  git fetch upstream
+                  git merge upstream/master
+                  # resolve conflicts (check manifest.json / versions.json / package.json first)
+                  git push origin master
+                  ```
+                  EOF
+                  existing=$(gh issue list --search "\"Upstream sync conflict\" in:title" --state open --json number --jq '.[0].number')
+                  if [ -n "$existing" ]; then
+                      gh issue comment "$existing" --body-file /tmp/issue-body.md
+                  else
+                      gh issue create --title "Upstream sync conflict" --body-file /tmp/issue-body.md
+                  fi

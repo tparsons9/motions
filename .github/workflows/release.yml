@@ -4,6 +4,17 @@ on:
     push:
         tags:
             - '*'
+    workflow_dispatch:
+        inputs:
+            release_type:
+                description: 'Semantic version bump (used for manual releases and automated releases after an upstream sync merge)'
+                required: true
+                default: patch
+                type: choice
+                options:
+                    - patch
+                    - minor
+                    - major
 
 jobs:
     build:
@@ -14,10 +25,26 @@ jobs:
             attestations: write
         steps:
             - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
             - uses: actions/setup-node@v7
               with:
                   node-version: 24
                   cache: npm
+
+            # Only for workflow_dispatch: a tag push already has the version bumped
+            # and the tag created by whoever pushed it. Bump and tag here instead,
+            # then let the existing release step below build from that new tag.
+            - name: Bump version and tag
+              if: github.event_name == 'workflow_dispatch'
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  npm version "${{ github.event.inputs.release_type }}"
+                  git push origin HEAD:refs/heads/${{ github.ref_name }}
+                  git push origin --tags
+
             - uses: obsidianmd/obsidian-workflows@v1
               with:
                   mode: release
