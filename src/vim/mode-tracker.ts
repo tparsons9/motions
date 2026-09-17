@@ -369,6 +369,26 @@ export class VimModeTracker {
         this.externalAdapter = resolve;
     }
 
+    /**
+     * Stops following an editor that went away and picks up the active one,
+     * so the status bar does not keep showing a destroyed editor's last mode.
+     */
+    releaseAdapter(adapter: CmAdapter): void {
+        if (this.lastAdapter !== adapter) return;
+        this.detachFromAdapter();
+        this.currentMode = 'normal';
+        const view = this.app?.workspace.getActiveViewOfType(MarkdownView);
+        const next = view
+            ? getCmAdapter(view)
+            : (this.externalAdapter?.() ?? null);
+        if (next && this.attachToAdapterFn) {
+            this.attachToAdapterFn(next);
+            this.syncModeFromAdapter(next);
+            return;
+        }
+        this.updateDisplay();
+    }
+
     /** Shows the mode of `adapter`, e.g. when an external editor gains focus. */
     followAdapter(adapter: CmAdapter): void {
         if (adapter === this.lastAdapter || !this.attachToAdapterFn) return;

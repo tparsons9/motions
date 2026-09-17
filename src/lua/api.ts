@@ -701,12 +701,18 @@ function readHighlightAttrs(L: lua_State, index: number): HighlightAttrs {
     return attrs;
 }
 
-function createWarnStub(
+/**
+ * Gives a namespace table warn-once semantics for keys it does not implement:
+ * the key logs once and yields a no-op function instead of nil, so a
+ * configuration calling an unimplemented Neovim function keeps running rather
+ * than dying on "attempt to call a nil value". Expects the table on top of the
+ * stack and leaves it there.
+ */
+export function applyUnknownKeyWarning(
     L: lua_State,
     namespace: string,
     warned: Set<string>,
 ): void {
-    lua.lua_newtable(L);
     lua.lua_newtable(L);
     lua.lua_pushjsfunction(L, (state: lua_State) => {
         if (
@@ -736,6 +742,15 @@ function createWarnStub(
     });
     lua.lua_setfield(L, -2, to_luastring('__newindex'));
     lua.lua_setmetatable(L, -2);
+}
+
+function createWarnStub(
+    L: lua_State,
+    namespace: string,
+    warned: Set<string>,
+): void {
+    lua.lua_newtable(L);
+    applyUnknownKeyWarning(L, namespace, warned);
 }
 
 function createWarnVarTable(

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import {
@@ -136,7 +136,38 @@ describe('vim.lsp and vim.diagnostic', () => {
     it('leaves other vim namespaces alone', () => {
         const { L } = setup();
         expect(evalLua(L, 'type(vim.lsp.buf)')).toBe('table');
-        expect(evalLua(L, 'vim.lsp.get_clients')).toBeNull();
+        destroyState(L);
+    });
+
+    it('keeps unimplemented functions warning no-ops rather than nil', () => {
+        const { L } = setup();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        // A configuration calling these used to warn once and carry on. They
+        // must not start throwing "attempt to call a nil value".
+        for (const call of [
+            'vim.diagnostic.config({ virtual_text = false })',
+            'vim.diagnostic.open_float()',
+            'vim.lsp.start({})',
+            'vim.lsp.buf.rename()',
+            'vim.lsp.get_clients()',
+        ]) {
+            expect(lauxlib.luaL_dostring(L, to_luastring(call)), call).toBe(
+                lua.LUA_OK,
+            );
+        }
+        expect(warn).toHaveBeenCalled();
+
+        // Assignment still works: plugins swap these out wholesale.
+        expect(
+            lauxlib.luaL_dostring(
+                L,
+                to_luastring('vim.diagnostic.config = function() return 1 end'),
+            ),
+        ).toBe(lua.LUA_OK);
+        expect(evalLua(L, 'vim.diagnostic.config()')).toBe(1);
+
+        warn.mockRestore();
         destroyState(L);
     });
 });

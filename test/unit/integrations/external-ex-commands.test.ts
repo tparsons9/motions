@@ -3,6 +3,7 @@ import type { EditorView } from '@codemirror/view';
 import {
     closeExternalEditor,
     externalEditorFor,
+    isInLeaf,
     saveExternalEditor,
 } from '../../../src/integrations/external-ex-commands';
 import type {
@@ -81,5 +82,30 @@ describe('external editor ex commands', () => {
         expect(closeExternalEditor(entry({ close }))).toBe(true);
         expect(close).toHaveBeenCalledOnce();
         expect(closeExternalEditor(entry())).toBe(false);
+    });
+
+    it('reports a throwing close handler as handled', () => {
+        const close = vi.fn(() => {
+            throw new Error('busy');
+        });
+        // True: the host owns the editor, so the caller must not also close a
+        // leaf. The failure surfaces as a notice instead.
+        expect(closeExternalEditor(entry({ close }))).toBe(true);
+    });
+
+    it('knows whether an editor lives inside a leaf', () => {
+        const dom = {} as HTMLElement;
+        const target = { ...entry(), view: { dom } as EditorView };
+        const container = {
+            contains: (node: unknown) => node === dom,
+        } as unknown as HTMLElement;
+
+        expect(isInLeaf(target, container)).toBe(true);
+        expect(
+            isInLeaf(target, {
+                contains: () => false,
+            } as unknown as HTMLElement),
+        ).toBe(false);
+        expect(isInLeaf(target, null)).toBe(false);
     });
 });

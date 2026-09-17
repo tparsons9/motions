@@ -46,9 +46,27 @@ export async function saveExternalEditor(
     return true;
 }
 
-/** Closes through the host plugin; returns false when the host has no close handler. */
+/**
+ * Closes through the host plugin. Returns false when the host has no close
+ * handler, so the caller can decide what to do instead; a handler that throws
+ * is reported rather than escaping as an unhandled rejection.
+ */
 export function closeExternalEditor(entry: ExternalEditorEntry): boolean {
     if (!entry.host.close) return false;
-    entry.host.close();
+    try {
+        entry.host.close();
+    } catch (error) {
+        new Notice(
+            `Vim Motions: could not close ${entry.host.path}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+    }
     return true;
+}
+
+/** Whether `entry`'s editor lives inside `leaf`'s DOM. */
+export function isInLeaf(
+    entry: ExternalEditorEntry,
+    container: HTMLElement | null | undefined,
+): boolean {
+    return !!container && container.contains(entry.view.dom);
 }

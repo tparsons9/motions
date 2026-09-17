@@ -220,15 +220,24 @@ describe('ExternalEditorRegistry', () => {
 describe('ExternalEditorRegistry hooks', () => {
     it('reports attach, focus and release, isolating a failing release hook', () => {
         const attached: string[] = [];
+        const order: string[] = [];
         const focused: string[] = [];
         const released: string[] = [];
         const registry = new ExternalEditorRegistry({
             build: () => [],
             getAdapter: () => null,
-            onAttach: (entry) => attached.push(entry.host.path),
-            onFocus: (entry) => focused.push(entry.host.path),
-            onRelease: (entry) => {
-                released.push(entry.host.path);
+            onAttach: (entry) => {
+                attached.push(entry.host.path);
+                order.push(`attach:${entry.host.path}`);
+            },
+            onFocus: (entry) => {
+                focused.push(entry.host.path);
+                order.push(`focus:${entry.host.path}`);
+            },
+            onRelease: (entry, adapter) => {
+                released.push(
+                    `${entry.host.path}:${adapter ? 'adapter' : 'none'}`,
+                );
                 throw new Error('boom');
             },
         });
@@ -239,6 +248,9 @@ describe('ExternalEditorRegistry hooks', () => {
         registry.attach(asView(a), { ...host, path: 'a' });
         registry.attach(asView(b), { ...host, path: 'b' });
         expect(attached).toEqual(['a', 'b']);
+        // Focus is reported before attach, so a FileType autocommand fired
+        // from onAttach resolves this editor and not the active note.
+        expect(order).toEqual(['attach:a', 'focus:b', 'attach:b']);
         expect(focused).toEqual(['b']);
 
         a.fire('focusin');
@@ -246,7 +258,8 @@ describe('ExternalEditorRegistry hooks', () => {
         expect(registry.focused()?.host.path).toBe('a');
 
         registry.detachAll();
-        expect(released).toEqual(['a', 'b']);
+        // The adapter comes through so callers can drop listeners on it.
+        expect(released).toEqual(['a:none', 'b:none']);
         expect(registry.views()).toEqual([]);
         expect(error).toHaveBeenCalledTimes(2);
         error.mockRestore();

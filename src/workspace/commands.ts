@@ -17,9 +17,11 @@ import { getViolations, clearViolations } from '../util/invariant';
 import {
     closeExternalEditor,
     externalEditorFor,
+    isInLeaf,
     saveExternalEditor,
     type ExternalEditorLookup,
 } from '../integrations/external-ex-commands';
+import type { ExternalEditorEntry } from '../integrations/external-editors';
 import {
     getTableDebugState,
     formatTableDebugState,
@@ -317,15 +319,35 @@ function closeOilView(oilManager: OilManager): void {
     oilManager.closeOil();
 }
 
-/** Closes the editor running the command: its host plugin's handler, else the active leaf. */
+/**
+ * Closes the editor the command ran in: the host plugin's handler when there
+ * is one, else the active leaf. Without a handler, falling back is only
+ * correct while that editor is inside the active leaf — otherwise
+ * `workspace:close` would close an unrelated note.
+ */
+function closeExternalOrLeaf(
+    app: App,
+    external: ExternalEditorEntry | null,
+): void {
+    if (external && closeExternalEditor(external)) return;
+    if (
+        external &&
+        !isInLeaf(external, app.workspace.getMostRecentLeaf()?.view.containerEl)
+    ) {
+        new Notice(
+            `Vim Motions: ${external.host.path} cannot be closed from Vim.`,
+        );
+        return;
+    }
+    executeCommand(app, 'workspace:close');
+}
+
 function closeCurrent(
     app: App,
     cm?: CmAdapter,
     externalEditors?: ExternalEditorLookup,
 ): void {
-    const external = externalEditorFor(cm, externalEditors);
-    if (external && closeExternalEditor(external)) return;
-    executeCommand(app, 'workspace:close');
+    closeExternalOrLeaf(app, externalEditorFor(cm, externalEditors));
 }
 
 /** `:wq`/`:x` in an external editor: close only once the host saved. */
@@ -337,8 +359,10 @@ function writeQuitExternal(
 ): boolean {
     const external = externalEditorFor(cm, externalEditors);
     if (!external) return false;
+    // The entry is captured before the save: by the time it resolves the user
+    // may have moved on, and re-resolving would close whatever is active then.
     void saveExternalEditor(external, autocmdManager).then((saved) => {
-        if (saved) closeCurrent(app, cm, externalEditors);
+        if (saved) closeExternalOrLeaf(app, external);
     });
     return true;
 }

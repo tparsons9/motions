@@ -1,4 +1,5 @@
 import { lua, to_luastring } from '../lib/fengari';
+import { applyUnknownKeyWarning } from './api';
 import type { lua_State } from '../lib/fengari';
 import type { EditorView } from '@codemirror/view';
 import {
@@ -80,8 +81,14 @@ function readCount(L: lua_State, index: number, fallback: number): number {
  * returns Neovim's empty result, since Obsidian has no language server of
  * its own. There is no `vim.lsp.get_clients`: nothing here is an LSP client,
  * and an empty list would read as "the server is not attached yet".
+ *
+ * These tables replace `createWarnStub` tables, so they keep the same
+ * warn-once behaviour for everything still unimplemented: a configuration
+ * calling `vim.diagnostic.config{...}` logs one line and carries on, as it did
+ * before any of this was real.
  */
 export function injectLspApi(L: lua_State, callbacks: LspApiCallbacks): void {
+    const warned = new Set<string>();
     lua.lua_getglobal(L, to_luastring('vim'));
     const vimIndex = lua.lua_gettop(L);
 
@@ -116,8 +123,10 @@ export function injectLspApi(L: lua_State, callbacks: LspApiCallbacks): void {
     }
 
     lua.lua_pushvalue(L, bufIndex);
+    applyUnknownKeyWarning(L, 'lsp.buf', warned);
     lua.lua_setfield(L, lspIndex, to_luastring('buf'));
     lua.lua_pushvalue(L, lspIndex);
+    applyUnknownKeyWarning(L, 'lsp', warned);
     lua.lua_setfield(L, vimIndex, to_luastring('lsp'));
     lua.lua_pop(L, 2);
 
@@ -198,6 +207,7 @@ export function injectLspApi(L: lua_State, callbacks: LspApiCallbacks): void {
     lua.lua_setfield(L, diagIndex, to_luastring('severity'));
 
     lua.lua_pushvalue(L, diagIndex);
+    applyUnknownKeyWarning(L, 'diagnostic', warned);
     lua.lua_setfield(L, vimIndex, to_luastring('diagnostic'));
     lua.lua_pop(L, 2);
 }

@@ -401,9 +401,11 @@ export default class VimMotionsPlugin extends Plugin {
                 match: entry.host.filetype,
             });
         },
-        onRelease: (entry) => {
+        onRelease: (entry, adapter) => {
             this.externalWhichKeys.get(entry.view)?.destroy();
             this.externalWhichKeys.delete(entry.view);
+            // The tracker would otherwise keep showing this editor's last mode.
+            if (adapter) this.modeTracker?.releaseAdapter(adapter);
         },
     });
     private readonly externalWhichKeys = new Map<EditorView, WhichKeyOverlay>();
@@ -4077,6 +4079,15 @@ export default class VimMotionsPlugin extends Plugin {
             sortOrder: this.settings.whichKeySortOrder,
         };
         this.embeddedWhichKeyConfig = embeddedWhichKeyConfig;
+        // The focused external editor loses its overlay above, and nothing
+        // else rebuilds it until focus moves away and back.
+        const focused = this.externalEditors.focused();
+        const focusedAdapter = focused
+            ? getCmAdapterFromEditorView(focused.view)
+            : null;
+        if (focused && focusedAdapter) {
+            this.attachExternalWhichKey(focused.view, focusedAdapter);
+        }
         this.textareaVimManager?.updateOptions(
             undefined,
             embeddedWhichKeyConfig,
@@ -4099,9 +4110,15 @@ export default class VimMotionsPlugin extends Plugin {
      */
     private recordExternalJump(view: EditorView): void {
         const entry = this.externalEditors.get(view);
-        const path = entry
-            ? entry.host.path
-            : (this.app.workspace.getActiveFile()?.path ?? '');
+        let path = entry?.host.path ?? '';
+        if (!entry) {
+            // An unattached view only has a jump-list entry if it is the
+            // active note's editor; anything else would record this view's
+            // cursor against another file's path.
+            const active = this.app.workspace.getActiveViewOfType(MarkdownView);
+            if (!active || getEditorView(active) !== view) return;
+            path = active.file?.path ?? '';
+        }
         if (!path || path.startsWith('file:')) return;
         const head = view.state.selection.main.head;
         const line = view.state.doc.lineAt(head);

@@ -53,8 +53,12 @@ export interface ExternalEditorRegistryOptions {
     onAttach?(entry: ExternalEditorEntry): void;
     /** Called when an attached editor gains focus. */
     onFocus?(entry: ExternalEditorEntry): void;
-    /** Called once an editor is detached or destroyed, before it is forgotten. */
-    onRelease?(entry: ExternalEditorEntry): void;
+    /**
+     * Called once an editor is detached or destroyed, before it is forgotten.
+     * `adapter` is the Vim adapter it had, so callers can drop listeners that
+     * outlive the view.
+     */
+    onRelease?(entry: ExternalEditorEntry, adapter: CmAdapter | null): void;
 }
 
 class HandleImpl implements ExternalEditorHandle {
@@ -120,8 +124,10 @@ export class ExternalEditorRegistry {
         view.dom.classList.add(EXTERNAL_EDITOR_CLASS);
         view.dom.addEventListener('focusin', entry.onFocus);
         this.bindAdapter(entry);
-        this.options.onAttach?.(entry);
+        // Focus first: `onAttach` fires FileType, and an autocommand resolves
+        // the current buffer through the focused editor.
         if (view.hasFocus) entry.onFocus();
+        this.options.onAttach?.(entry);
         return handle;
     }
 
@@ -220,6 +226,7 @@ export class ExternalEditorRegistry {
     }
 
     private release(entry: Entry): void {
+        const adapter = entry.adapter;
         this.unbindAdapter(entry);
         entry.view.dom.removeEventListener('focusin', entry.onFocus);
         entry.view.dom.classList.remove(EXTERNAL_EDITOR_CLASS);
@@ -230,7 +237,7 @@ export class ExternalEditorRegistry {
         if (outsideNormal) this.emitMode(entry, 'normal');
         entry.listeners.clear();
         try {
-            this.options.onRelease?.(entry);
+            this.options.onRelease?.(entry, adapter);
         } catch (error) {
             console.error(
                 '[Vim Motions] External editor release hook failed:',

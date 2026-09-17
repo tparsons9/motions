@@ -61,12 +61,12 @@ Check for the API at load time too: your plugin may load after Vim Motions, so t
 
 `host` describes the editor:
 
-| Field      | Required | Purpose                                                                                       |
-| ---------- | -------- | --------------------------------------------------------------------------------------------- |
-| `path`     | yes      | Vault-relative path, or `file:` plus an absolute path for files outside the vault.            |
-| `filetype` | yes      | Neovim filetype (`python`, `r`, …). Drives `vim.bo.filetype`, `FileType` and `commentstring`. |
-| `save`     | no       | Runs for `:w`, `:wq`, `:x` and `:update`, between `BufWritePre` and `BufWritePost`.           |
-| `close`    | no       | Runs for `:q`, `:wq`, `:x`, `:bd` and `:tabclose`. Without it, Obsidian closes the leaf.      |
+| Field      | Required | Purpose                                                                                                                                                                                                                                             |
+| ---------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`     | yes      | Vault-relative path, or `file:` plus an absolute path for files outside the vault.                                                                                                                                                                  |
+| `filetype` | yes      | Neovim filetype (`python`, `r`, …). Drives `vim.bo.filetype`, `FileType` and `commentstring`.                                                                                                                                                       |
+| `save`     | no       | Runs for `:w`, `:wq`, `:x` and `:update`, between `BufWritePre` and `BufWritePost`.                                                                                                                                                                 |
+| `close`    | no       | Runs for `:q`, `:wq`, `:x`, `:bd` and `:tabclose`. Without it, Obsidian closes the leaf, but only while your editor is inside the active one; elsewhere the command reports that the editor cannot be closed rather than closing an unrelated note. |
 
 The returned handle:
 
@@ -105,6 +105,8 @@ const dispose = api.registerLanguageProvider({
 ```
 
 Every method is optional. `matches` decides where the provider applies, so a provider can cover fenced code blocks in a note as well as its own editors.
+
+Unimplemented `vim.lsp`/`vim.diagnostic` functions keep Neovim-compatible warn-once behaviour: calling one logs a line and returns a no-op instead of failing, so an existing configuration keeps running.
 
 This drives `gd`, `<C-]>` and `K`, which fall back to Markdown link navigation where no provider matches; `]d`/`[d`, which wrap around the document; and the Lua functions `vim.lsp.buf.hover`, `.definition`, `.declaration`, `.type_definition`, `.code_action` and `.format`, plus `vim.diagnostic.get`, `.count`, `.goto_next`, `.goto_prev`, `.jump` and `.severity`. There is no `vim.lsp.get_clients`: nothing here is an LSP client.
 

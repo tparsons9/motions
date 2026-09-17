@@ -891,7 +891,7 @@ Obsidian runs no language server, so nothing here talks LSP directly. A plugin t
 
 `vim.diagnostic.get`, `.count`, `.goto_next`, `.goto_prev`, `.jump` and `.severity` are backed the same way and return Neovim-shaped entries (`lnum`, `col`, `end_lnum`, `end_col`, `severity`, `message`, `source`). The `]d` and `[d` motions use the same source.
 
-Everything else remains 🚫 not applicable. Listed for completeness.
+Everything else remains 🚫 not applicable, and keeps the warn-once behaviour of the namespace stubs: calling one logs a single line and returns a no-op rather than raising, so a configuration written for Neovim keeps running.
 
 | Namespace                | Function count | Status  |
 | ------------------------ | -------------- | ------- |
