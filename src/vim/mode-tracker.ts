@@ -56,6 +56,9 @@ export class VimModeTracker {
     private modeHandler: ((mode: VimModeChange) => void) | null = null;
     private keyHandler: ((key: string) => void) | null = null;
     private lastAdapter: CmAdapter | null = null;
+    private attachToAdapterFn: ((adapter: CmAdapter) => void) | null = null;
+    /** Finds the adapter of a focused editor Obsidian does not manage. */
+    private externalAdapter: (() => CmAdapter | null) | null = null;
     private dialogHandler: (() => void) | null = null;
     private preDialogMode: string | null = null;
     private cellEditorActive = false;
@@ -164,12 +167,14 @@ export class VimModeTracker {
             adapter.on('vim-command-done', keyHandler);
             adapter.on('dialog', dialogHandler);
         };
+        this.attachToAdapterFn = attachToAdapter;
 
         app.workspace.on('active-leaf-change', () => {
             this.detachFromAdapter();
             const view = app.workspace.getActiveViewOfType(MarkdownView);
-            if (!view) return;
-            const adapter = getCmAdapter(view);
+            const adapter = view
+                ? getCmAdapter(view)
+                : (this.externalAdapter?.() ?? null);
             if (!adapter) return;
             attachToAdapter(adapter);
             this.syncModeFromAdapter(adapter);
@@ -356,6 +361,22 @@ export class VimModeTracker {
         this.chordBarEl.setText(text);
     }
 
+    /**
+     * Resolves the adapter to follow when the active leaf is not a Markdown
+     * view, e.g. an editor another plugin attached Vim to.
+     */
+    setExternalAdapterResolver(resolve: (() => CmAdapter | null) | null): void {
+        this.externalAdapter = resolve;
+    }
+
+    /** Shows the mode of `adapter`, e.g. when an external editor gains focus. */
+    followAdapter(adapter: CmAdapter): void {
+        if (adapter === this.lastAdapter || !this.attachToAdapterFn) return;
+        this.detachFromAdapter();
+        this.attachToAdapterFn(adapter);
+        this.syncModeFromAdapter(adapter);
+    }
+
     setExternalMode(mode: string | null): void {
         this.externalMode = mode;
         if (mode && mode !== 'normal') this.hideSearchCount();
@@ -391,6 +412,8 @@ export class VimModeTracker {
 
     destroy(): void {
         this.detachFromAdapter();
+        this.attachToAdapterFn = null;
+        this.externalAdapter = null;
         if (this.cellEditorTimer !== null) {
             window.clearInterval(this.cellEditorTimer);
             this.cellEditorTimer = null;

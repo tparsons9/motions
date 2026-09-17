@@ -28,6 +28,14 @@ With the Neovim RPC backend, these are buffer-local companion mappings backed by
 
 `]n` and `[n` jump between links in the document. Matches both wikilinks (`[[...]]`) and standard Markdown links (`[text](url)`).
 
+## Code cells
+
+`]x` and `[x` jump between fenced code blocks, landing on the first line of code rather than the fence. An empty block uses its fence line, so no cell is skipped. Useful in notebook-style notes, where `iC`/`aC` then operate on the cell you landed in.
+
+## Diagnostics
+
+`]d` and `[d` jump between diagnostics, wrapping around the document. Diagnostics come from a plugin that provides them through the [editor provider API](../development/editor-api.md); with none installed, both motions leave the cursor where it is.
+
 ## Buffers
 
 `]b` and `[b` cycle through open tabs (buffers), equivalent to `gt` and `gT`. Useful in combination with operators or counts.

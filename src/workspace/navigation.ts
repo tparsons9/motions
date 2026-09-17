@@ -36,6 +36,11 @@ import { createContextActionsAction } from '../ui/context-actions';
 import { OutlineModal, getDocumentHeadings } from '../ui/outline-modal';
 import { getCmAdapter } from '../vim/vim-api';
 import { executeCommand } from '../util/commands';
+import {
+    createDiagnosticMotion,
+    withLanguageProvider,
+    type LanguageProviderRegistry,
+} from '../integrations/language-providers';
 
 export { executeCommand } from '../util/commands';
 
@@ -514,8 +519,13 @@ export function registerCoreVimActions(
     app: App,
     enableReplaceWithRegister = true,
     getAlternateFilePath: () => string | null = () => null,
+    getLanguageProviders: () => LanguageProviderRegistry | null = () => null,
 ): void {
-    const gotoDef = createGotoDefinitionAction(app);
+    const gotoDef = withLanguageProvider(
+        getLanguageProviders,
+        'definition',
+        createGotoDefinitionAction(app),
+    );
     reg.defineAction('gotoDefinition', gotoDef);
     reg.mapCommand('gd', 'action', 'gotoDefinition', {});
     reg.mapCommand('<C-]>', 'action', 'gotoDefinition', {});
@@ -808,9 +818,20 @@ export function registerCoreVimActions(
     reg.mapCommand('ga', 'action', 'charInfo', {});
     exCommandFromAction(reg, 'charinfo', 'char', charInfoAction);
 
-    const keywordLookup = createKeywordLookupAction(app, charInfoAction);
+    const keywordLookup = withLanguageProvider(
+        getLanguageProviders,
+        'hover',
+        createKeywordLookupAction(app, charInfoAction),
+    );
     reg.defineAction('keywordLookup', keywordLookup);
     reg.mapCommand('K', 'action', 'keywordLookup', {});
+
+    const nextDiagnostic = createDiagnosticMotion(getLanguageProviders, true);
+    reg.defineMotion('nextDiagnostic', nextDiagnostic);
+    reg.mapCommand(']d', 'motion', 'nextDiagnostic', {});
+    const prevDiagnostic = createDiagnosticMotion(getLanguageProviders, false);
+    reg.defineMotion('prevDiagnostic', prevDiagnostic);
+    reg.mapCommand('[d', 'motion', 'prevDiagnostic', {});
 
     const utf8Info = createUtf8ByteInfoAction(app);
     reg.defineAction('utf8ByteInfo', utf8Info);

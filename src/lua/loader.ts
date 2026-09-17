@@ -15,13 +15,14 @@ import type { App } from 'obsidian';
 import type { VimApi } from '../types/vim-api';
 import type { LeaderRegistry } from '../ui/which-key';
 import { showInputModal } from '../ui/input-modal';
-import { getCmAdapter } from '../vim/vim-api';
+import { getCmAdapter, getCmAdapterFromEditorView } from '../vim/vim-api';
 import {
     createSandboxedState,
     evalLuaAsync,
     registerStateCleanup,
 } from './engine';
 import {
+    commentstringFor,
     injectVimApi,
     LuaKeymap,
     LuaKeymapDelete,
@@ -75,6 +76,9 @@ import {
 import { getLeafId, isLeafPinned, getViewFilePath } from '../util/leaf';
 import { navigateWithJump } from '../workspace/navigate';
 import { observeKeys } from '../workspace/key-observer';
+import type { ExternalEditorEntry } from '../integrations/external-editors';
+import type { LanguageProviderRegistry } from '../integrations/language-providers';
+import { injectLspApi } from './lsp-api';
 
 export interface LuaLoadResult {
     found: boolean;
@@ -338,6 +342,10 @@ export interface LoadInitLuaOptions {
         setLabel: (keys: string, label: string) => void;
     };
     imSwitcher?: ImSwitcher | null;
+    /** The external editor in the active leaf, which Lua treats as the current buffer. */
+    getExternalEditor?: () => ExternalEditorEntry | null;
+    /** Backs `vim.lsp.buf.*` and `vim.diagnostic.*`. */
+    getLanguageProviders?: () => LanguageProviderRegistry | null;
     getUndoTree?: () => ReturnType<
         import('../vim/undo-tree').UndoTree['toNeovimDict']
     > | null;
@@ -363,6 +371,7 @@ export async function loadInitLua(
         globalRegistry,
         imSwitcher,
         getUndoTree,
+        getExternalEditor,
     } = options;
     const { path, found } = await resolveLuaConfigPath(
         app,
@@ -568,7 +577,10 @@ export async function loadInitLua(
                 return null;
             }
         },
-        getActiveFilePath: () => app.workspace.getActiveFile()?.path ?? null,
+        getActiveFilePath: () =>
+            getExternalEditor?.()?.host.path ??
+            app.workspace.getActiveFile()?.path ??
+            null,
         showNotice: (msg) => {
             new Notice(msg);
         },
@@ -746,11 +758,15 @@ export async function loadInitLua(
             return searchState?.getOverlay() ? 1 : 0;
         },
         getCmAdapter: () => {
+            const external = getExternalEditor?.();
+            if (external) return getCmAdapterFromEditorView(external.view);
             const view = app.workspace.getActiveViewOfType(MarkdownView);
             if (!view) return null;
             return getCmAdapter(view);
         },
         getEditorView: () => {
+            const external = getExternalEditor?.();
+            if (external) return external.view;
             const view = app.workspace.getActiveViewOfType(MarkdownView);
             if (!view) return null;
             const cm = getCmAdapter(view);
@@ -872,11 +888,13 @@ export async function loadInitLua(
             );
         },
         getBufferOption: (name) => {
+            const external = getExternalEditor?.();
             const view = app.workspace.getActiveViewOfType(MarkdownView);
             switch (name) {
                 case 'commentstring':
-                    return '%% %s %%';
+                    return commentstringFor(external?.host.filetype);
                 case 'filetype': {
+                    if (external) return external.host.filetype;
                     if (!view) return '';
                     const file = view.file;
                     return file?.extension ?? 'markdown';
@@ -1415,6 +1433,16 @@ export async function loadInitLua(
         },
         runner,
     );
+    injectLspApi(L, {
+        getEditorView: () => callbacks.getEditorView?.() ?? null,
+        getLanguageProviders: () => options.getLanguageProviders?.() ?? null,
+        jumpTo: (view, offset) => {
+            view.dispatch({
+                selection: { anchor: offset },
+                scrollIntoView: true,
+            });
+        },
+    });
     injectNamespaceStubs(L);
     injectIterApi(L);
     injectTextObjectApi(L, callbacks);
@@ -1433,7 +1461,7 @@ export async function loadInitLua(
         getBufferOption,
         getWindowOption,
         getCmAdapter: callbacks.getCmAdapter,
-        getActiveFilePath: () => app.workspace.getActiveFile()?.path ?? null,
+        getActiveFilePath: () => callbacks.getActiveFilePath?.() ?? null,
         fileExists: (path) => app.vault.getAbstractFileByPath(path) !== null,
         getVaultFiles: () => app.vault.getFiles().map((file) => file.path),
         isDirectory: (path) => {

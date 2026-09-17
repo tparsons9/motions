@@ -55,7 +55,11 @@ import {
     createJumpListWalkOverride,
 } from './workspace/global-defaults';
 import { GlobalWhichKeyOverlay } from './ui/global-which-key';
-import { getVimApi, getCmAdapter } from './vim/vim-api';
+import {
+    getVimApi,
+    getCmAdapter,
+    getCmAdapterFromEditorView,
+} from './vim/vim-api';
 import {
     createBundledVimExtension,
     installVimBridge,
@@ -215,6 +219,19 @@ import { createRegistersSource } from './picker/sources/registers';
 import { createPickersSource } from './picker/sources/pickers';
 import { installPickerAPI, uninstallPickerAPI } from './picker/api';
 import type { PickerAPI } from './picker/api';
+import { LanguageProviderRegistry } from './integrations/language-providers';
+import {
+    ExternalEditorRegistry,
+    type ExternalEditorEntry,
+} from './integrations/external-editors';
+import {
+    createEditorApi,
+    installEditorApi,
+    uninstallEditorApi,
+    EDITOR_API_READY_EVENT,
+    EDITOR_API_UNLOAD_EVENT,
+    type VimMotionsEditorApi,
+} from './integrations/editor-api';
 import {
     createOmnisearchSource,
     isOmnisearchAvailable,
@@ -364,6 +381,34 @@ export default class VimMotionsPlugin extends Plugin {
     private hintWindowDocs = new Set<Document>();
     private initializing = true;
     private vimExtensionSlot: Extension[] = [];
+    /**
+     * The part of `vimExtensionSlot` that is safe in editors other plugins
+     * own: no Markdown structure, active-note state, or Obsidian `Editor`.
+     */
+    private externalExtensionSlot: Extension[] = [];
+    private readonly externalEditors = new ExternalEditorRegistry({
+        build: () => [...this.externalExtensionSlot],
+        getAdapter: (view) => getCmAdapterFromEditorView(view),
+        onFocus: (entry) => {
+            const adapter = getCmAdapterFromEditorView(entry.view);
+            if (!adapter) return;
+            this.modeTracker?.followAdapter(adapter);
+            this.attachExternalWhichKey(entry.view, adapter);
+        },
+        onAttach: (entry) => {
+            this.autocmdManager?.fire('FileType', {
+                file: entry.host.path,
+                match: entry.host.filetype,
+            });
+        },
+        onRelease: (entry) => {
+            this.externalWhichKeys.get(entry.view)?.destroy();
+            this.externalWhichKeys.delete(entry.view);
+        },
+    });
+    private readonly externalWhichKeys = new Map<EditorView, WhichKeyOverlay>();
+    private embeddedWhichKeyConfig: WhichKeyConfig | null = null;
+    readonly languageProviders = new LanguageProviderRegistry();
     private treesitterExtensionSlot: Extension[] = [];
     private animatedCursorSlot: Extension[] = [];
     private undoTreeSlot: Extension[] = [];
@@ -419,6 +464,7 @@ export default class VimMotionsPlugin extends Plugin {
     private frecencySaveTimer: number | null = null;
     private matcher: ManagedMatcher | null = null;
     pickerAPI: PickerAPI | null = null;
+    editorApi: VimMotionsEditorApi | null = null;
     private oilKeybindingManager: OilKeybindingManager | null = null;
     private oilManager: OilManager | null = null;
     private snippetRegistry: SnippetRegistry | null = null;
@@ -1877,6 +1923,7 @@ export default class VimMotionsPlugin extends Plugin {
         this.reconcileNeovimConnection();
         this.initializing = true;
         this.vimExtensionSlot.length = 0;
+        this.externalExtensionSlot.length = 0;
 
         this.vimrcOverrides = new Map();
         this.luaOverrides = new Map();
@@ -2088,7 +2135,7 @@ export default class VimMotionsPlugin extends Plugin {
         this.onSettingOverrideRef = onSettingOverride;
         this.onLuaSettingOverrideRef = onLuaSettingOverride;
 
-        this.vimExtensionSlot.push(
+        this.pushVimExtension(
             createBundledVimExtension(
                 this.settings.cursorShapes,
                 () =>
@@ -2495,6 +2542,7 @@ export default class VimMotionsPlugin extends Plugin {
             this.app,
             this.settings.enableReplaceWithRegister,
             () => this.alternateFilePath,
+            () => this.languageProviders,
         );
         if (this.settings.enableWorkspaceNav) {
             registerWorkspaceNavigation(
@@ -2524,6 +2572,7 @@ export default class VimMotionsPlugin extends Plugin {
                 ? this.navigateUndoTreeTo.bind(this)
                 : undefined,
             this.changeList,
+            (view) => this.externalEditors.get(view),
         );
 
         this.registerHarpoonExCommands();
@@ -2676,12 +2725,13 @@ export default class VimMotionsPlugin extends Plugin {
                 modePrompts: this.settings.modePrompts,
             });
             this.modeTracker.attach(this.app);
+            this.modeTracker.setExternalAdapterResolver(() =>
+                this.activeExternalAdapter(),
+            );
         }
         this.scrolloffManager = new ScrolloffManager(this);
         this.scrolloffManager.setup(this.settings.scrolloffLines);
-        this.vimExtensionSlot.push(
-            skipInTableCells(createScrolloffExtension()),
-        );
+        this.pushVimExtension(skipInTableCells(createScrolloffExtension()));
 
         if (!Platform.isMobile) {
             this.globalRegistry = new GlobalMappingRegistry();
@@ -2745,17 +2795,17 @@ export default class VimMotionsPlugin extends Plugin {
 
         this.vimExtensionSlot.push(this.undoTreeSlot);
 
-        this.vimExtensionSlot.push(yankHighlightExtension());
-        this.vimExtensionSlot.push(extmarkExtension());
-        this.vimExtensionSlot.push(decorationProviderExtension());
-        this.vimExtensionSlot.push(neovimDecorationExtension());
+        this.pushVimExtension(yankHighlightExtension());
+        this.pushVimExtension(extmarkExtension());
+        this.pushVimExtension(decorationProviderExtension());
+        this.pushVimExtension(neovimDecorationExtension());
         this.vimExtensionSlot.push(createTableCellCursorGuard());
         this.vimExtensionSlot.push(
             createTableNavExtension(this.app, this.settings, getVimApi),
         );
-        this.vimExtensionSlot.push(createCompositionTrackerExtension());
-        this.vimExtensionSlot.push(createImModeWatcherExtension());
-        this.vimExtensionSlot.push(createAutocmdModeWatcherExtension());
+        this.pushVimExtension(createCompositionTrackerExtension());
+        this.pushVimExtension(createImModeWatcherExtension());
+        this.pushVimExtension(createAutocmdModeWatcherExtension());
         this.vimExtensionSlot.push(createAutocmdEventExtension());
         this.vimExtensionSlot.push(skipInTableCells(foldSyncExtension()));
         setFoldAwareNavigation(this.settings.foldAwareNavigation);
@@ -2765,15 +2815,13 @@ export default class VimMotionsPlugin extends Plugin {
         this.vimExtensionSlot.push(
             skipInTableCells(foldPlaceholderExtension()),
         );
-        this.vimExtensionSlot.push(
-            skipInTableCells(signColumnFieldExtension()),
-        );
-        this.vimExtensionSlot.push(
+        this.pushVimExtension(skipInTableCells(signColumnFieldExtension()));
+        this.pushVimExtension(
             skipInTableCells(
                 createMarkGutterExtension(this.settings.signcolumn),
             ),
         );
-        this.vimExtensionSlot.push(
+        this.pushVimExtension(
             skipInTableCells(
                 createStatusColumnExtension(
                     this.settings.statuscolumn,
@@ -2786,7 +2834,7 @@ export default class VimMotionsPlugin extends Plugin {
         this.vimExtensionSlot.push(this.snippetTabSlot);
         this.vimExtensionSlot.push(this.snippetRuntimeSlot);
 
-        this.vimExtensionSlot.push(
+        this.pushVimExtension(
             skipInTableCells(
                 createLineNumberExtension(
                     this.settings.number,
@@ -2795,7 +2843,7 @@ export default class VimMotionsPlugin extends Plugin {
                 ),
             ),
         );
-        this.vimExtensionSlot.push(
+        this.pushVimExtension(
             skipInTableCells(
                 createLineNumberSecondaryExtension(
                     this.settings.number,
@@ -2814,7 +2862,7 @@ export default class VimMotionsPlugin extends Plugin {
             this.settings.cursorline,
             this.settings.cursorlineopt,
         );
-        this.vimExtensionSlot.push(
+        this.pushVimExtension(
             skipInTableCells(
                 createCursorlineExtension(
                     this.settings.cursorline,
@@ -2828,9 +2876,9 @@ export default class VimMotionsPlugin extends Plugin {
         // The nested slot is a stable member of vimExtensionSlot; only its
         // contents change at runtime. Rebuilding the outer slot instead would
         // mean re-running this whole method, which is not idempotent.
-        this.vimExtensionSlot.push(this.animatedCursorSlot);
+        this.pushVimExtension(this.animatedCursorSlot);
         this.populateRuntimeSlots();
-        this.vimExtensionSlot.push(
+        this.pushVimExtension(
             skipInTableCells(
                 createFoldColumnExtension(this.settings.foldcolumn),
             ),
@@ -2843,7 +2891,29 @@ export default class VimMotionsPlugin extends Plugin {
         this.vimExtensionSlot.push(linewiseWidgetHighlightExtension());
         this.vimExtensionSlot.push(visualLineSelectionSyncExtension());
 
+        this.editorApi = createEditorApi(
+            this.externalEditors,
+            this.languageProviders,
+            {
+                getAdapter: (view) => getCmAdapterFromEditorView(view),
+                recordJump: (view) => this.recordExternalJump(view),
+            },
+        );
+        installEditorApi(this.editorApi);
+
         this.initializing = false;
+        this.app.workspace.trigger(EDITOR_API_READY_EVENT);
+    }
+
+    /**
+     * Adds an extension to every Vim editor, including editors other plugins
+     * attach through the editor API. Use `vimExtensionSlot.push()` instead for
+     * anything that needs Markdown structure, the active note, or an Obsidian
+     * `Editor`.
+     */
+    private pushVimExtension(extension: Extension): void {
+        this.vimExtensionSlot.push(extension);
+        this.externalExtensionSlot.push(extension);
     }
 
     private installTokenClassifier(): void {
@@ -2978,7 +3048,15 @@ export default class VimMotionsPlugin extends Plugin {
         setFoldAwareNavigation(false);
         setAnimatedCursorConfig({ enabled: false });
 
+        if (this.editorApi) {
+            this.app.workspace.trigger(EDITOR_API_UNLOAD_EVENT);
+            uninstallEditorApi();
+            this.editorApi = null;
+        }
+        this.externalEditors.detachAll();
+        this.languageProviders.clear();
         this.vimExtensionSlot.length = 0;
+        this.externalExtensionSlot.length = 0;
 
         uninstallVimBridge();
 
@@ -3435,6 +3513,7 @@ export default class VimMotionsPlugin extends Plugin {
     private refreshRuntimeExtensionSlots(): void {
         this.populateRuntimeSlots();
         this.app.workspace.updateOptions();
+        this.externalEditors.reconfigureAll();
     }
 
     private populateRuntimeSlots(): void {
@@ -3554,6 +3633,7 @@ export default class VimMotionsPlugin extends Plugin {
             this.app,
             this.settings.enableReplaceWithRegister,
             () => this.alternateFilePath,
+            () => this.languageProviders,
         );
         if (this.settings.enableWorkspaceNav && this.leaderRegistry) {
             registerWorkspaceNavigation(
@@ -3583,6 +3663,7 @@ export default class VimMotionsPlugin extends Plugin {
                 ? this.navigateUndoTreeTo.bind(this)
                 : undefined,
             this.changeList,
+            (view) => this.externalEditors.get(view),
         );
         if (this.settings.enableYankRing && this.registration) {
             registerYankRing(this.registration, vim, this.yankRingManager);
@@ -3695,6 +3776,9 @@ export default class VimMotionsPlugin extends Plugin {
                 modePrompts: this.settings.modePrompts,
             });
             this.modeTracker.attach(this.app);
+            this.modeTracker.setExternalAdapterResolver(() =>
+                this.activeExternalAdapter(),
+            );
         }
 
         this.globalWhichKeyOverlay?.destroy();
@@ -3860,6 +3944,12 @@ export default class VimMotionsPlugin extends Plugin {
     private rebuildWhichKey(): void {
         this.whichKeyOverlay?.destroy();
         this.whichKeyOverlay = null;
+        // External editors rebuild theirs from the new config on next focus.
+        for (const overlay of this.externalWhichKeys.values()) {
+            overlay.destroy();
+        }
+        this.externalWhichKeys.clear();
+        this.embeddedWhichKeyConfig = null;
 
         if (!this.leaderRegistry) return;
 
@@ -3986,10 +4076,67 @@ export default class VimMotionsPlugin extends Plugin {
             showDelay: this.settings.whichKeyDelay,
             sortOrder: this.settings.whichKeySortOrder,
         };
+        this.embeddedWhichKeyConfig = embeddedWhichKeyConfig;
         this.textareaVimManager?.updateOptions(
             undefined,
             embeddedWhichKeyConfig,
         );
+    }
+
+    /** The external editor in the active leaf, if it is the one that last had focus. */
+    private activeExternalEditor(): ExternalEditorEntry | null {
+        const entry = this.externalEditors.focused();
+        const leaf = this.app.workspace.getMostRecentLeaf();
+        if (!entry || !leaf?.view.containerEl.contains(entry.view.dom)) {
+            return null;
+        }
+        return entry;
+    }
+
+    /**
+     * Adds the cursor to the jump list before a host plugin moves it, so
+     * `<C-o>` comes back. Editors outside the vault have no jump-list entry.
+     */
+    private recordExternalJump(view: EditorView): void {
+        const entry = this.externalEditors.get(view);
+        const path = entry
+            ? entry.host.path
+            : (this.app.workspace.getActiveFile()?.path ?? '');
+        if (!path || path.startsWith('file:')) return;
+        const head = view.state.selection.main.head;
+        const line = view.state.doc.lineAt(head);
+        this.jumpList.recordJump(path, line.number - 1, head - line.from);
+        this.jumpListSaveDirty = true;
+    }
+
+    private activeExternalAdapter(): CmAdapter | null {
+        const entry = this.activeExternalEditor();
+        return entry ? getCmAdapterFromEditorView(entry.view) : null;
+    }
+
+    private attachExternalWhichKey(view: EditorView, adapter: CmAdapter): void {
+        const cfg = this.embeddedWhichKeyConfig;
+        if (!cfg?.enabled || this.externalWhichKeys.has(view)) return;
+        const container =
+            view.dom.closest<HTMLElement>('.view-content') ??
+            view.dom.parentElement;
+        if (!container) return;
+        const overlay = WhichKeyOverlay.forEmbeddedEditor(
+            this.app,
+            adapter,
+            container,
+            cfg.leaderKey,
+            cfg.leaderBindings,
+            cfg.generalMode,
+            cfg.groupLeaderBindings,
+            cfg.groupLabels,
+            cfg.commandLabels,
+            cfg.showIcons,
+            cfg.showDelay,
+            cfg.sortOrder,
+        );
+        overlay.attach();
+        this.externalWhichKeys.set(view, overlay);
     }
 
     private reregisterLeaderFeatures(): void {
@@ -4988,6 +5135,8 @@ export default class VimMotionsPlugin extends Plugin {
             globalRegistry: this.globalRegistry ?? undefined,
             imSwitcher: this.imSwitcher,
             isPluginAutoFetchEnabled: () => this.settings.pluginAutoFetch,
+            getExternalEditor: () => this.activeExternalEditor(),
+            getLanguageProviders: () => this.languageProviders,
         });
 
         this.luaCommandCount = luaResult.commandCount;
@@ -5576,6 +5725,7 @@ export default class VimMotionsPlugin extends Plugin {
             const cm = getEditorView(view);
             if (cm && typeof cm.dispatch === 'function') fn(cm);
         });
+        for (const cm of this.externalEditors.views()) fn(cm);
     }
 
     onunload() {

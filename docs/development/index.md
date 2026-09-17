@@ -36,6 +36,10 @@ See [[architecture]] for the dual-vim architecture, module structure, and design
 
 See [[picker-api]] for how external plugins can register custom picker sources via `window.VimMotions.picker`.
 
+## Editor provider API
+
+See [[editor-api]] for how external plugins attach Vim to editors they own, and provide hover, definition, quick fix, format and diagnostics to `gd`, `K`, `]d`/`[d` and `vim.lsp`.
+
 ## Full development guide
 
 The comprehensive development guide — including testing strategy, Neovim golden comparison infrastructure, file conventions, and contribution guidelines — is maintained in [AGENTS.md](https://github.com/saberzero1/motions/blob/main/AGENTS.md) in the repository root.

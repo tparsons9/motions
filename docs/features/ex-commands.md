@@ -204,6 +204,8 @@ Every navigation motion and workspace action has an ex command alias, enabling u
 | `:prevlistitem`     | `[l`        | Jump to previous list item |
 | `:nextlink`         | `]n`        | Jump to next link          |
 | `:prevlink`         | `[n`        | Jump to previous link      |
+| `:nextcodecell`     | `]x`        | Jump to next code cell     |
+| `:prevcodecell`     | `[x`        | Jump to previous code cell |
 | `:nextbuffer`       | `]b`        | Switch to next buffer      |
 | `:prevbuffer`       | `[b`        | Switch to previous buffer  |
 

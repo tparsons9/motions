@@ -23,6 +23,7 @@ import {
 } from './headings';
 import { nextListItem, prevListItem } from './lists';
 import { nextLink, prevLink } from './links';
+import { nextCodeCell, prevCodeCell } from './code-cells';
 import {
     tableNextCellMotion,
     tablePrevCellMotion,
@@ -102,6 +103,13 @@ export function registerNavigationMotions(reg: VimRegistration): void {
     reg.defineMotion('prevLink', prevLink);
     reg.mapCommand('[n', 'motion', 'prevLink', BLOCK);
     exCommandFromMotion(reg, 'prevlink', '', prevLink);
+
+    reg.defineMotion('nextCodeCell', nextCodeCell);
+    reg.mapCommand(']x', 'motion', 'nextCodeCell', BLOCK);
+    exCommandFromMotion(reg, 'nextcodecell', 'nextcodec', nextCodeCell);
+    reg.defineMotion('prevCodeCell', prevCodeCell);
+    reg.mapCommand('[x', 'motion', 'prevCodeCell', BLOCK);
+    exCommandFromMotion(reg, 'prevcodecell', 'prevcodec', prevCodeCell);
 }
 
 export function registerTableMotions(reg: VimRegistration): void {
