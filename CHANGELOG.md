@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.151.0] - 2026-09-17
+
 ### Added
 
 - **Editor provider API for other plugins** — `window.VimMotions.editor` (also `plugin.editorApi`) attaches Vim to a CodeMirror view another plugin owns, which `registerEditorExtension()` never reaches. Each attached view holds its own compartment, is reconfigured when the extension set is rebuilt, and is detached on teardown. The host declares `path`, `filetype` and optional `save`/`close` handlers, which `:w`, `:q`, `:wq`, `:x`, `:update`, `:bd` and `:tabclose` use in that editor. Attached views get the Markdown-independent part of the Vim slot, take part in which-key, the status-bar mode and the line-number gutter, and drive `vim.bo.filetype`, `commentstring` and `FileType`. Bundled fork mode only; the events are `vim-motions:editor-api-ready` and `vim-motions:editor-api-unload`.
