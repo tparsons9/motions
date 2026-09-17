@@ -24,6 +24,7 @@ Copy `main.js`, `manifest.json`, and `styles.css` to `<vault>/.obsidian/plugins/
 | `npm run build`              | Production build                    |
 | `npm run lint`               | ESLint with obsidianmd plugin rules |
 | `npm run test:e2e`           | E2E tests (requires `nix develop`)  |
+| `npm run test:e2e:api`       | E2E specs covering the editor API   |
 | `npm run test:coverage`      | Command-level test coverage report  |
 | `npm run test:neovim-smoke`  | Neovim client smoke test            |
 | `npm run test:neovim-record` | Record golden files from Neovim     |
