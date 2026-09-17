@@ -877,47 +877,64 @@ Registered as a real table at `src/lua/api.ts:3664-3711` (not a generic namespac
 
 ---
 
-## vim.lsp (not applicable — no LSP server in Obsidian)
+## vim.lsp (partial — provided by other plugins, not by an LSP server in Obsidian)
 
-All `vim.lsp.*` functions are 🚫 not applicable. Listed for completeness.
+Obsidian runs no language server, so nothing here talks LSP directly. A plugin that does — through the [editor provider API](docs/development/editor-api.md) — backs the functions marked ✅ below; without such a plugin they return `false` rather than pretending to have acted.
 
-| Namespace                | Function count | Status |
-| ------------------------ | -------------- | ------ |
-| `vim.lsp` (core)         | ~15            | 🚫     |
-| `vim.lsp.buf`            | ~20            | 🚫     |
-| `vim.lsp.codelens`       | ~5             | 🚫     |
-| `vim.lsp.completion`     | ~3             | 🚫     |
-| `vim.lsp.diagnostic`     | ~5             | 🚫     |
-| `vim.lsp.document_color` | ~3             | 🚫     |
-| **Total**                | **~51**        | 🚫     |
+| Function                  | Status | Notes                                            |
+| ------------------------- | ------ | ------------------------------------------------ |
+| `vim.lsp.buf.hover`       | ✅     | Routed to the matching language provider         |
+| `vim.lsp.buf.definition`  | ✅     | Also `declaration` and `type_definition`         |
+| `vim.lsp.buf.code_action` | ✅     | The provider owns the picker UI                  |
+| `vim.lsp.buf.format`      | ✅     | Cursor position decides the range                |
+| `vim.lsp.get_clients`     | 🚫     | Absent on purpose: nothing here is an LSP client |
+
+`vim.diagnostic.get`, `.count`, `.goto_next`, `.goto_prev`, `.jump` and `.severity` are backed the same way and return Neovim-shaped entries (`lnum`, `col`, `end_lnum`, `end_col`, `severity`, `message`, `source`). The `]d` and `[d` motions use the same source.
+
+Everything else remains 🚫 not applicable, and keeps the warn-once behaviour of the namespace stubs: calling one logs a single line and returns a no-op rather than raising, so a configuration written for Neovim keeps running.
+
+| Namespace                | Function count | Status  |
+| ------------------------ | -------------- | ------- |
+| `vim.lsp` (core)         | ~15            | 🚫      |
+| `vim.lsp.buf`            | ~20            | partial |
+| `vim.lsp.codelens`       | ~5             | 🚫      |
+| `vim.lsp.completion`     | ~3             | 🚫      |
+| `vim.lsp.diagnostic`     | ~5             | 🚫      |
+| `vim.lsp.document_color` | ~3             | 🚫      |
+| **Total**                | **~51**        | 🚫      |
 
 ---
 
-## vim.diagnostic (not applicable — no diagnostic system)
+## vim.diagnostic (partial — diagnostics come from a language provider)
 
-| Function                                                        | Status | Notes |
-| --------------------------------------------------------------- | ------ | ----- |
-| `vim.diagnostic.config(opts?, ns?)`                             | 🚫     |       |
-| `vim.diagnostic.count(buf?, opts?)`                             | 🚫     |       |
-| `vim.diagnostic.enable(enable, filter?)`                        | 🚫     |       |
-| `vim.diagnostic.fromqflist(list)`                               | 🚫     |       |
-| `vim.diagnostic.get(buf?, opts?)`                               | 🚫     |       |
-| `vim.diagnostic.get_namespace(ns)`                              | 🚫     |       |
-| `vim.diagnostic.get_namespaces()`                               | 🚫     |       |
-| `vim.diagnostic.get_next(opts?)`                                | 🚫     |       |
-| `vim.diagnostic.get_prev(opts?)`                                | 🚫     |       |
-| `vim.diagnostic.hide(ns?, buf?)`                                | 🚫     |       |
-| `vim.diagnostic.is_enabled(filter?)`                            | 🚫     |       |
-| `vim.diagnostic.jump(opts)`                                     | 🚫     |       |
-| `vim.diagnostic.match(str, pat, groups?, severity?, defaults?)` | 🚫     |       |
-| `vim.diagnostic.open_float(opts?)`                              | 🚫     |       |
-| `vim.diagnostic.reset(ns?, buf?)`                               | 🚫     |       |
-| `vim.diagnostic.set(ns, buf, diagnostics, opts?)`               | 🚫     |       |
-| `vim.diagnostic.setloclist(opts?)`                              | 🚫     |       |
-| `vim.diagnostic.setqflist(opts?)`                               | 🚫     |       |
-| `vim.diagnostic.show(ns?, buf?, diagnostics?, opts?)`           | 🚫     |       |
-| `vim.diagnostic.status(ns?, buf?)`                              | 🚫     |       |
-| `vim.diagnostic.toqflist(diagnostics)`                          | 🚫     |       |
+Diagnostics are supplied by a plugin registered through the [editor provider API](docs/development/editor-api.md). With none registered, `get` returns an empty list and the jumps return `nil`.
+
+| Function                                                        | Status | Notes                                             |
+| --------------------------------------------------------------- | ------ | ------------------------------------------------- |
+| `vim.diagnostic.config(opts?, ns?)`                             | 🚫     |                                                   |
+| `vim.diagnostic.count(buf?, opts?)`                             | ✅     | Total for the editor; no filtering                |
+| `vim.diagnostic.goto_next(opts?)`                               | ✅     | `{ count }` only; wraps around                    |
+| `vim.diagnostic.goto_prev(opts?)`                               | ✅     | `{ count }` only; wraps around                    |
+| `vim.diagnostic.severity`                                       | ✅     | `ERROR`, `WARN`, `INFO`, `HINT`                   |
+| `vim.diagnostic.enable(enable, filter?)`                        | 🚫     |                                                   |
+| `vim.diagnostic.fromqflist(list)`                               | 🚫     |                                                   |
+| `vim.diagnostic.get(buf?, opts?)`                               | ✅     | Current editor; `opts` filtering is not supported |
+| `vim.diagnostic.get_namespace(ns)`                              | 🚫     |                                                   |
+| `vim.diagnostic.get_namespaces()`                               | 🚫     |                                                   |
+| `vim.diagnostic.get_next(opts?)`                                | 🚫     |                                                   |
+| `vim.diagnostic.get_prev(opts?)`                                | 🚫     |                                                   |
+| `vim.diagnostic.hide(ns?, buf?)`                                | 🚫     |                                                   |
+| `vim.diagnostic.is_enabled(filter?)`                            | 🚫     |                                                   |
+| `vim.diagnostic.jump(opts)`                                     | ✅     | `{ count }` only; negative counts jump backwards  |
+| `vim.diagnostic.match(str, pat, groups?, severity?, defaults?)` | 🚫     |                                                   |
+| `vim.diagnostic.open_float(opts?)`                              | 🚫     |                                                   |
+| `vim.diagnostic.reset(ns?, buf?)`                               | 🚫     |                                                   |
+| `vim.diagnostic.set(ns, buf, diagnostics, opts?)`               | 🚫     |                                                   |
+| `vim.diagnostic.setloclist(opts?)`                              | 🚫     |                                                   |
+| `vim.diagnostic.setqflist(opts?)`                               | 🚫     |                                                   |
+| `vim.diagnostic.show(ns?, buf?, diagnostics?, opts?)`           | 🚫     |                                                   |
+| `vim.diagnostic.status(ns?, buf?)`                              | 🚫     |                                                   |
+| `vim.diagnostic.toqflist(diagnostics)`                          | 🚫     |                                                   |
 
 ---
 

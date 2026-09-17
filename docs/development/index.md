@@ -24,6 +24,7 @@ Copy `main.js`, `manifest.json`, and `styles.css` to `<vault>/.obsidian/plugins/
 | `npm run build`              | Production build                    |
 | `npm run lint`               | ESLint with obsidianmd plugin rules |
 | `npm run test:e2e`           | E2E tests (requires `nix develop`)  |
+| `npm run test:e2e:api`       | E2E specs covering the editor API   |
 | `npm run test:coverage`      | Command-level test coverage report  |
 | `npm run test:neovim-smoke`  | Neovim client smoke test            |
 | `npm run test:neovim-record` | Record golden files from Neovim     |
@@ -35,6 +36,10 @@ See [[architecture]] for the dual-vim architecture, module structure, and design
 ## Picker provider API
 
 See [[picker-api]] for how external plugins can register custom picker sources via `window.VimMotions.picker`.
+
+## Editor provider API
+
+See [[editor-api]] for how external plugins attach Vim to editors they own, and provide hover, definition, quick fix, format and diagnostics to `gd`, `K`, `]d`/`[d` and `vim.lsp`.
 
 ## Full development guide
 

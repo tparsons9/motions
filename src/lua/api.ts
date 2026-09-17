@@ -701,12 +701,18 @@ function readHighlightAttrs(L: lua_State, index: number): HighlightAttrs {
     return attrs;
 }
 
-function createWarnStub(
+/**
+ * Gives a namespace table warn-once semantics for keys it does not implement:
+ * the key logs once and yields a no-op function instead of nil, so a
+ * configuration calling an unimplemented Neovim function keeps running rather
+ * than dying on "attempt to call a nil value". Expects the table on top of the
+ * stack and leaves it there.
+ */
+export function applyUnknownKeyWarning(
     L: lua_State,
     namespace: string,
     warned: Set<string>,
 ): void {
-    lua.lua_newtable(L);
     lua.lua_newtable(L);
     lua.lua_pushjsfunction(L, (state: lua_State) => {
         if (
@@ -736,6 +742,15 @@ function createWarnStub(
     });
     lua.lua_setfield(L, -2, to_luastring('__newindex'));
     lua.lua_setmetatable(L, -2);
+}
+
+function createWarnStub(
+    L: lua_State,
+    namespace: string,
+    warned: Set<string>,
+): void {
+    lua.lua_newtable(L);
+    applyUnknownKeyWarning(L, namespace, warned);
 }
 
 function createWarnVarTable(
@@ -1250,6 +1265,35 @@ function isScopeHandleKey(state: lua_State, index: number): boolean {
         lua.lua_type(state, index) === lua.LUA_TNUMBER ||
         lua.lua_isnil(state, index)
     );
+}
+
+const COMMENTSTRINGS: Record<string, string> = {
+    markdown: '%% %s %%',
+    javascript: '// %s',
+    typescript: '// %s',
+    typescriptreact: '// %s',
+    javascriptreact: '// %s',
+    python: '# %s',
+    r: '# %s',
+    lua: '-- %s',
+    css: '/* %s */',
+    html: '<!-- %s -->',
+    xml: '<!-- %s -->',
+    c: '/* %s */',
+    cpp: '// %s',
+    java: '// %s',
+    rust: '// %s',
+    go: '// %s',
+    ruby: '# %s',
+    sh: '# %s',
+    bash: '# %s',
+    yaml: '# %s',
+    toml: '# %s',
+};
+
+/** The `commentstring` for a filetype, falling back to Markdown's. */
+export function commentstringFor(filetype: string | null | undefined): string {
+    return (filetype && COMMENTSTRINGS[filetype]) || '%% %s %%';
 }
 
 const bufferOptionShadow = new Map<string, Map<string, unknown>>();
@@ -4104,6 +4148,8 @@ export function injectVimApi(
     lua.lua_setfield(L, vimTableIndex, to_luastring('api'));
     lua.lua_pop(L, 1);
 
+    // `vim.ui`, `vim.lsp` and `vim.diagnostic` replace these stubs later:
+    // `injectUiApi` and `injectLspApi` run right after this function.
     for (const key of ['lsp', 'ui', 'diagnostic']) {
         createWarnStub(L, key, warnedNamespaceKeys);
         lua.lua_setfield(L, vimTableIndex, to_luastring(key));
@@ -4115,27 +4161,7 @@ export function injectVimApi(
         const ft = readLuaString(state, 1);
         const optName = readLuaString(state, 2);
         if (optName === 'commentstring') {
-            const csMap: Record<string, string> = {
-                markdown: '%% %s %%',
-                javascript: '// %s',
-                typescript: '// %s',
-                python: '# %s',
-                lua: '-- %s',
-                css: '/* %s */',
-                html: '<!-- %s -->',
-                xml: '<!-- %s -->',
-                c: '/* %s */',
-                cpp: '// %s',
-                java: '// %s',
-                rust: '// %s',
-                go: '// %s',
-                ruby: '# %s',
-                sh: '# %s',
-                bash: '# %s',
-                yaml: '# %s',
-                toml: '# %s',
-            };
-            const cs = ft ? (csMap[ft] ?? '%% %s %%') : '%% %s %%';
+            const cs = commentstringFor(ft);
             lua.lua_pushstring(state, to_luastring(cs));
             return 1;
         }

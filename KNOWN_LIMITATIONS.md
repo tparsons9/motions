@@ -4,6 +4,27 @@ This document tracks known limitations, architectural constraints, and intention
 
 For previously fixed issues, see [Resolved Issues](#resolved-issues) at the bottom of this document.
 
+## Editors provided by other plugins (editor API)
+
+**Status**: Implemented for bundled fork mode. See [`docs/development/editor-api.md`](docs/development/editor-api.md).
+
+### Markdown-specific features are excluded from attached editors
+
+An editor attached through `window.VimMotions.editor` receives the Markdown-independent part of the Vim extension slot. Left out deliberately:
+
+- **Table navigation and the table cell guard** — both resolve an Obsidian `MarkdownView` through `editorInfoField`.
+- **Markdown folding, fold placeholders, and the Markdown treesitter bridge** — the fold provider treats `#` as a heading, which would fold every Python comment, and the bundled treesitter bridge is hard-coded to the Markdown grammar.
+- **The undo tree and the change list** — both are single instances bound to the active note. Feeding another editor's edits into them would corrupt that note's history, so `g-`/`g+`, `g;`/`g,` and the undo-tree sidebar cover notes only.
+- **Snippets** and the visual-line selection fix, which patch Obsidian's `Editor`.
+
+### The editor API requires bundled fork mode
+
+With Obsidian's built-in Vim key bindings enabled, Vim Motions sets up no extension slot, so `editorApi` is absent and nothing can attach. Obsidian's own Vim extension is not reachable from a plugin, so it cannot be installed into a third-party editor. Users who want Vim in another plugin's editor must turn off **Settings → Editor → Vim key bindings** and enable Vim Motions' own Vim mode.
+
+### Marks, harpoon and the jump list ignore editors outside the vault
+
+These store vault paths and resolve them through `TFile`, so an attached editor whose `path` starts with `file:` takes no part in `]b`, uppercase marks, harpoon slots or `<C-o>`/`<C-i>`. `recordJump()` skips such editors rather than recording an entry that cannot be reopened.
+
 ## Neovim RPC backend
 
 **Status**: Active-editor text, key delegation, IME composition, frontmatter handling, decorations, fold mirroring, floating windows, workspace/navigation, picker, Harpoon, marks-command, cross-note jumplist bridging, native Oil isolation, Neovim-backed undo-tree sidebar, structural navigation, hard-wrap wiring, and Markdown text objects are implemented on desktop. M7 latency is certified. Measured over N=500 per condition (75 warm-up discarded) on a ~2000-line note with real keystrokes and identical paint resolution: fork p50 15.3 ms / p95 39.5 ms / p99 53.1 ms, RPC p50 17.3 ms / p95 36.2 ms / p99 48.7 ms — a **p95 delta of −3.3 ms and p99 delta of −4.4 ms**, within the ≤25 ms / ≤60 ms thresholds. The sanity gate asserts on **p50**, not p95: p50 isolates the RPC round-trip cost (fork faster by ~2 ms, as expected), whereas the tail inverts because the fork runs vim computation in the renderer while the RPC path runs it in a separate process. Per-class figures confirm this — motions fork 13.4 / RPC 8.8, operators fork 58.1 / RPC 53.7, insert typing fork 18.2 / RPC 20.9.

@@ -15,6 +15,14 @@ import type { ChangeList } from '../vim/changelist';
 import { navigateWithJump, navigateWithJumpSetActive } from './navigate';
 import { getViolations, clearViolations } from '../util/invariant';
 import {
+    closeExternalEditor,
+    externalEditorFor,
+    isInLeaf,
+    saveExternalEditor,
+    type ExternalEditorLookup,
+} from '../integrations/external-ex-commands';
+import type { ExternalEditorEntry } from '../integrations/external-editors';
+import {
     getTableDebugState,
     formatTableDebugState,
 } from '../vim/table-debug-state';
@@ -285,7 +293,14 @@ function saveWithEvents(
     app: App,
     autocmdManager?: AutocmdManager,
     oilManager?: OilManager,
+    cm?: CmAdapter,
+    externalEditors?: ExternalEditorLookup,
 ): void {
+    const external = externalEditorFor(cm, externalEditors);
+    if (external) {
+        void saveExternalEditor(external, autocmdManager);
+        return;
+    }
     const activeLeaf = app.workspace.getMostRecentLeaf();
     if (activeLeaf?.view instanceof OilView) {
         if (oilManager) {
@@ -304,12 +319,64 @@ function closeOilView(oilManager: OilManager): void {
     oilManager.closeOil();
 }
 
+/**
+ * Closes the editor the command ran in: the host plugin's handler when there
+ * is one, else the active leaf. Without a handler, falling back is only
+ * correct while that editor is inside the active leaf — otherwise
+ * `workspace:close` would close an unrelated note.
+ */
+function closeExternalOrLeaf(
+    app: App,
+    external: ExternalEditorEntry | null,
+): void {
+    if (external && closeExternalEditor(external)) return;
+    if (
+        external &&
+        !isInLeaf(external, app.workspace.getMostRecentLeaf()?.view.containerEl)
+    ) {
+        new Notice(
+            `Vim Motions: ${external.host.path} cannot be closed from Vim.`,
+        );
+        return;
+    }
+    executeCommand(app, 'workspace:close');
+}
+
+function closeCurrent(
+    app: App,
+    cm?: CmAdapter,
+    externalEditors?: ExternalEditorLookup,
+): void {
+    closeExternalOrLeaf(app, externalEditorFor(cm, externalEditors));
+}
+
+/** `:wq`/`:x` in an external editor: close only once the host saved. */
+function writeQuitExternal(
+    app: App,
+    cm: CmAdapter,
+    externalEditors: ExternalEditorLookup | undefined,
+    autocmdManager?: AutocmdManager,
+): boolean {
+    const external = externalEditorFor(cm, externalEditors);
+    if (!external) return false;
+    // The entry is captured before the save: by the time it resolves the user
+    // may have moved on, and re-resolving would close whatever is active then.
+    void saveExternalEditor(external, autocmdManager).then((saved) => {
+        if (saved) closeExternalOrLeaf(app, external);
+    });
+    return true;
+}
+
 function createWriteQuitCommand(
     app: App,
     autocmdManager?: AutocmdManager,
     oilManager?: OilManager,
+    externalEditors?: ExternalEditorLookup,
 ): ExCommandFn {
-    return () => {
+    return (cm) => {
+        if (writeQuitExternal(app, cm, externalEditors, autocmdManager)) {
+            return;
+        }
         const activeLeaf = app.workspace.getMostRecentLeaf();
         if (activeLeaf?.view instanceof OilView && oilManager) {
             void oilManager.commit().then(() => {
@@ -506,8 +573,12 @@ function createXitCommand(
     app: App,
     autocmdManager?: AutocmdManager,
     oilManager?: OilManager,
+    externalEditors?: ExternalEditorLookup,
 ): ExCommandFn {
-    return () => {
+    return (cm) => {
+        if (writeQuitExternal(app, cm, externalEditors, autocmdManager)) {
+            return;
+        }
         const activeLeaf = app.workspace.getMostRecentLeaf();
         if (activeLeaf?.view instanceof OilView && oilManager) {
             void oilManager.commit().then(() => {
@@ -813,30 +884,40 @@ export function registerExCommands(
     undoTree?: UndoTree,
     navigateUndoTreeTo?: (fromSeq: number, toSeq: number) => void,
     changeList?: ChangeList,
+    externalEditors?: ExternalEditorLookup,
 ): void {
     const backlinksCommand = createBacklinksCommand(app);
     const grepCommand = createGrepCommand(app);
     reg.defineEx('sidebar', 'sid', createSidebarCommand(app));
     reg.defineEx('explorer', 'exp', createExplorerCommand(app));
 
-    reg.defineEx('write', 'w', () =>
-        saveWithEvents(app, autocmdManager, oilManager),
+    reg.defineEx('write', 'w', (cm) =>
+        saveWithEvents(app, autocmdManager, oilManager, cm, externalEditors),
     );
-    reg.defineEx('quit', 'q', () => {
+    reg.defineEx('quit', 'q', (cm) => {
         const activeLeaf = app.workspace.getMostRecentLeaf();
         if (activeLeaf?.view instanceof OilView && oilManager) {
             closeOilView(oilManager);
             return;
         }
-        executeCommand(app, 'workspace:close');
+        closeCurrent(app, cm, externalEditors);
     });
     reg.defineEx(
         'wq',
         '',
-        createWriteQuitCommand(app, autocmdManager, oilManager),
+        createWriteQuitCommand(
+            app,
+            autocmdManager,
+            oilManager,
+            externalEditors,
+        ),
     );
-    reg.defineEx('bdelete', 'bd', () => executeCommand(app, 'workspace:close'));
-    reg.defineEx('bclose', 'bc', () => executeCommand(app, 'workspace:close'));
+    reg.defineEx('bdelete', 'bd', (cm) =>
+        closeCurrent(app, cm, externalEditors),
+    );
+    reg.defineEx('bclose', 'bc', (cm) =>
+        closeCurrent(app, cm, externalEditors),
+    );
     reg.defineEx('bnext', 'bn', () =>
         executeCommand(app, 'workspace:next-tab'),
     );
@@ -846,11 +927,11 @@ export function registerExCommands(
     reg.defineEx('only', 'on', createCloseOthersExCommand(app));
     reg.defineEx('quitall', 'quita', createCloseAllCommand(app));
     reg.defineEx('qa', '', createCloseAllCommand(app));
-    reg.defineEx('wall', 'wal', () =>
-        saveWithEvents(app, autocmdManager, oilManager),
+    reg.defineEx('wall', 'wal', (cm) =>
+        saveWithEvents(app, autocmdManager, oilManager, cm, externalEditors),
     );
-    reg.defineEx('wa', '', () =>
-        saveWithEvents(app, autocmdManager, oilManager),
+    reg.defineEx('wa', '', (cm) =>
+        saveWithEvents(app, autocmdManager, oilManager, cm, externalEditors),
     );
 
     reg.defineEx('buffers', 'buf', createBufferListCommand(app, picker));
@@ -949,10 +1030,14 @@ export function registerExCommands(
     reg.defineEx('edit', 'e', createEditCommand(app));
     reg.defineEx('enew', 'ene', createEnewCommand(app));
     reg.defineEx('saveas', 'sav', createSaveAsCommand(app));
-    reg.defineEx('update', 'up', () =>
-        saveWithEvents(app, autocmdManager, oilManager),
+    reg.defineEx('update', 'up', (cm) =>
+        saveWithEvents(app, autocmdManager, oilManager, cm, externalEditors),
     );
-    reg.defineEx('xit', 'x', createXitCommand(app, autocmdManager, oilManager));
+    reg.defineEx(
+        'xit',
+        'x',
+        createXitCommand(app, autocmdManager, oilManager, externalEditors),
+    );
     reg.defineEx(
         'xall',
         'xa',
@@ -1001,8 +1086,8 @@ export function registerExCommands(
     reg.defineEx('buffer', 'b', createBufferCommand(app));
     reg.defineEx('bfirst', 'bf', createBufferFirstLast(app, true));
     reg.defineEx('blast', 'bl', createBufferFirstLast(app, false));
-    reg.defineEx('bwipeout', 'bw', () =>
-        executeCommand(app, 'workspace:close'),
+    reg.defineEx('bwipeout', 'bw', (cm) =>
+        closeCurrent(app, cm, externalEditors),
     );
 
     reg.defineEx('split', 'sp', createSplitCommand(app, false));
@@ -1011,8 +1096,8 @@ export function registerExCommands(
     reg.defineEx('vnew', 'vne', createSplitNewCommand(app, true));
     reg.defineEx('tabnew', 'tabn', createTabNewCommand(app));
     reg.defineEx('tabedit', 'tabe', createTabNewCommand(app));
-    reg.defineEx('tabclose', 'tabc', () =>
-        executeCommand(app, 'workspace:close'),
+    reg.defineEx('tabclose', 'tabc', (cm) =>
+        closeCurrent(app, cm, externalEditors),
     );
     reg.defineEx('tabonly', 'tabo', createCloseOthersExCommand(app));
     reg.defineEx('tabfirst', 'tabf', createBufferFirstLast(app, true));
