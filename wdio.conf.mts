@@ -92,11 +92,37 @@ export const config: WebdriverIO.Config = {
         // per cluster, document.hasFocus() matched the outcome every time, for
         // the fold specs and the animated-cursor specs alike. Waiting cleared
         // the fold failures outright.
+        // window.focus() alone was not enough for the canvas specs; asking
+        // Electron to raise the window is what worked there. Specs that reload
+        // Obsidian discard this and call ensureWindowFocused after their own
+        // load, but specs that do not reload only get this one.
         try {
             await browser.waitUntil(
                 async () =>
                     browser.execute(() => {
-                        if (!document.hasFocus()) window.focus();
+                        if (!document.hasFocus()) {
+                            try {
+                                const electron = (
+                                    window as unknown as {
+                                        require?: (m: string) => unknown;
+                                    }
+                                ).require?.('electron') as
+                                    | {
+                                          remote?: {
+                                              getCurrentWindow?: () => {
+                                                  focus?: () => void;
+                                              };
+                                          };
+                                      }
+                                    | undefined;
+                                electron?.remote
+                                    ?.getCurrentWindow?.()
+                                    ?.focus?.();
+                            } catch {
+                                /* not available in every host */
+                            }
+                            window.focus();
+                        }
                         return document.hasFocus();
                     }),
                 { timeout: 5000, interval: 250 },

@@ -77,6 +77,32 @@ is the case they used to fail rather than a warm rehearsal.
 Remaining in production: the Linux RPC entries, and one Windows jumplist
 failure.
 
+## RPC entries: Neovim exits, and the renderer then hangs
+
+Six cold Linux samples, three failures, and the Node-side process state names
+the primary event:
+
+|                               | document                 | Neovim             |
+| ----------------------------- | ------------------------ | ------------------ |
+| boundaries before the failure | 13-32 chars              | `alive:S`          |
+| the failing boundary          | unreadable, session gone | **`dead:no-proc`** |
+
+Two replicas showed it on the same test, `matches counted operator-pending
+heading motion edits`. The renderer stall is the consequence, not the cause:
+the child exits, and the host is left waiting on a process that is gone.
+
+This is the measurement that browser-side probes could never make. Every
+failing replica reported `docLength` and `longtasks` as null, because by the
+time `afterEach` ran the session had already died. Reading `/proc` from Node
+survives that.
+
+Open and user-relevant: why the child exits. A crash in the companion Lua, an
+unhandled RPC message, or the operating system reclaiming it are all live,
+and they differ in whether a user can hit them. The 30-second request timeout
+added earlier should have rejected the pending call when the stream closed,
+so the host's handling of a dead child is worth auditing regardless of the
+cause.
+
 ## RPC entries: narrowed to a native block
 
 `connectionRetryTimeout` did not fix the stall, but it changed a dead session
