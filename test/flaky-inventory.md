@@ -29,23 +29,23 @@ skip on that condition explicitly rather than silently vary.
 
 ## Inventory
 
-| Test                                                                       | Platform  | Observed                | Status                                                                                                                                                       |
-| -------------------------------------------------------------------------- | --------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `g- does not crash at root`                                                | all three | 4 runs                  | **Resolved — product.** Stale `this.undoTree` captured at registration; `activateUndoTreeForFile()` swaps it per note. Fixed in `ff8442a`.                   |
-| `zc on callout folds it`                                                   | macOS     | 3/5, then 2/3           | **Resolved — environment.** The CI window starts without OS focus; waiting for it to arrive fixes the suite (0/8 cold failures, 0 skips). 16/16 correlation. |
-| `editor:unfold-all clears all folds including custom`                      | macOS     | with the above          | **Resolved — environment.** Same cause.                                                                                                                      |
-| `cursor follows cursor movement`                                           | macOS     | 2 of last 3             | **Resolved — environment.** Same unfocused-window cause as the fold pair; `document.hasFocus()` matched the outcome 8/8. No link to #181.                    |
-| `]3 should jump to next H3`                                                | macOS     | 3/5                     | Unknown. Candidate: the same toggle race, since `beforeSuite` cycles vim before every spec.                                                                  |
-| `the animated cursor picks up a shape change (#181)`                       | macOS     | 1                       | Unknown. Fails on its canvas-paint precondition, not on the scroll defect #181 describes.                                                                    |
-| `focuses the expected pane in all four directions`                         | macOS     | 1                       | Unknown.                                                                                                                                                     |
-| `"after each" hook — RPC key delegation`                                   | macOS     | 1                       | Unknown.                                                                                                                                                     |
-| `"after each" hook — RPC structural navigation`                            | Linux     | 2/5 in CI, ~1/3 locally | Unknown. A cascade, not a cause: the session dies in the preceding test.                                                                                     |
-| `matches counted operator-pending heading motion edits`                    | Linux     | 1                       | Unknown.                                                                                                                                                     |
-| `matches backward operator-pending heading motion edits`                   | Linux     | 2                       | Unknown. Primary failure in the run whose afterEach then cascades.                                                                                           |
-| `matches the fork for operators, visual selections, registers, and counts` | Windows   | 1                       | Unknown.                                                                                                                                                     |
-| `which-key shows after space press`                                        | Windows   | 1                       | Unknown. Polls 2000 ms for behaviour gated by `operatorshadowtimeout`'s 1000 ms deferral, so the margin is thin by construction.                             |
-| `a config reload closes an open picker instead of leaking it`              | Windows   | 1                       | Unknown. New in `2b6bc75`.                                                                                                                                   |
-| `uses the host jumplist for two cross-note older jumps`                    | Windows   | 1                       | Unknown. New in `2b6bc75`; the only failure in its run.                                                                                                      |
+| Test                                                                       | Platform            | Observed                | Status                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------- | ------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `g- does not crash at root`                                                | all three           | 4 runs                  | **Resolved — product.** Stale `this.undoTree` captured at registration; `activateUndoTreeForFile()` swaps it per note. Fixed in `ff8442a`.                                                                 |
+| `zc on callout folds it`                                                   | macOS               | 3/5, then 2/3           | **Resolved — environment.** The CI window starts without OS focus; waiting for it to arrive fixes the suite (0/8 cold failures, 0 skips). 16/16 correlation.                                               |
+| `editor:unfold-all clears all folds including custom`                      | macOS               | with the above          | **Resolved — environment.** Same cause.                                                                                                                                                                    |
+| `cursor follows cursor movement`                                           | macOS               | 2 of last 3             | **Resolved — environment.** Same unfocused-window cause as the fold pair; `document.hasFocus()` matched the outcome 8/8. No link to #181.                                                                  |
+| `]3 should jump to next H3`                                                | macOS **and Linux** | 3/5, then Linux         | **The motion itself does not move.** `viaHandleKey: 0`: replaying the keys through `Vim.handleKey`, bypassing DOM delivery, also leaves the cursor at line 0. Not key delivery, not the macOS focus cause. |
+| `the animated cursor picks up a shape change (#181)`                       | macOS               | 1                       | Unknown. Fails on its canvas-paint precondition, not on the scroll defect #181 describes.                                                                                                                  |
+| `focuses the expected pane in all four directions`                         | macOS               | 1                       | Unknown.                                                                                                                                                                                                   |
+| `"after each" hook — RPC key delegation`                                   | macOS               | 1                       | Unknown.                                                                                                                                                                                                   |
+| `"after each" hook — RPC structural navigation`                            | Linux               | 2/5 in CI, ~1/3 locally | Unknown. A cascade, not a cause: the session dies in the preceding test.                                                                                                                                   |
+| `matches counted operator-pending heading motion edits`                    | Linux               | 1                       | Unknown.                                                                                                                                                                                                   |
+| `matches backward operator-pending heading motion edits`                   | Linux               | 2                       | Unknown. Primary failure in the run whose afterEach then cascades.                                                                                                                                         |
+| `matches the fork for operators, visual selections, registers, and counts` | Windows             | 1                       | Unknown.                                                                                                                                                                                                   |
+| `which-key shows after space press`                                        | Windows             | 1                       | Unknown. Polls 2000 ms for behaviour gated by `operatorshadowtimeout`'s 1000 ms deferral, so the margin is thin by construction.                                                                           |
+| `a config reload closes an open picker instead of leaking it`              | Windows             | 1                       | Unknown. New in `2b6bc75`.                                                                                                                                                                                 |
+| `uses the host jumplist for two cross-note older jumps`                    | Windows             | 1                       | Unknown. New in `2b6bc75`; the only failure in its run.                                                                                                                                                    |
 
 ## What "resolved" means for the two product bugs
 
@@ -76,6 +76,70 @@ is the case they used to fail rather than a warm rehearsal.
 
 Remaining in production: the Linux RPC entries, and one Windows jumplist
 failure.
+
+## `]3` is a behavioural failure, not an environmental one
+
+`3848e23` failed it on **Linux**, having previously only failed on macOS, and
+the diagnostic added earlier names the difference:
+
+    cursor never reached line 4:
+      {"lastObserved":0,"probeKeys":["]","3"],"viaHandleKey":0}
+
+`viaHandleKey` replays the same keys through `Vim.handleKey`, bypassing DOM
+delivery. It also leaves the cursor at line 0, so the motion does not move
+regardless of how it is invoked. That excludes key delivery, the platform, and
+the focus cause behind the fold and canvas clusters.
+
+A heading motion that finds no heading is the shape of structural navigation
+running before its heading data exists. `AGENTS.md` records that the heading
+provider falls back to regex only when treesitter metadata is unavailable, so
+metadata readiness is the first thing to measure.
+
+This one is user-relevant: opening a note and immediately pressing `]3` is an
+ordinary thing to do, and nothing here depends on CI.
+
+## The RPC cluster is larger than five entries
+
+Applying the focus fix to `rpc-obsidian-bridge` and `rpc-keys` on the strength
+of the fold and canvas results did not help: six cold macOS samples, two
+failures, and a different test each time — `keeps source-rendered frontmatter
+fully navigable` and `forwards the count from 2<C-o> to the host jumplist`.
+`focuses the expected pane in all four directions`, the failure that prompted
+the change, did not recur at all.
+
+That is the signature of the Neovim-exit cause rather than an unfocused
+window: the failing test moves between runs because whichever test is running
+when the child exits is the one that fails. It also means the cluster spans
+`rpc-structural-nav`, `rpc-obsidian-bridge`, `rpc-keys` and `rpc-text-objects`
+rather than the entries originally listed, and that entry names are a poor
+key for it.
+
+The fix was applied from a prior instead of a measurement, which is the
+departure that produced this. The change itself is kept because it aligns the
+two focus paths, which had unequal strength for no reason, but it resolved
+nothing here.
+
+## Why Neovim exits: still open, and how to get at it
+
+Six more cold Linux samples, four failures, `dead:no-proc` confirmed again.
+Reading Neovim's own log from the default locations returned nothing: Neovim
+writes `stdpath('log')` only for some levels, and the spawned child does not
+necessarily resolve the paths guessed from the runner's `HOME`.
+
+The reliable version is to set `NVIM_LOG_FILE` to a known path in the
+workflow environment. Obsidian inherits the runner environment and the plugin
+spawns the child from Obsidian, so the setting propagates, and the file is
+then readable from Node after the session dies.
+
+Two failures also reported an empty pid set with no test state at all, which
+means the hook failed before a pid was recorded. Those are a different shape
+from the `dead:no-proc` case and should not be counted with it.
+
+Independently of the cause, the host hanging for 180 seconds instead of
+erroring is a defect of ours. The 30-second request timeout added in
+`ad8e3ac` does not fire when the stream closes, so a user whose Neovim
+crashes gets a frozen editor rather than a message. That is worth fixing on
+its own and does not depend on this question being answered.
 
 ## RPC entries: Neovim exits, and the renderer then hangs
 

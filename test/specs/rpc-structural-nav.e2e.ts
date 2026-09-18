@@ -335,6 +335,32 @@ describe('Neovim RPC structural navigation and hard-wrap', function () {
         // long task is ever reported, so getValue() is not slow for any
         // JavaScript reason; the remaining candidate is a native block, and
         // the Neovim child is the native thing these specs add.
+        // Why the child exits is the open question, and its own log is the
+        // cheapest place to look: a Lua error in the companion, a fatal signal
+        // or an orderly quit all read differently there. Only collected when a
+        // tracked pid is gone, so healthy runs stay quiet.
+        // Collected whenever the test did not pass, not only when a tracked
+        // pid is gone: a local reproduction reported an empty pid set at the
+        // failing boundary, so keying the capture on a dead pid missed the
+        // case it was written for.
+        let nvimLog = '';
+        const anyDead = [...spawnedPids].some((pid) => !pidIsAlive(pid));
+        if (anyDead || this.currentTest?.state !== 'passed') {
+            for (const candidate of [
+                process.env.NVIM_LOG_FILE,
+                `${process.env.HOME ?? ''}/.local/state/nvim/log`,
+                `${process.env.HOME ?? ''}/.cache/nvim/log`,
+            ]) {
+                if (!candidate) continue;
+                try {
+                    const text = readFileSync(candidate, 'utf8');
+                    nvimLog = text.slice(-600);
+                    break;
+                } catch {
+                    /* try the next location */
+                }
+            }
+        }
         const nvim = [...spawnedPids].map((pid) => {
             let state = 'unknown';
             try {
@@ -352,6 +378,7 @@ describe('Neovim RPC structural navigation and hard-wrap', function () {
                     state: this.currentTest?.state,
                     tasks,
                     nvim,
+                    nvimLog,
                 }),
         );
         await setRpcEnabled(false);
