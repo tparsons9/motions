@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { CmAdapter } from '../../src/types/vim-api';
 import { findSubwordBoundaries, findSubwordEnds } from '../../src/util/subword';
 import {
     subwordForward,
@@ -52,17 +53,34 @@ describe('findSubwordEnds', () => {
 });
 
 describe('subword motions', () => {
-    function mockCm(lines: string[]) {
+    // Subword motions read only these three members. The rest throw rather
+    // than being absent, so a motion that starts reaching elsewhere fails by
+    // name here instead of as "undefined is not a function" inside src.
+    function mockCm(lines: string[]): CmAdapter {
+        const notImplemented = (member: string) => (): never => {
+            throw new Error(`mockCm.${member} is not implemented`);
+        };
         return {
-            getLine(n: number) {
-                return lines[n] ?? '';
+            getLine: (n: number) => lines[n] ?? '',
+            firstLine: () => 0,
+            lastLine: () => lines.length - 1,
+            get cm6(): never {
+                return notImplemented('cm6')();
             },
-            firstLine() {
-                return 0;
+            get state(): never {
+                return notImplemented('state')();
             },
-            lastLine() {
-                return lines.length - 1;
-            },
+            getCursor: notImplemented('getCursor'),
+            setCursor: notImplemented('setCursor'),
+            lineCount: notImplemented('lineCount'),
+            getSelection: notImplemented('getSelection'),
+            replaceSelection: notImplemented('replaceSelection'),
+            replaceRange: notImplemented('replaceRange'),
+            getRange: notImplemented('getRange'),
+            indexFromPos: notImplemented('indexFromPos'),
+            posFromIndex: notImplemented('posFromIndex'),
+            on: notImplemented('on'),
+            off: notImplemented('off'),
         };
     }
 

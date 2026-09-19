@@ -322,7 +322,9 @@ export async function sendVimEscape(): Promise<void> {
         const Vim = (
             window as unknown as {
                 CodeMirrorAdapter?: {
-                    Vim?: {};
+                    Vim?: {
+                        handleKey: (cm: unknown, key: string) => boolean;
+                    };
                 };
             }
         ).CodeMirrorAdapter?.Vim;
@@ -855,7 +857,7 @@ export async function canvasPaintSupported(): Promise<boolean> {
             if (!ctx) return false;
             ctx.fillStyle = 'rgba(255,0,0,1)';
             ctx.fillRect(0, 0, 8, 8);
-            return ctx.getImageData(0, 0, 8, 8).data[3] > 8;
+            return (ctx.getImageData(0, 0, 8, 8).data[3] ?? 0) > 8;
         } catch {
             return false;
         }

@@ -29,11 +29,11 @@ import type { PickerItem, PickerSource } from '../../../src/picker/types';
 describe('picker selection vs cancellation', () => {
     const item: PickerItem = { id: 'a', label: 'Alpha' };
     let onSelect: ReturnType<typeof vi.fn>;
-    let onCancel: ReturnType<typeof vi.fn>;
+    let onCancel: ReturnType<typeof vi.fn<() => void>>;
 
     function makeModal() {
         onSelect = vi.fn();
-        onCancel = vi.fn();
+        onCancel = vi.fn<() => void>();
         const source = {
             name: 'test',
             items: () => [item],

@@ -422,7 +422,12 @@ describe('AnimatedCursorManager', () => {
         const { AnimatedCursorManager } =
             await import('../../src/vim/animated-cursor/manager');
         const manager = new AnimatedCursorManager();
-        const stub = { tick: vi.fn(), isActive: () => false };
+        const stub = {
+            tick: vi.fn(),
+            isActive: () => false,
+            didDraw: () => false,
+            needsBlink: () => false,
+        };
         manager.register(stub);
         expect(
             (manager as unknown as { controllers: Set<unknown> }).controllers
@@ -442,8 +447,18 @@ describe('AnimatedCursorManager', () => {
         const { AnimatedCursorManager } =
             await import('../../src/vim/animated-cursor/manager');
         const manager = new AnimatedCursorManager();
-        const stub1 = { tick: vi.fn(), isActive: () => false };
-        const stub2 = { tick: vi.fn(), isActive: () => false };
+        const stub1 = {
+            tick: vi.fn(),
+            isActive: () => false,
+            didDraw: () => false,
+            needsBlink: () => false,
+        };
+        const stub2 = {
+            tick: vi.fn(),
+            isActive: () => false,
+            didDraw: () => false,
+            needsBlink: () => false,
+        };
         manager.register(stub1);
         manager.register(stub2);
         expect(
@@ -465,7 +480,12 @@ describe('AnimatedCursorManager', () => {
             await import('../../src/vim/animated-cursor/manager');
         const manager = new AnimatedCursorManager();
         for (let i = 0; i < 17; i++) {
-            manager.register({ tick: vi.fn(), isActive: () => false });
+            manager.register({
+                tick: vi.fn(),
+                isActive: () => false,
+                didDraw: () => false,
+                needsBlink: () => false,
+            });
         }
         expect(warnSpy).toHaveBeenCalled();
         expect(

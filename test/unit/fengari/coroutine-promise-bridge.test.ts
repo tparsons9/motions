@@ -30,12 +30,12 @@ function newState(): lua_State {
     return L;
 }
 
-function readString(L, index) {
+function readString(L: lua_State, index: number) {
     const val = lua.lua_tolstring(L, index);
     return val ? to_jsstring(val) : null;
 }
 
-function createThread(L, luaCode) {
+function createThread(L: lua_State, luaCode: string) {
     const thread = lua.lua_newthread(L);
     expect(lauxlib.luaL_loadstring(thread, to_luastring(luaCode))).toBe(
         lua.LUA_OK,
@@ -53,7 +53,11 @@ test('T1: basic yield/resume with continuation', () => {
 
     lua.lua_pushjsfunction(L, function (state) {
         const CONTEXT_ID = 42;
-        const continuation = function (contState, status, ctx) {
+        const continuation = function (
+            contState: lua_State,
+            status: number,
+            ctx: number,
+        ) {
             continuationCalled = true;
             continuationStatus = status;
             continuationCtx = ctx;
@@ -84,11 +88,11 @@ test('T2: lua_isyieldable is true in coroutine, false on main state', () => {
     const L = newState();
     expect(lua.lua_isyieldable(L)).toBe(false);
 
-    let yieldableInside = null;
+    let yieldableInside: boolean | null = null;
 
     lua.lua_pushjsfunction(L, function (state) {
         yieldableInside = lua.lua_isyieldable(state);
-        lua.lua_pushboolean(state, yieldableInside ? 1 : 0);
+        lua.lua_pushboolean(state, yieldableInside);
         return 1;
     });
     lua.lua_setglobal(L, to_luastring('check_yieldable'));
@@ -184,7 +188,7 @@ test('T5: continuation detects nil marker and calls luaL_error', () => {
     const L = newState();
 
     lua.lua_pushjsfunction(L, function (state) {
-        const continuation = function (contState) {
+        const continuation = function (contState: lua_State) {
             if (lua.lua_isnil(contState, 1)) {
                 const errMsg = lua.lua_tolstring(contState, 2);
                 return lauxlib.luaL_error(
@@ -216,7 +220,7 @@ test('T6: pcall catches continuation error after yield/resume', () => {
     const L = newState();
 
     lua.lua_pushjsfunction(L, function (state) {
-        const continuation = function (contState) {
+        const continuation = function (contState: lua_State) {
             if (lua.lua_isnil(contState, 1)) {
                 const errMsg = lua.lua_tolstring(contState, 2);
                 return lauxlib.luaL_error(

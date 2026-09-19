@@ -178,8 +178,10 @@ async function isCompositionOwnerFocused(): Promise<boolean> {
         const editor = (
             view?.editor as unknown as { cm?: { dom?: HTMLElement } }
         )?.cm?.dom;
-        return editor?.ownerDocument.activeElement?.classList.contains(
-            'vim-motions-rpc-ime-input',
+        return (
+            editor?.ownerDocument.activeElement?.classList.contains(
+                'vim-motions-rpc-ime-input',
+            ) ?? false
         );
     });
 }
@@ -211,9 +213,10 @@ async function snapshot(): Promise<{
         request('nvim_get_mode', []),
         browser.executeObsidian(({ app }) => ({
             cm: app.workspace.activeEditor?.editor?.getValue() ?? '',
-            compositionOwner: document.activeElement?.classList.contains(
-                'vim-motions-rpc-ime-input',
-            ),
+            compositionOwner:
+                document.activeElement?.classList.contains(
+                    'vim-motions-rpc-ime-input',
+                ) ?? false,
         })),
     ]);
     return {

@@ -7,6 +7,7 @@ import {
 } from '../../../src/lib/fengari';
 import { createSandboxedState, destroyState } from '../../../src/lua/engine';
 import { injectVimApi } from '../../../src/lua/api';
+import { AutocmdManager } from '../../../src/lua/autocmd';
 import { injectNamespaceStubs } from '../../../src/lua/namespace-stubs';
 import { injectIterApi } from '../../../src/lua/iter';
 
@@ -21,6 +22,7 @@ describe('vim.iter', () => {
             getVaultName: () => 'vault',
             onKeymap: () => {},
             onKeymapDel: () => {},
+            autocmdManager: new AutocmdManager(L),
         });
         injectNamespaceStubs(L);
         stackBeforeInjection = lua.lua_gettop(L);

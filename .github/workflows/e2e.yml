@@ -5,6 +5,12 @@ name: E2E Tests
 on:
     workflow_dispatch:
 
+# Neovim writes stdpath('log') only for some levels and the child does not
+# resolve the runner's HOME the way a shell would, so a crash left nothing
+# readable. Obsidian inherits this and spawns the child, so it propagates.
+env:
+    NVIM_LOG_FILE: /tmp/nvim-debug.log
+
 jobs:
     discover:
         runs-on: ubuntu-latest
@@ -15,10 +21,13 @@ jobs:
             - id: shard
               run: |
                   MAX_SHARDS=36
+                  # rpc-connect-cycle characterises the connect/disconnect cycle
+                  # rather than asserting on it, and is dispatched through the
+                  # stress workflow, which collects several cold starts.
                   # rpc-latency is a benchmark, not a correctness check. It runs
                   # in the non-blocking e2e-latency job instead, because shared
                   # runners vary enough to move its percentiles on their own.
-                  specs=$(find test/specs -name '*.e2e.ts' ! -name 'rpc-latency.e2e.ts' | sort)
+                  specs=$(find test/specs -name '*.e2e.ts' ! -name 'rpc-latency.e2e.ts' ! -name 'rpc-connect-cycle.e2e.ts' | sort)
                   total=$(echo "$specs" | wc -l)
                   # Use fewer shards when spec count is below MAX_SHARDS
                   if [ "$total" -lt "$MAX_SHARDS" ]; then

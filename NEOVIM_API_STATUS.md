@@ -780,7 +780,7 @@ Registered as a real table at `src/lua/api.ts:3664-3711` (not a generic namespac
 | `vim.ui.input(opts, on_confirm)`        | ✅     | `''` on empty confirm, `nil` on cancel                                        |
 | `vim.ui.open(path, opts?)`              | ⚠️     | Desktop only; `nil, errmsg` elsewhere. `opts.cmd` rejected                    |
 | `vim.ui.progress_status(opts?)`         | 🔲     | `''` — exactly Neovim's idle value                                            |
-| `vim.ui_attach` / `vim.ui_detach`       | ❌     | Absent by decision — see `.sisyphus/plans/vim-ui-namespace.md` §3.4           |
+| `vim.ui_attach` / `vim.ui_detach`       | ❌     | Absent by decision — see `.omo/plans/vim-ui-namespace.md` §3.4                |
 
 ---
 

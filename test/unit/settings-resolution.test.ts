@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS } from '../../src/settings';
+import { DEFAULT_SETTINGS, type VimMotionsSettings } from '../../src/settings';
 import {
     migrateConfigModeSettings,
     migrateSigncolumnSettings,
@@ -33,7 +33,7 @@ describe('settings merge', () => {
         const result = Object.assign({}, DEFAULT_SETTINGS, { picker: false });
         expect(result.picker).toBe(false);
         expect(result.configMode).toBe(DEFAULT_SETTINGS.configMode);
-        expect(result.flash).toBe(DEFAULT_SETTINGS.flash);
+        expect(result.flashMultiLine).toBe(DEFAULT_SETTINGS.flashMultiLine);
     });
 });
 
@@ -101,7 +101,7 @@ describe('migrateSigncolumnSettings()', () => {
     });
 
     it('no-ops when enableMarkGutter absent', () => {
-        const data = { configMode: 'lua' };
+        const data: Partial<VimMotionsSettings> = { configMode: 'lua' };
         const result = migrateSigncolumnSettings(data);
         expect((result as Record<string, unknown>).signcolumn).toBeUndefined();
     });

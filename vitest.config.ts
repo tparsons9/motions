@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import { wasmBinaryPlugin } from './test/helpers';
+import { wasmBinaryPlugin } from './test/helpers.js';
 
 export default defineConfig({
     plugins: [wasmBinaryPlugin()],

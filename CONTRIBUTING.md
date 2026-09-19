@@ -187,7 +187,6 @@ src/
   types/
     lua-modules.d.ts       # Text-loader declaration for bundled Lua companion sources
     vim-api.d.ts           # Type declarations for the Vim API (CmAdapter, VimApi, etc.)
-    codemirror-vim.d.ts    # CodeMirror Vim type declarations
     globals.ts             # __DEV__ build-time constant type declaration
   vim/
     vim-api.ts             # getVimApi(), getCmAdapter(), isVimEnabled()

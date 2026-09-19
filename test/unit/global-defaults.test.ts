@@ -76,7 +76,7 @@ describe('gotoNthTab (via gt mapping)', () => {
         const appWithLeaves = {
             ...app,
             workspace: {
-                ...(app.workspace as Record<string, unknown>),
+                ...(app.workspace as unknown as Record<string, unknown>),
                 iterateAllLeaves: (cb: (leaf: MockLeaf) => void) => {
                     for (const leaf of leaves) cb(leaf);
                 },

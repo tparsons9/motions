@@ -34,13 +34,24 @@ function createHeadingMotion(forward: boolean, level?: number): MotionFn {
             cm as unknown as { cm6?: import('@codemirror/view').EditorView }
         ).cm6;
         if (view && isTreeAvailable(view)) {
-            return treesitterHeadingMotion(
+            const viaTree = treesitterHeadingMotion(
                 view,
                 head,
                 motionArgs.repeat ?? 1,
                 forward,
                 level,
             );
+            // isTreeAvailable answers whether a tree exists, not whether it
+            // yields headings: getAllNodesOfType returns [] for a root that is
+            // absent, stale or already freed, and the motion then returns the
+            // cursor unmoved with no fallback. ]3 failed exactly that way on
+            // both platforms with the editor focused and the document correct.
+            // Falling through when nothing moved is safe, because a document
+            // that genuinely has no further heading yields head from the regex
+            // path too.
+            if (viaTree.line !== head.line || viaTree.ch !== head.ch) {
+                return viaTree;
+            }
         }
         return regexHeadingMotion(
             cm,

@@ -1,6 +1,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { browser } from '@wdio/globals';
+// Type-only, erased at runtime. This file uses WebdriverIO.Config and
+// browser.executeObsidian, both of which are `declare global` augmentations
+// that only load if their package is imported. Without these the file reports
+// 22 errors; it reported none only because nothing type-checked it.
+import type {} from 'webdriverio';
+import type {} from 'wdio-obsidian-service';
 
 export const config: WebdriverIO.Config = {
     runner: 'local',
@@ -197,7 +203,89 @@ export const config: WebdriverIO.Config = {
         }
     },
 
-    async afterTest() {
+    // Every failing test now reports the discriminators that identified the
+    // clusters we did solve, so a future failure classifies itself instead of
+    // costing a round trip per hypothesis. Focus separated the fold and canvas
+    // clusters; a dead Neovim child separated the RPC ones; document size and
+    // reduced motion each looked decisive until the passing rows excluded
+    // them. Guarded throughout: a failing probe must not replace the failure
+    // it describes.
+    async afterTest(
+        test: { title?: string },
+        _context: unknown,
+        result: { passed?: boolean },
+    ) {
+        if (result && result.passed === false) {
+            try {
+                const diag = await browser.execute(() => {
+                    const canvases = document.querySelectorAll(
+                        '.vim-motions-animated-cursor-canvas',
+                    );
+                    const w = window as unknown as {
+                        app?: {
+                            workspace?: {
+                                activeEditor?: {
+                                    editor?: { getValue(): string };
+                                };
+                            };
+                        };
+                    };
+                    let docLength: number | string = 'n/a';
+                    try {
+                        docLength =
+                            w.app?.workspace?.activeEditor?.editor?.getValue()
+                                .length ?? -1;
+                    } catch (e) {
+                        docLength = `threw: ${String(e)}`;
+                    }
+                    return {
+                        docHasFocus: document.hasFocus(),
+                        cmFocused: !!document.querySelector(
+                            '.cm-editor.cm-focused',
+                        ),
+                        activeEl: document.activeElement?.tagName ?? '?',
+                        calloutWidget: !!document.querySelector(
+                            '.cm-embed-block.cm-callout',
+                        ),
+                        cursorCanvases: canvases.length,
+                        foldPlaceholders: document.querySelectorAll(
+                            '.cm-foldPlaceholder',
+                        ).length,
+                        reducedMotion: window.matchMedia(
+                            '(prefers-reduced-motion: reduce)',
+                        ).matches,
+                        docLength,
+                        window: `${window.innerWidth}x${window.innerHeight}`,
+                        // handleClose already formats the child's exit code or
+                        // signal into a Notice, and NVIM_LOG_FILE stayed empty
+                        // in a local reproduction because Neovim writes that
+                        // log only for some levels. The Notice is the reason
+                        // the plugin itself derived, so read that.
+                        notices: Array.from(
+                            document.querySelectorAll('.notice'),
+                        )
+                            .map((n) => (n.textContent ?? '').slice(0, 120))
+                            .slice(0, 4),
+                    };
+                });
+                console.log(
+                    'FAILDIAG ' +
+                        JSON.stringify({
+                            test: (test?.title ?? '?').slice(0, 60),
+                            ...diag,
+                        }),
+                );
+            } catch (error) {
+                console.log(
+                    'FAILDIAG ' +
+                        JSON.stringify({
+                            test: (test?.title ?? '?').slice(0, 60),
+                            unavailable: String(error).slice(0, 120),
+                        }),
+                );
+            }
+        }
+
         try {
             await browser.executeObsidian(({ app, obsidian }) => {
                 const overlaySelectors = [

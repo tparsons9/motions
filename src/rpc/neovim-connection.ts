@@ -86,6 +86,7 @@ const REQUIRED_API_LEVEL = 12;
 const REQUIRED_VERSION = '0.12';
 const CONNECT_TIMEOUT_MS = 10_000;
 const GRACEFUL_EXIT_TIMEOUT_MS = 2_000;
+const ABANDONED_EXIT_TIMEOUT_MS = 2_000;
 
 let childProcessCache: ChildProcessModule | null = null;
 
@@ -442,6 +443,15 @@ export class NeovimConnection {
         child: ChildProcessHandle,
         rpc: MsgpackRpcClient,
     ): Promise<void> {
+        // Published before the awaits, not after. stop() issues one request per
+        // installed mapping, command and abbreviation to a Neovim that is
+        // already on its way out, and a request that never settles is not
+        // caught by its .catch -- it waits out the request timeout, leaving
+        // observers reading connected === true for that entire window.
+        this.expectedExit = true;
+        this.connected = false;
+        this.apiLevel = null;
+
         await this.featureBridge?.stop();
         this.featureBridge = null;
         this.keyDelegation?.dispose();
@@ -460,9 +470,6 @@ export class NeovimConnection {
         this.redrawDispatcher = null;
         this.documentSync?.dispose();
         this.documentSync = null;
-        this.expectedExit = true;
-        this.connected = false;
-        this.apiLevel = null;
         if (child.exitCode !== null || child.signalCode !== null) {
             rpc.dispose();
             if (this.child === child) this.resetState();
@@ -480,15 +487,25 @@ export class NeovimConnection {
 
         await new Promise<void>((resolve) => {
             let forceTimer = 0;
-            const onClose = (): void => {
+            let abandonTimer = 0;
+            const settle = (): void => {
                 if (forceTimer) window.clearTimeout(forceTimer);
-                child.removeListener('close', onClose);
+                if (abandonTimer) window.clearTimeout(abandonTimer);
+                child.removeListener('close', settle);
                 resolve();
             };
-            child.once('close', onClose);
+            child.once('close', settle);
             forceTimer = window.setTimeout(() => {
                 if (child.exitCode === null && child.signalCode === null)
                     child.kill('SIGKILL');
+                // SIGKILL ends the process, but 'close' waits for every write
+                // end of the inherited stdio, and a surviving descendant can
+                // hold those open indefinitely. Without this, the only path
+                // out of here is an event that may never arrive.
+                abandonTimer = window.setTimeout(
+                    settle,
+                    ABANDONED_EXIT_TIMEOUT_MS,
+                );
             }, GRACEFUL_EXIT_TIMEOUT_MS);
         });
         rpc.dispose();

@@ -154,11 +154,13 @@ describe('Normal mode — g-prefix commands (Tier 1)', function () {
                 visited.add(pos.line);
                 // Must never jump backward by more than 1 doc line
                 expect(pos.line).toBeGreaterThanOrEqual(prevLine - 1);
+                const lineText = content.split('\n')[pos.line];
+                if (lineText === undefined)
+                    throw new Error(
+                        `cursor reported line ${pos.line}, outside the document`,
+                    );
                 // On non-empty lines, horizontal position must be preserved
-                if (
-                    content.split('\n')[pos.line].length > 0 &&
-                    pos.line < prevLine
-                ) {
+                if (lineText.length > 0 && pos.line < prevLine) {
                     expect(pos.ch).toBeGreaterThan(0);
                 }
                 prevLine = pos.line;
@@ -183,10 +185,12 @@ describe('Normal mode — g-prefix commands (Tier 1)', function () {
                 const pos = await getCursorPos();
                 visited.add(pos.line);
                 expect(pos.line).toBeGreaterThanOrEqual(prevLine - 1);
-                if (
-                    pos.line < prevLine &&
-                    content.split('\n')[pos.line].length > 0
-                ) {
+                const lineText = content.split('\n')[pos.line];
+                if (lineText === undefined)
+                    throw new Error(
+                        `cursor reported line ${pos.line}, outside the document`,
+                    );
+                if (pos.line < prevLine && lineText.length > 0) {
                     expect(pos.ch).toBeGreaterThan(0);
                 }
                 prevLine = pos.line;

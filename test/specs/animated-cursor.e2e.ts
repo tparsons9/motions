@@ -54,7 +54,7 @@ async function paintedCursorBounds(): Promise<{
         for (let y = 0; y < h; y++) {
             const row = y * w * 4;
             for (let x = 0; x < w; x++) {
-                if (d[row + x * 4 + 3] > 8) {
+                if ((d[row + x * 4 + 3] ?? 0) > 8) {
                     if (x < minX) minX = x;
                     if (y < minY) minY = y;
                     if (y > maxY) maxY = y;
@@ -314,7 +314,7 @@ describe('Animated cursor', function () {
                 >
             ).__origRaf = orig;
             window.requestAnimationFrame = (cb: FrameRequestCallback) => {
-                (window as unknown as Record<string, number>).__rafCount++;
+                (window as unknown as { __rafCount: number }).__rafCount++;
                 return orig(cb);
             };
         });

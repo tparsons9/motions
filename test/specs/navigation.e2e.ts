@@ -25,7 +25,7 @@ describe('Structural navigation (Phase 1.3-1.4)', function () {
             let viaHandleKey: unknown = 'not attempted';
             if (probeKeys) {
                 try {
-                    await vimHandleKeys(probeKeys);
+                    await vimHandleKeys(probeKeys.join(''));
                     viaHandleKey = await getCursorLine();
                 } catch (error) {
                     viaHandleKey = `threw: ${String(error)}`;

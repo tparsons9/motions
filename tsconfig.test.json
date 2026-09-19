@@ -1,0 +1,32 @@
+{
+    // test/ sits outside tsconfig.json's src/**/*.ts include, so nothing
+    // type-checked it: a broken import passed typecheck, lint and format alike
+    // and surfaced only when the spec ran. That cost three bugs in one session
+    // -- a missing getVimMode import, an import of useSourceProperties that
+    // helpers never exported, and a node:path call placed inside a browser
+    // callback.
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true,
+        // The unused-locals backlog in test/ is switched off in
+        // eslint.config.mts and separately owned; this gate is about type
+        // correctness, not tidiness.
+        "noUnusedLocals": false,
+        // src/ never iterates a NodeList, so the base lib omits DOM.Iterable.
+        // The specs do, inside browser.executeObsidian callbacks that run in
+        // Chromium, where NodeList has had Symbol.iterator for years.
+        "lib": ["ES2021", "DOM", "DOM.Iterable"],
+        "types": [
+            "@obsidian-typings/obsidian-public-latest",
+            "node",
+            "mocha",
+            "vitest/globals"
+        ]
+    },
+    // The ambient declarations live in src/ and are picked up there by
+    // tsconfig.json's include. Without them here, test/ reports 19 errors
+    // against src/ that are configuration gaps rather than defects: __DEV__
+    // (src/types/globals.ts), and the *.lua, *.wasm and *.json module
+    // loaders (src/**/*.d.ts). src/ itself is checked by `npm run typecheck`.
+    "include": ["test/**/*.ts", "src/**/*.d.ts", "src/types/globals.ts"]
+}

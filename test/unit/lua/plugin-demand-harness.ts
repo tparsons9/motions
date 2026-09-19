@@ -228,13 +228,18 @@ export function createDemandState(asyncFns = true) {
         observers,
         view,
         destroy() {
-            runCleanups([
-                () => timers.destroyAll(),
-                () => runner.destroyAll(),
-                ...mappings.map((map) => () => Vim.unmap(map.lhs, map.mode)),
-                () => Vim.setOperatorfunc(previousOperatorfunc),
-                () => destroyState(L),
-            ]);
+            runCleanups(
+                [
+                    () => timers.destroyAll(),
+                    () => runner.destroyAll(),
+                    ...mappings.map(
+                        (map) => () => Vim.unmap(map.lhs, map.mode),
+                    ),
+                    () => Vim.setOperatorfunc(previousOperatorfunc),
+                    () => destroyState(L),
+                ],
+                'plugin demand harness',
+            );
         },
     };
 }

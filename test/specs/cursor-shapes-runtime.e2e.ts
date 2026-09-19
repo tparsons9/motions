@@ -87,7 +87,7 @@ async function paintedHeight(): Promise<number> {
         for (let y = 0; y < h; y++) {
             const row = y * w * 4;
             for (let x = 0; x < w; x++) {
-                if (d[row + x * 4 + 3] > 8) {
+                if ((d[row + x * 4 + 3] ?? 0) > 8) {
                     if (y < minY) minY = y;
                     if (y > maxY) maxY = y;
                     break;

@@ -790,19 +790,18 @@ describe('EasyMotion comprehensive', function () {
                     const Vim = (
                         window as unknown as {
                             CodeMirrorAdapter?: {
-                                Vim?: Record<
-                                    string,
-                                    (...args: unknown[]) => unknown
-                                >;
+                                Vim?: {
+                                    getRegisterController: () => {
+                                        getRegister: (name: string) => {
+                                            toString: () => string;
+                                        } | null;
+                                    };
+                                };
                             };
                         }
                     ).CodeMirrorAdapter?.Vim;
-                    const controller = Vim?.getRegisterController() as
-                        | Record<string, (...args: unknown[]) => unknown>
-                        | undefined;
-                    const reg = controller?.getRegister('"') as {
-                        toString: () => string;
-                    } | null;
+                    const controller = Vim?.getRegisterController();
+                    const reg = controller?.getRegister('"');
                     return {
                         text: view?.editor.getValue() ?? '',
                         register: reg?.toString() ?? '',

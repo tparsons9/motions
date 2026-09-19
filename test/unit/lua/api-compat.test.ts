@@ -7,6 +7,7 @@ import {
 } from '../../../src/lib/fengari';
 import { createSandboxedState, destroyState } from '../../../src/lua/engine';
 import { injectVimApi, type VimApiCallbacks } from '../../../src/lua/api';
+import { AutocmdManager } from '../../../src/lua/autocmd';
 import type { CmAdapter, VimApi } from '../../../src/types/vim-api';
 
 describe('Lua API compatibility options and current handles', () => {
@@ -27,6 +28,7 @@ describe('Lua API compatibility options and current handles', () => {
             getVaultName: () => 'vault',
             onKeymap: () => {},
             onKeymapDel: () => {},
+            autocmdManager: new AutocmdManager(L),
             ...callbacks,
         });
     }
@@ -55,7 +57,7 @@ describe('Lua API compatibility options and current handles', () => {
                 vi.fn<NonNullable<VimApi['setOperatorfunc']>>();
             const setOption = vi.fn();
             inject({
-                getVimApi: () => ({ setOperatorfunc }) as VimApi,
+                getVimApi: () => ({ setOperatorfunc }) as unknown as VimApi,
                 setOption,
             });
             const readers = `
@@ -87,7 +89,9 @@ describe('Lua API compatibility options and current handles', () => {
         (_name, setter) => {
             const setOperatorfunc =
                 vi.fn<NonNullable<VimApi['setOperatorfunc']>>();
-            inject({ getVimApi: () => ({ setOperatorfunc }) as VimApi });
+            inject({
+                getVimApi: () => ({ setOperatorfunc }) as unknown as VimApi,
+            });
             run(setter.replace('VALUE', 'function(kind) result = kind end'));
             const operator = setOperatorfunc.mock.calls[0]?.[0];
             expect(operator).toBeTypeOf('function');
@@ -107,6 +111,7 @@ describe('Lua API compatibility options and current handles', () => {
                 getVaultName: () => 'other',
                 onKeymap: () => {},
                 onKeymapDel: () => {},
+                autocmdManager: new AutocmdManager(other),
             });
             const status = lauxlib.luaL_dostring(
                 other,
@@ -274,6 +279,7 @@ describe('single-handle list APIs', () => {
             getVaultName: () => 'vault',
             onKeymap: () => {},
             onKeymapDel: () => {},
+            autocmdManager: new AutocmdManager(L),
         });
     });
     afterEach(() => {

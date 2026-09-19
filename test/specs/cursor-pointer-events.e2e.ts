@@ -240,7 +240,9 @@ describe('Hover tooltip works with fork vim mode (#170)', function () {
             }> = [];
 
             for (let i = 0; i < Math.min(lines.length, 3); i++) {
-                const rect = lines[i].getBoundingClientRect();
+                const line = lines[i];
+                if (!line) continue;
+                const rect = line.getBoundingClientRect();
                 const x = rect.left + 10;
                 const y = rect.top + rect.height / 2;
 
@@ -269,7 +271,7 @@ describe('Hover tooltip works with fork vim mode (#170)', function () {
 
                 results.push({
                     lineIndex: i,
-                    lineText: lines[i].textContent?.substring(0, 20) ?? '',
+                    lineText: line.textContent?.substring(0, 20) ?? '',
                     caretNodeTag: caretEl?.tagName ?? null,
                     caretNodeClass: caretEl?.className ?? null,
                     caretInContent: caretEl

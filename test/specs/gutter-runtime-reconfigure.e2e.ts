@@ -52,7 +52,12 @@ async function applySetting(
             if (!plugin) throw new Error('applySetting: plugin not found');
             plugin.settings[k] = v;
             await plugin.saveSettings();
-            (plugin as unknown as Record<string, () => void>)[m]();
+            const reconfigure = (
+                plugin as unknown as Record<string, (() => void) | undefined>
+            )[m];
+            if (!reconfigure)
+                throw new Error(`applySetting: plugin has no ${m}()`);
+            reconfigure.call(plugin);
         },
         key,
         value,

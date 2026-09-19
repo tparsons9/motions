@@ -4,7 +4,7 @@ const [, , logPath, label] = process.argv;
 
 let text = '';
 try {
-    text = readFileSync(logPath, 'utf8');
+    text = logPath ? readFileSync(logPath, 'utf8') : '';
 } catch {
     text = '';
 }
@@ -16,34 +16,36 @@ const lines = text
     .split('\n')
     .map((line) => line.replace(/\r$/, ''));
 
+/** @type {string[]} */
 const titles = [];
 for (const line of lines) {
-    const match = /^\s*✖\s+(.*\S)\s*$/.exec(line);
-    if (match && !titles.includes(match[1])) {
-        titles.push(match[1]);
+    const title = /^\s*✖\s+(.*\S)\s*$/.exec(line)?.[1];
+    if (title && !titles.includes(title)) {
+        titles.push(title);
     }
 }
 
+/** @type {Map<string, string>} */
 const errors = new Map();
 for (let i = 0; i < lines.length; i++) {
-    const header = /^\s*\d+\)\s+(.*\S)\s*$/.exec(lines[i]);
-    if (!header) continue;
+    const title = /^\s*\d+\)\s+(.*\S)\s*$/.exec(lines[i] ?? '')?.[1];
+    if (!title) continue;
     // A bare `expect(received).toBe(expected)` names no values: the actual ones
     // sit on later Expected:/Received: lines. Reporting only the first Error
     // line produced a summary row that could not say what differed.
     let message = '';
+    /** @type {string[]} */
     const values = [];
     for (let j = i + 1; j < Math.min(i + 16, lines.length); j++) {
+        const line = lines[j] ?? '';
         const detail =
-            /^\s*(Error|AssertionError|TimeoutError)\b[:\s](.*)$/.exec(
-                lines[j],
-            );
+            /^\s*(Error|AssertionError|TimeoutError)\b[:\s](.*)$/.exec(line);
         if (detail && !message) {
-            message = `${detail[1]}: ${detail[2].trim()}`;
+            message = `${detail[1]}: ${(detail[2] ?? '').trim()}`;
         }
         const value =
             /^\s*(Expected|Received|Number of calls)\s*:\s*(.*\S)\s*$/.exec(
-                lines[j],
+                line,
             );
         if (value && values.length < 4) {
             values.push(`${value[1]}: ${value[2]}`);
@@ -51,7 +53,7 @@ for (let i = 0; i < lines.length; i++) {
     }
     if (!message && values.length === 0) continue;
     errors.set(
-        header[1],
+        title,
         [message, ...values].filter(Boolean).join(' · ').slice(0, 400),
     );
 }
@@ -84,7 +86,7 @@ for (const title of named) {
     const key = [...errors.keys()].find(
         (candidate) => candidate === title || candidate.endsWith(title),
     );
-    const detail = key ? errors.get(key) : '';
+    const detail = (key ? errors.get(key) : '') ?? '';
     const cell = detail.replace(/\|/g, '\\|');
     out.push(`| \`${title.replace(/\|/g, '\\|')}\` | ${cell} |`);
 }

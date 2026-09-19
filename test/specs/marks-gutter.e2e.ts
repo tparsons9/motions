@@ -23,8 +23,7 @@ async function getMarkGutterLabels(): Promise<
             gutterCol.querySelectorAll('.cm-gutterElement'),
         );
         const results: { line: number; marks: string }[] = [];
-        for (let i = 0; i < gutterElements.length; i++) {
-            const el = gutterElements[i];
+        for (const el of gutterElements) {
             const marker = el.querySelector('.vim-motions-sign-marker');
             if (!marker) continue;
             const marks = marker.textContent ?? '';
