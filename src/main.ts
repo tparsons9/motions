@@ -77,6 +77,7 @@ import {
 } from './vim/bundled-vim';
 import { getTableDebugState } from './vim/table-debug-state';
 import { ExCommandSuggest } from './ui/ex-suggest';
+import { ExPanelClearance } from './ui/ex-panel-clearance';
 import { createHintActions } from './ui/hint-mode';
 import {
     LeaderRegistry,
@@ -372,6 +373,7 @@ export default class VimMotionsPlugin extends Plugin {
     private alternateFilePath: string | null = null;
     private lastMarkdownFilePath: string | null = null;
     exSuggest: ExCommandSuggest | null = null;
+    private exPanelClearance: ExPanelClearance | null = null;
     private globalKeyHandler: GlobalKeyHandler | null = null;
     private textareaVimManager: TextareaVimManager | null = null;
     private globalRegistry: GlobalMappingRegistry | null = null;
@@ -3033,6 +3035,8 @@ export default class VimMotionsPlugin extends Plugin {
         this.uninstallTableCellMotions = null;
         this.exSuggest?.destroy();
         this.exSuggest = null;
+        this.exPanelClearance?.destroy();
+        this.exPanelClearance = null;
         this.whichKeyOverlay?.destroy();
         this.whichKeyOverlay = null;
         this.insertEscapeHandler?.destroy();
@@ -3117,6 +3121,7 @@ export default class VimMotionsPlugin extends Plugin {
                     ['insertEscapeHandler', this.insertEscapeHandler],
                     ['whichKeyOverlay', this.whichKeyOverlay],
                     ['exSuggest', this.exSuggest],
+                    ['exPanelClearance', this.exPanelClearance],
                     ['globalKeyHandler', this.globalKeyHandler],
                     ['globalWhichKeyOverlay', this.globalWhichKeyOverlay],
                     ['registration', this.registration],
@@ -4196,11 +4201,18 @@ export default class VimMotionsPlugin extends Plugin {
     private rebuildExSuggest(): void {
         this.exSuggest?.destroy();
         this.exSuggest = null;
+        this.exPanelClearance?.destroy();
+        this.exPanelClearance = null;
 
         const editorContainerEl = (
             this.app as unknown as { workspace: { containerEl: HTMLElement } }
         ).workspace.containerEl;
-        if (editorContainerEl && this.registration) {
+        if (!editorContainerEl) return;
+
+        this.exPanelClearance = new ExPanelClearance();
+        this.exPanelClearance.attach(editorContainerEl);
+
+        if (this.registration) {
             this.exSuggest = new ExCommandSuggest(
                 this.registration.getExCommandNames(),
             );
@@ -6068,6 +6080,7 @@ export default class VimMotionsPlugin extends Plugin {
                     ['insertEscapeHandler', this.insertEscapeHandler],
                     ['whichKeyOverlay', this.whichKeyOverlay],
                     ['exSuggest', this.exSuggest],
+                    ['exPanelClearance', this.exPanelClearance],
                     ['globalKeyHandler', this.globalKeyHandler],
                     ['globalWhichKeyOverlay', this.globalWhichKeyOverlay],
                     ['registration', this.registration],
