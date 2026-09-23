@@ -84,6 +84,7 @@ jobs:
 
             - name: File or update conflict issue
               if: steps.check.outputs.count != '0' && steps.merge.outputs.conflict == 'true'
+              continue-on-error: true
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
