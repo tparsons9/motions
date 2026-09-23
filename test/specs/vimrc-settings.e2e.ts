@@ -1,6 +1,17 @@
 import { browser, expect } from '@wdio/globals';
 import { obsidianPage } from 'wdio-obsidian-service';
 
+// Only the members this spec drives. Record<string, unknown> collapsed every
+// one of them to `{}`, so `plugin.settings.enableEasyMotion` and
+// `vimrcOverrides.has(...)` type-checked against nothing.
+interface VimrcTestPlugin {
+    settings: Record<string, unknown>;
+    vimrcOverrides?: Map<string, string>;
+    vimrcGroupLabels?: { key: string; label: string }[];
+    vimrcCommandLabels?: { key: string; label: string }[];
+    reloadFeatures?: () => void;
+}
+
 async function applyVimrcOverrides(
     overrides: Record<string, unknown>,
 ): Promise<void> {
@@ -9,7 +20,7 @@ async function applyVimrcOverrides(
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -75,7 +86,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -97,7 +108,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -118,7 +129,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -143,7 +154,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -165,7 +176,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -182,7 +193,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -202,7 +213,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -226,7 +237,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -250,7 +261,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -275,7 +286,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];
@@ -297,7 +308,7 @@ describe('Vimrc settings parity', function () {
             const plugin = (
                 app as unknown as {
                     plugins: {
-                        plugins: Record<string, Record<string, unknown>>;
+                        plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
             ).plugins.plugins['vim-motions'];

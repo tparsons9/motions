@@ -37,6 +37,90 @@ The feature bridge generates Neovim mappings and user commands from the plugin's
 
 M5 structural motions and Markdown text objects are Class A′ buffer-text behavior and do not cross the Obsidian feature bridge. The bundled companion installs buffer-local mappings backed by Neovim's bundled `markdown` and `markdown_inline` treesitter parsers and removes them during companion teardown. M5b covers emphasis, inline code, math, strikethrough, links and wikilinks, fenced code blocks, nested blockquotes, callouts, HTML tags, table cells, and table rows in operator-pending and visual modes. Operators execute over an explicit bounded visual range rather than a cursor-moving callback. Neovim's native `it`/`at` supplies tag matching, with the count consumed once to match the fork's custom object. Highlight (`i=`/`a=`) remains unavailable under RPC because Neovim's bundled Markdown grammar does not expose `==...==` as a syntax node; the companion does not fake a treesitter range with delimiter scanning. The mirrored buffer receives the plugin's `textwidth`; native `gq` and `gw` use Neovim's stock Markdown ftplugin rather than a ported wrapping implementation.
 
+### ~~Intermittent renderer crash when disconnecting the RPC backend~~ (Fixed)
+
+**Status: fixed, and the cause was not what this entry described.** The crash
+was a leaked `web-tree-sitter` `TreeCursor`. `getAllNodesOfType` in
+`src/treesitter/js-api.ts` allocated one per structural motion and never called
+`delete()`, so it stayed in `web-tree-sitter`'s `FinalizationRegistry` — which
+registers a cursor under its **tree's** pointer, not its own. The CM6 bridge
+frees that tree on the next re-parse, and GC then fired the finalizer against a
+dangling pointer, corrupting the WASM allocator from a GC callback. That is why
+it needed RPC traffic (which drives the re-parses and the allocation churn) and
+fork editing (which leaked the cursors) in the same session.
+
+Isolating the two halves of the original fix measured the leak at **5 of 8**
+container runs with no nodes retained, against **0 of 6** for the retaining walk
+with the cursor freed. The reproducer spec that measured 24 of 46 now measures
+**0 segfaults in 16 runs** (p ≈ 0.004 against its own 29% post-mitigation rate).
+`.ast-grep/rules/treesitter-handle-leak.yml` gates the shape.
+
+The deferred-teardown mitigation described below has been **removed**. It was
+adopted on a measurement that is now known to have been confounded — both of
+its arms contained the leak. With the leak fixed, the reproducer measures 0
+segfaults in 16 runs in all three teardown shapes: the 3-second deferral, the
+original synchronous `qa!`-and-wait that used to crash 24 of 46, and the
+immediate non-blocking `SIGTERM` that now ships. 48 runs, 0 segfaults. Teardown
+keeps the non-blocking shape on its own merits — disconnect returns immediately
+instead of blocking for up to four seconds — but the 3-second delay that existed
+only as a crash mitigation is gone.
+
+The original description follows, since the reasoning it records is what the
+evidence above corrects.
+
+Disabling the Neovim backend can crash Obsidian's renderer process. It is a
+native SIGSEGV — a read of an unmapped page through what looks like a corrupted
+V8 compressed pointer — so it appears as Obsidian's window disappearing or
+reloading, with no JavaScript error.
+
+It requires RPC traffic **and** a disconnect in the same session. Measured in a
+Linux CI container: 216 tests with the backend off produced none, 432
+traffic-free connect/disconnect cycles produced none, and 2,400 requests without
+a disconnect produced none, while a spec performing 14 connect-traffic-disconnect
+cycles crashed 24 of 46 runs. Stubbing the extmark, float, buffer-line, and
+cursor handlers did not change the rate, so it is not caused by processing
+Neovim's output.
+
+Removing the synchronous `qa!`-and-wait from teardown reduces it about threefold
+(7 of 38 runs versus 24 of 46, Fisher p = 0.002) and is shipped, but a residual
+path remains: retaining the child process indefinitely still crashed 3 of 8 runs.
+Memory, JS heap growth, DOM growth, msgpack recursion depth, Electron version,
+and every container security and namespace setting are all excluded by
+measurement.
+
+**Tree-sitter WASM handle lifetime was previously listed here as excluded. That
+was wrong**, and it is the root cause recorded above. The arm that appeared to
+exclude it neutralised this repository's `delete()` calls but not
+`web-tree-sitter`'s `FinalizationRegistry`, so it never achieved "nothing
+freed" and never excluded anything.
+
+Electron's own guidance is that a renderer should not own a crash-prone child
+process — `UtilityProcess` exists for exactly this, and spawning subprocesses is
+documented as work to delegate to the main process. An Obsidian plugin has no
+access to either, so the backend must spawn Neovim from the renderer.
+
+Practical impact is narrower than the CI rate suggests. Building the workload up
+one ingredient at a time showed that RPC work alone does not crash: 40 note
+switches with editing, 40 structural-motion batches (`]h`, `d]l`, `gqG`), 1,200
+requests, and even 14 connect/disconnect cycles each measured **0 segfaults in 8
+runs**. It only reproduces when editing through the **bundled fork** is
+interleaved with RPC work in the same session, which measured 3 of 8.
+
+That is what a parity spec does -- alternating the two engines fourteen times per
+file is its purpose -- and what a person does not. A session that enables the
+backend and works stays on the measured-clean side. The risky pattern is
+disabling the backend, editing with the bundled fork, re-enabling it, and
+repeating. Enabling the backend is opt-in and desktop-only.
+
+There is no in-process recovery: this is a renderer-process SIGSEGV, so the
+plugin's own code dies with the window and nothing of ours runs afterwards.
+Electron's answer is `UtilityProcess`, which a plugin cannot reach. What the
+plugin does instead is leave a breadcrumb — a marker written before a real
+connect or disconnect and cleared once it settles — so a restart that finds it
+still set reports that the renderer died mid-switch rather than leaving the
+crash unexplained. Notes are unaffected: the mirror is `acwrite` and Obsidian
+owns the file.
+
 ### ~~Neovim popup-menu completion is not displayed in RPC mode~~ (Fixed)
 
 The attached UI requests `ext_messages`, `ext_cmdline`, and `ext_popupmenu`. M8a routes messages, M8b renders the external command line, and M8c renders popup-menu items, selection updates, and teardown. `grid=-1` completion is anchored to the command line with byte-position conversion; insert completion uses reported grid cells and CM6 metrics. Grid drawing events remain intentionally discarded.
@@ -58,7 +142,52 @@ Lowercase within-buffer mark motions such as `'a` and `` `a `` remain Neovim-nat
 
 The mirror's buffer-local `buftype=acwrite` prevents Neovim from writing the named vault file itself. Its buffer-scoped `BufWriteCmd` notifies the host, which invokes Obsidian's `editor:save-file` command after line-event synchronization has made CM6 current, then clears Neovim's `modified` flag. A buffer-scoped `BufReadCmd` makes `:e` and `:e!` re-seed from the current Obsidian document with line-event echo suppressed, so a stale disk copy cannot flow back through Neovim and overwrite the editor.
 
-With **Neovim configuration path** empty, the backend runs the supplied Neovim binary and the user's normal Neovim configuration as arbitrary code. This production default is deliberate. A configured absolute path instead starts Neovim under `--clean`, prepends that file's directory to `runtimepath`, and loads only that `init.lua` with `-u`; this supports a smaller Obsidian-specific setup and avoids terminal-only plugins. Either configuration may use LuaJIT FFI to load native libraries and may read or write files outside the vault. No sandbox is provided. Vim Motions does not download or install Neovim or its plugins; the fengari-only `pluginAutoFetch` path is not connected to this runtime.
+With **Neovim configuration path** empty, the backend runs the supplied Neovim binary and the user's normal Neovim configuration as arbitrary code. This production default is deliberate. A configured absolute path instead starts Neovim under `--clean`, prepends that file's directory to `runtimepath`, and loads only that `init.lua` with `-u`; this supports a smaller Obsidian-specific setup and avoids terminal-only plugins. Either configuration may use LuaJIT FFI to load native libraries and may read or write files outside the vault. No sandbox is provided. Vim Motions never downloads or installs Neovim itself. It can ask Neovim to install or update the plugins it writes configuration for, through Neovim's own `vim.pack`, into Neovim's data directory — but only on an explicit button press that first shows what will be fetched and what will be written. That is an explicitly user-requested install, which the Developer Policies allow; the clause about installing dependencies targets a plugin pulling in what it needs unasked. The fengari-only `pluginAutoFetch` path remains disconnected from this runtime, which is a separate boundary and still enforced by `test/unit/rpc/plugin-autofetch-boundary.test.ts`.
+
+`buildNeovimSpawnArgs()` in `src/rpc/neovim-connection.ts` is the whole argv surface, and the only filesystem path it can carry is the user's configured `neovimConfigPath`. `test/unit/rpc/plugin-autofetch-boundary.test.ts` asserts the complete argv, so any added `runtimepath` entry fails it, and separately asserts that no file under `src/rpc/` imports the fetch or store modules or names their on-disk paths. This is risk R-5 in the design plan, held by a test rather than by an argument.
+
+### Neovim plugin compatibility is decided by mechanism, not by plugin
+
+Plugins run inside the user's own Neovim, so loading is never the question. The bridge transports buffer coordinates and never reconstructs Neovim's screen grid, which is attached only as a redraw clock. Anything a plugin expresses as persistent extmarks, virtual text, or floating windows crosses; anything it expresses in screen cells cannot.
+
+`screenpos()`, `nvim_win_text_height()`, and the rest of the screen-cell query class are **unbridgeable by construction**, not deferred. Obsidian renders proportional Markdown typography, so there is no stable cell grid to answer such a query with, and D2 rules out grid reconstruction. `matchadd()` is unreachable for a different reason — matches are window-local and are not extmarks, so no buffer extmark query returns them. Ephemeral extmarks and legacy non-extmark highlights exist only during Neovim's own redraw and are gone before any query.
+
+flash.nvim is the measured case on the bridged side: its labels, jump, and floating prompt all render, and its own all-namespace extmarks are the oracle in `rpc-decorations.e2e.ts` and `rpc-floats.e2e.ts`. That is a class result, not a certification of any particular plugin.
+
+The feature bridge is an allowlist, so it reaches only features this plugin registers. `:ob`/`:obcommand` is bridged alongside them and is the one endpoint that escapes that limit, executing any Obsidian command by ID — including commands owned by Obsidian itself or by other plugins, which an allowlist cannot enumerate. Lowercase `:ob` reaches it through the same start-of-command-line guarded abbreviation as the other lowercase commands, so `:%s/ob/…/` remains a substitution.
+
+### Two RPC behaviours are verified by hand, not in CI
+
+Everything else in this section is covered by `test/specs/rpc-*.e2e.ts`. Two are not, because the cost of automating them exceeds what they would catch:
+
+| Behaviour                        | Why it is manual                                                                                                                                                  | How to check                                                                                                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Automatic input-method switching | Shells out to `macism`, `im-select`, `fcitx5-remote` or `ibus`, none of which a CI runner has. The mode seam that drives it is covered by `rpc-lifecycle.e2e.ts`. | With an IM configured, connect the backend, enter insert in a Markdown note and confirm the input method switches; leave insert and confirm it reverts.      |
+| Per-mode animated cursor shape   | Rendered to a canvas; the resolved mode feeding it is covered by `external-mode.test.ts` and `rpc-lifecycle.e2e.ts`, but the drawn shape is pixels.               | Enable the animated cursor, connect the backend, and confirm the cursor takes the configured insert shape on `i` and returns to the normal shape on `<Esc>`. |
+
+Both were exercised by hand during implementation. A regression in either would surface as the seam reporting the wrong mode, which is asserted.
+
+### Bundled-engine features are not carried into RPC mode
+
+Key delegation stands the fork down, so every feature implemented as a fork motion, action, or operator is inert unless the feature bridge or the companion re-provides it. The bridge covers Class-B host actions and the companion covers structural navigation and Markdown text objects; nothing else is re-provided. This follows the Class-A disposition in the design plan — RPC users install Neovim equivalents — but it had never been written down for users.
+
+Neovim's own behaviour applies instead for increment/decrement, subword motions, and flash `f`/`F`/`t`/`T`; `gr` is unmapped on 0.12.5, so replace-with-register simply does nothing. Yank-ring cycling, surround, and EasyMotion have no RPC implementation at all. Snippets are a partial case: the plugin's JSON snippets are plain VS Code format, so LuaSnip loads them verbatim — verified by expanding `date` from the bundled `global.json` through a real LuaSnip and getting the resolved date rather than the literal variables — and the generated configuration installs LuaSnip, writes the bundled files out of `main.js` to disk, points it at those and the user's snippet directory, and maps `<Tab>`/`<S-Tab>`. The Lua DSL does not carry across: its namespace and registration signature differ from LuaSnip's, and its reactive `f()`/`d()` nodes call into Obsidian's vault, which Neovim has no counterpart for. A JSON snippet's `context` field is a Vim Motions extension LuaSnip ignores, so context-gated snippets become unconditional.
+
+Because most of those features were modelled on a Neovim plugin, the settings tab can generate `lua/vim_motions.lua` beside the user's Neovim configuration, translating the enabled ones into `nvim-surround`, `dial.nvim`, `spider.nvim`, `yanky.nvim`, `flash.nvim`, and `mini.operators`. It is inert until the user adds `require('vim_motions')` themselves, every block is wrapped in `pcall(require, …)` so the file loads with none of those plugins present, and it emits no install call — the plugin configures what the user already has and never fetches it, which is the same line §1.3 draws for `pluginAutoFetch`. It must land under `lua/` to be requireable: a file beside `init.lua` is not, measured. Regeneration refuses to overwrite a file whose generated header is gone, so a user who edits it keeps their work. Neovim scans `runtimepath` for `lua/` at startup, so the first generation is not visible to `require` until the next launch; this is not a practical limitation, because adding the `require` line means restarting anyway.
+
+Three settings are projected onto the mirrored buffer rather than reimplemented, the way `textwidth` already was. **Smart list continuation** restores `o`/`O` bullet continuation, which the stock ftplugin does not provide: `formatoptions=jtcqln` omits `o` and `r`, so `o` on `- item one` yields `hello`. It cannot simply drop the ftplugin's `f` comment flag, because that flag serves two behaviours at once — it is what gives `gq` its hanging indent while stopping `o` repeating the marker, and removing it made `gq` re-bullet every wrapped line, caught by `rpc-structural-nav`. The continuation form is therefore swapped in only for the duration of an `o`/`O` insert, through an `expr` mapping that returns the key so count, undo and dot-repeat stay native. Numbered lists remain out of reach: `comments` cannot increment a counter. **Yank highlight** is reported by a `TextYankPost` notification and rendered by the host's own component, so both `solid` and `fade` work; routing it through an extmark instead does not, because a yank changes no text, the decoration provider never re-runs, and the mark reaches CM6 only on a later redraw — long after the highlight expired.
+
+A further group was assumed to be unaffected because it only renders, but in fact reads the fork's event stream rather than bridge state: which-key and hint mode subscribe to the adapter's `vim-keypress`/`vim-command-done`, yank highlight to `vim-yank`, input-method switching to `vim-mode-change`, and the animated cursor resolved its per-mode shape from `adapter.state.vim`, so the shape stayed on normal while Neovim was in insert.
+
+The two mode-driven members of that group are now fixed. `src/vim/external-mode.ts` is a single seam the connected backend publishes Neovim's mode into, mapped to the plugin's vocabulary; the animated cursor consults it before the fork through `resolveVimModeWithExternal`, and the input-method watcher subscribes to it alongside the adapter event. It is published at connect as well as on every key, so the window between connecting and the first keystroke is covered, and cleared on disconnect so the fork regains ownership. Hint mode is also fixed, and by a smaller change than expected. Its overlay was never the problem: `captureKeys` binds to `activeDocument` in capture phase, ahead of the delegation listener on the editor, and stops propagation — so label keystrokes cannot reach Neovim. Only the trigger was missing, and the five `hint*` ex callbacks plus the `hintMode` leader mapping are ordinary registrations the feature bridge already knows how to install. The same is true of flash and EasyMotion, which share `captureKeys`; their triggers are deliberately left unbridged because `s` and `<leader><leader>` already mean something in Neovim.
+
+The table-nav overlay also needs nothing: Obsidian's keymap scope consumes its keys before the delegation listener on the editor sees them. Measured under a live connection — `l` moved the highlighted cell from column 0 to column 1 while Neovim's cursor row stayed at 3 and the buffer was byte-identical. The earlier claim that it "requires the bundled engine" was wrong, and came from reading `canActivate()`'s `forkAvailable` as a test for the bundled engine when it is `!isBuiltinVimEnabled(app)` — that Obsidian's own vim is off, which is true under RPC. Choosing `raw` table widget mode disables the overlay and leaves the table as ordinary Markdown for a Neovim table plugin to handle.
+
+Which-key is not ported and will not be. It renders the plugin's own leader registry from the fork's key stream, and under RPC neither is authoritative — the bridge installs those bindings as real Neovim keymaps, and the user has their own besides, so a faithful port would display a keymap that is not in force. `which-key.nvim` draws in a floating window, which the float bridge already renders, and it shows the real keymap. Generated bindings therefore carry a readable `desc` prefixed `Vim Motions:` instead of an internal id, so they describe themselves in `:map`, `:command` and any which-key plugin. That covers the companion's 18 structural motions and 26 Markdown text objects as well as the bridged actions; the fold-alias commands too. Leader prefixes are additionally registered as `<Nop>` mappings whose only purpose is a group label, so a which-key plugin renders a menu instead of a flat list. The leader key itself is deliberately never mapped — doing so would make it a complete binding and break every leader sequence, which is the property `leaderGroupPrefixes` is tested for. Position animation, gutters, cursor-line highlighting, and the status bar were never affected.
+
+### The plugin's own Lua and vimrc config does not bind editor keys in RPC mode
+
+`.obsidian.init.lua` and `.obsidian.vimrc` still load while RPC is connected, but a `vim.keymap.set` or `map` defined there targets the bundled fork, and key delegation stands the fork down through `setKeyInterceptActive(true)`. Editor-context mappings from the plugin's config therefore never fire; the Neovim equivalent belongs in the user's own `init.lua`. Settings and host-rendered features are unaffected, because Obsidian still renders them. The Obsidian action mappings the feature bridge installs into Neovim are generated from the plugin's registration data, so they follow the configured leader key but not arbitrary `vim.keymap.set` remaps.
 
 ## Lua configuration
 
@@ -205,6 +334,18 @@ These functions are present (calling them won't error) but don't perform their i
 - **`vim.treesitter.inspect_tree()`** — no-op. The tree inspector debug UI is not implemented.
 
 These are lower priority because the plugin provides equivalent native features (highlighting, folding) and the functions are rarely called by Neovim plugins (they're Neovim UI/editor integration points, not plugin API).
+
+### `TSNode` handles go stale after a re-parse
+
+Neovim's contract is that a re-parse produces a _new_ tree and leaves the old one valid until its owner deletes it, so Lua written against Neovim may hold a node across an edit. This plugin deletes the old tree on re-parse, and a `TSNode` is a light userdata holding an address into WASM linear memory. A node read after its tree was replaced therefore returns whatever now occupies that address.
+
+**Measured severity**: stale data, not a crash — 80 nodes read after their tree was deleted, in each of 6 runs, with 0 segfaults. `tree.delete()` frees _within_ the mapped heap rather than unmapping, so the read returns plausible-looking but wrong types and ranges.
+
+**Status**: declined, not deferred. Both mechanisms that would fix it are unavailable. fengari arms its `FinalizationRegistry` only for full userdata, while nodes are light userdata on plain tables, so `__gc` never runs for them. Reference counting is not available either, because the fix would have to keep trees alive from node references, and that is a table-to-full-userdata conversion across all 31 node methods plus a fengari change — not a localized patch.
+
+Note that simply dropping the `delete()` calls is **not** a safe alternative. `web-tree-sitter` registers every handle with its own `FinalizationRegistry`, so a dropped tree is still freed — just at a GC-determined moment instead of a known one, which is strictly harder to reason about. A cursor is worse: it registers holding its _tree's_ pointer, so a dropped cursor whose tree was already deleted frees a dangling pointer from a GC callback. That is the root cause of the renderer segfault recorded in `test/flaky-inventory.md`.
+
+**Workaround**: re-acquire nodes after any edit rather than holding them across one, which is good practice against Neovim as well.
 
 ### `get_captures_at_pos()` / `get_captures_at_cursor()` return empty
 
@@ -681,6 +822,14 @@ EasyMotion commands (prefixed with `<leader><leader>`) appeared at the wrong lev
 Root cause: the codemirror-vim fork normalizes literal space characters to `<Space>` notation when storing keymaps (`_mapCommand` → `normalizeKeyString`), and `getCompletions()`/`getKeymap()` return keys in this normalized form. The fork's key event handler (`vimKeyFromEvent`) also emits `<Space>` for space bar presses. However, the which-key overlay stored label keys with literal spaces (from `replaceLeaderKey`) and compared the raw leader key character against `<Space>` event keys — all lookups missed. The leader-only which-key mode additionally never triggered with space as leader because `"<Space>" !== " "`.
 
 Fix: added `normalizeVimKey()` mirroring the fork's `normalizeKeyString`, applied at label storage time in `rebuildWhichKey()` and at lookup time in `showLeaderBindings()`/`showCompletions()`. Added `normalizedLeaderKey` for key event comparison in `onKeyPressLeaderOnly()`.
+
+### ~~Leader overlay triggered by a literal-argument key~~ (Fixed)
+
+**Status**: Fixed. `onKeyPress()` carries the previous key's `expectLiteralNext` state forward and skips leader handling when the key was consumed as a literal argument. ([#186](https://github.com/saberzero1/motions/issues/186))
+
+With space as the leader, `r<Space>` replaced the character under the cursor and then opened the leader overlay as if `<Space>` had been pressed on its own. The overlay was not a real leader press — a following `<leader>w` did not complete an EasyMotion sequence — so the hint contradicted the actual key state. The same applied to every command that waits for a literal `<character>`: `f`, `t`, `m`, `q`, `"`. Replace mode (`R`) was unaffected, because the overlay already dismisses in insert mode.
+
+Root cause: the fork buffers `r` as a partial match, sets `expectLiteralNext`, and signals `vim-keypress` only after the argument key has been consumed and the input state cleared. At the time the overlay sees the argument key, `expectLiteralNext` and the key buffer are already reset, so it is indistinguishable from a standalone leader press. Checking vim state at event time cannot work; the state must be remembered from the previous key. The key buffer is also checked at consumption time, so a pending `r` cleared by a blur does not swallow a later genuine leader press.
 
 ### Automatic obcommand description resolution
 
@@ -1203,7 +1352,7 @@ Limitations:
 - `command` option not supported (use `callback` only)
 - `nested` option not supported
 - `buf` field in event data is always 0
-- `TextYankPost` requires bundled fork mode (built-in vim mode OFF)
+- `TextYankPost` requires bundled fork mode (built-in vim mode OFF). It also does not fire while the Neovim backend owns keys, for the same reason the plugin's own Lua keymaps do not: the event comes from the bundled engine, which is stood down. The **yank highlight** feature is unaffected — under the backend it is driven by a Neovim `TextYankPost` notification instead.
 
 ### Per-view mode events ([#88](https://github.com/saberzero1/motions/issues/88))
 
@@ -1474,7 +1623,7 @@ When which-key mode is set to "All partial keys" and the popup delay is non-zero
 **Test coverage**: `test/specs/oil-which-key.e2e.ts` — 4 tests covering `g?` help modal, `g.` non-interception, no stale overlay after `g?`, and leader-mode control.
 
 | `vim.lsp.*` / `vim.treesitter.*` | Not applicable to Obsidian |
-| Async Lua (coroutine ↔ Promise bridge) | Deferred — `vim.schedule`, `vim.defer_fn`, and `vim.uv` timer subset are available; full coroutine bridge remains deferred |
+| Async Lua (coroutine ↔ Promise bridge) | Implemented — `src/lua/coroutine-runner.ts` yields a Lua coroutine on an async host call and resumes it with the result, with a 10 s timeout and a 16-coroutine limit. `vim.schedule`, `vim.defer_fn` and the `vim.uv` timer subset are available. Snippet `f()`/`d()` nodes are deliberately blocked from async |
 
 ### ~~Vault file reading~~ (Implemented)
 
@@ -1762,7 +1911,7 @@ See `src/lib/fengari/DIFFERENCES.md` for the full list of changes from upstream.
 
 ### 1. Coroutine↔Promise bridge (async Lua execution)
 
-**Status**: Implemented (Phase 1–3). Callback contexts (keymap, autocmd, timer, user command) are async-capable. Init.lua async (Phase 4) and `require()` (Phase 5) remain deferred.
+**Status**: Implemented. Callback contexts (keymap, autocmd, timer, user command) are async-capable through `src/lua/coroutine-runner.ts`, and `require()` resolves synchronously from the in-memory snapshot in `src/lua/module-snapshot.ts`, so a lazy `require` inside a `vim.keymap.set` callback works. Init.lua itself is still loaded synchronously.
 
 **Current state**: The fengari Lua VM is synchronous — `lua_pcall` runs Lua code to completion before returning to JS. Obsidian's vault API (`app.vault.read()`, `app.vault.cachedRead()`) is asynchronous (returns Promises). This mismatch blocks:
 
@@ -2173,9 +2322,11 @@ Actions that read from the CM6 selection in visual mode (`joinLines`, `replace`,
 
 4. **Plugin-side (ex command path)**: The `:obcommand` (and `:ob`) ex command handler in `src/workspace/commands.ts` restores the CM6 selection from the visual range before calling `executeCommandById()`. The fork's `_processCommand()` exits visual mode before invoking ex command handlers, but `parseInput_()` captures the visual range into `params.selectionLine`/`params.selectionLineEnd` beforehand. For the `exmap` indirection path (where a user-defined ex command chains to `:obcommand` via `vim.handleEx`), the inner `_processCommand` no longer has visual mode context, so the handler falls back to the `'<`/`'>` vim marks (which persist after `exitVisualMode`). This covers the common vimrc pattern `exmap togglebullets obcommand editor:toggle-bullet-list` + `vmap <leader>b :togglebullets`. ([#161](https://github.com/saberzero1/motions/discussions/161))
 
+    That line-only restore was not enough for a charwise selection. A `keyToKey` mapping such as `vim.keymap.set("v", "<C-n>", ":obcommand <id><CR>")` feeds `:` to the prompt, which the fork prefills with `'<,'>`, so the dispatcher receives `'<,'>obcommand <id>` — measured `selectionLine === selectionLineEnd === 0` for a selection inside one line, which the `selectionLine !== selectionLineEnd` guard rejected, and the `'<`/`'>` fallback rejected too because both marks share a line. The selection was dropped entirely, and a charwise selection spanning two lines was widened to both whole lines. The handler now rebuilds the range in document offsets from `'<`/`'>` and `lastSelection.visualLine`/`visualBlock`, which survive `exitVisualMode` and carry columns. A typed numeric or `%` range still expands linewise; `'<,'>` and a bare `:obcommand` do not. ([#192](https://github.com/saberzero1/motions/issues/192))
+
 **Trade-off**: `cm.somethingSelected()` and `cm.getSelection()` (the CM5-compat adapter methods) return false/empty in visual-line mode during vim key processing. Third-party plugins that depend on CM6 selection state during visual-line mode may not detect the selection. The canonical integration point `window.CodeMirrorAdapter.Vim` is unaffected. Obsidian's `Editor` API (`editor.somethingSelected()`, `editor.getSelection()`, `editor.replaceSelection()`, `editor.getCursor()`, `editor.listSelections()`) sees the correct linewise selection because of the `VisualLineSomethingSelectedPatch` ViewPlugin.
 
-**Test coverage**: 8 Neovim golden comparison cases + 7 e2e functional tests covering yank, delete, join, mode transitions, `gv`, register content verification, and mid-column visual-line with checkbox content. 6 e2e tests (`visual-line-command.e2e.ts`) verifying `checkCallback` returns `true` for Note Composer's `split-file` command, `editor.somethingSelected()` returns `true`, `executeCommandById` affects all selected lines in visual-line mode, `replaceSelection` works after visual-line mode is exited between `getSelection()` and `replaceSelection()`, real command palette toggle numbered list in V-LINE, and real command palette Note Composer end-to-end extract in V-LINE (opens palette, selects "Extract current selection", enters filename, verifies text removed and link inserted) ([#157](https://github.com/saberzero1/motions/issues/157)). 3 e2e tests (`obcommand-visual-mode.e2e.ts`) verifying `:obcommand` toggle-bullet-list and toggle-numbered-list in visual-line mode via direct `handleEx` and `defineEx` exmap indirection ([#161](https://github.com/saberzero1/motions/discussions/161)). 5 spike tests (`spike-issue138-vline-async-replaceSelection.e2e.ts`) verifying `replaceSelection` works in visual-line mode for sync, async, and direct invocation patterns. 10 spike tests (`spike23-visual-line-hotkey-commands.e2e.ts`) verifying command execution via `executeCommandById`, hotkey path, and selection state inspection. 7 visual paste tests + 4 Neovim golden cases in `normal-yank-put.e2e.ts` ([#139](https://github.com/saberzero1/motions/issues/139)) verifying `v + p`, `V + p`, `V + P`, `v + P`, `v + gp`, unnamed register update, and mode return.
+**Test coverage**: 8 Neovim golden comparison cases + 7 e2e functional tests covering yank, delete, join, mode transitions, `gv`, register content verification, and mid-column visual-line with checkbox content. 6 e2e tests (`visual-line-command.e2e.ts`) verifying `checkCallback` returns `true` for Note Composer's `split-file` command, `editor.somethingSelected()` returns `true`, `executeCommandById` affects all selected lines in visual-line mode, `replaceSelection` works after visual-line mode is exited between `getSelection()` and `replaceSelection()`, real command palette toggle numbered list in V-LINE, and real command palette Note Composer end-to-end extract in V-LINE (opens palette, selects "Extract current selection", enters filename, verifies text removed and link inserted) ([#157](https://github.com/saberzero1/motions/issues/157)). 3 e2e tests (`obcommand-visual-mode.e2e.ts`) verifying `:obcommand` toggle-bullet-list and toggle-numbered-list in visual-line mode via direct `handleEx` and `defineEx` exmap indirection ([#161](https://github.com/saberzero1/motions/discussions/161)), plus 4 tests in the same file covering the charwise restore — a real `<C-n>` mapping read from inside the dispatched command, single-line and two-line charwise, a straddling `editor:toggle-bold`, and an explicit `:1,2obcommand` line range ([#192](https://github.com/saberzero1/motions/issues/192)). 5 spike tests (`spike-issue138-vline-async-replaceSelection.e2e.ts`) verifying `replaceSelection` works in visual-line mode for sync, async, and direct invocation patterns. 10 spike tests (`spike23-visual-line-hotkey-commands.e2e.ts`) verifying command execution via `executeCommandById`, hotkey path, and selection state inspection. 7 visual paste tests + 4 Neovim golden cases in `normal-yank-put.e2e.ts` ([#139](https://github.com/saberzero1/motions/issues/139)) verifying `v + p`, `V + p`, `V + P`, `v + P`, `v + gp`, unnamed register update, and mode return.
 
 ## ~~Visual-line mode highlight missing on replaced widget blocks~~ (Fixed)
 

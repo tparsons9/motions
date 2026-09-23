@@ -521,6 +521,98 @@ describe('treesitter named queries (real bundled grammars)', () => {
         }
     });
 
+    it('deletes every query.parse() wrapper when the Lua state closes', () => {
+        const deleted = vi.spyOn(QueryWrapper.prototype, 'delete');
+        run(`
+            for _ = 1, 3 do
+                assert(vim.treesitter.query.parse('markdown', '(atx_heading) @h') ~= nil)
+            end
+        `);
+        expect(deleted).not.toHaveBeenCalled();
+
+        destroyState(L);
+        expect(deleted).toHaveBeenCalledTimes(3);
+
+        L = createSandboxedState();
+    });
+
+    it('gives capture nodes the tree they came from, in both iterators', () => {
+        run(`
+            local q = vim.treesitter.query.parse('markdown', '(atx_heading) @h')
+            local tree = vim.treesitter.get_string_parser('# One\\n\\n## Two\\n', 'markdown')
+            local root = tree:root()
+
+            local captured = 0
+            for _, node in q:iter_captures(root) do
+                assert(node:tree() ~= nil, 'iter_captures node has no tree')
+                assert(node:parent():tree() ~= nil, 'parent lost the tree')
+                captured = captured + 1
+            end
+            assert(captured == 2, 'expected 2 captures, got ' .. captured)
+
+            local matched = 0
+            for _, captures in q:iter_matches(root) do
+                for _, nodes in pairs(captures) do
+                    for _, node in ipairs(nodes) do
+                        assert(node:tree() ~= nil, 'iter_matches node has no tree')
+                        matched = matched + 1
+                    end
+                end
+            end
+            assert(matched == 2, 'expected 2 matched nodes, got ' .. matched)
+        `);
+    });
+
+    it('frees the parser cache on close and does not share it with the next state', () => {
+        run(`assert(vim.treesitter.get_parser():root():type() ~= nil)`);
+
+        const tree = runtime.parseString('markdown', '# probe');
+        const deleted = vi.spyOn(
+            Object.getPrototypeOf(tree) as { delete: () => void },
+            'delete',
+        );
+        tree.delete();
+        expect(deleted).toHaveBeenCalledTimes(1);
+
+        destroyState(L);
+        expect(deleted).toHaveBeenCalledTimes(2);
+
+        L = createSandboxedState();
+        lua.lua_newtable(L);
+        lua.lua_setglobal(L, to_luastring('vim'));
+        injectTreesitterApi(L, undefined, () => markdown);
+        run(`assert(vim.treesitter.get_parser():root():type() ~= nil)`);
+        destroyState(L);
+        expect(deleted).toHaveBeenCalledTimes(3);
+
+        L = createSandboxedState();
+    });
+
+    it('frees the trees handed to Lua that no cache owns', () => {
+        const probe = runtime.parseString('markdown', '# probe');
+        const deleted = vi.spyOn(
+            Object.getPrototypeOf(probe) as { delete: () => void },
+            'delete',
+        );
+        probe.delete();
+        expect(deleted).toHaveBeenCalledTimes(1);
+
+        // get_string_parser and TSTree:copy() each allocate a handle no cache
+        // holds. Plus the document parser's own cached tree on close.
+        run(`
+            local t = vim.treesitter.get_string_parser('# one', 'markdown')
+            assert(t:root():type() ~= nil)
+            local c = t:copy()
+            assert(c:root():type() ~= nil)
+        `);
+        expect(deleted).toHaveBeenCalledTimes(1);
+
+        destroyState(L);
+        expect(deleted).toHaveBeenCalledTimes(3);
+
+        L = createSandboxedState();
+    });
+
     it.each([
         ['markdown_inline', '[link](https://example.com)'],
         ['html', '<div title="example">Hello</div><script>let x = 1;</script>'],

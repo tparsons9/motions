@@ -4,6 +4,7 @@ import { QueryWrapper } from '../../treesitter/query';
 import { NamedQueries } from '../../treesitter/named-queries';
 import { getQueryFiles } from '../../treesitter/query-files';
 import { registerStateCleanup } from '../engine';
+import { runCleanups } from '../../util/cleanup';
 import {
     registerPredicate,
     listPredicates,
@@ -57,6 +58,27 @@ function readQuerySource(L: lua_State): string {
     return source;
 }
 
+// Capture nodes outlive the call that produced them, so the tree table has to
+// be held in the registry rather than read off the stack the way node.ts does
+// it. Without this a captured node has no `_tree`, so `node:tree()` is nil and
+// every node reached through it loses the reference too. Same shape as
+// `iter_children` in node.ts, including its limitation: user Lua that `break`s
+// out of the loop never reaches the release.
+function refTreeTable(L: lua_State, nodeIndex: number): number | null {
+    lua.lua_getfield(L, nodeIndex, to_luastring('_tree'));
+    if (lua.lua_isnil(L, -1)) {
+        lua.lua_pop(L, 1);
+        return null;
+    }
+    return lauxlib.luaL_ref(L, lua.LUA_REGISTRYINDEX);
+}
+
+function applyTreeRef(L: lua_State, treeRef: number | null): void {
+    if (treeRef === null) return;
+    lua.lua_rawgeti(L, lua.LUA_REGISTRYINDEX, treeRef);
+    lua.lua_setfield(L, -2, to_luastring('_tree'));
+}
+
 function pushMetadata(
     L: lua_State,
     metadata: Record<string, string | number | null>,
@@ -101,13 +123,26 @@ const queryMethods: Record<string, (state: lua_State) => number> = {
             endRow,
         });
         let idx = 0;
+        const treeRef = refTreeTable(state, 2);
+        let released = false;
 
         lua.lua_pushjsfunction(state, (iterState: lua_State) => {
-            if (idx >= captures.length) return 0;
+            if (idx >= captures.length) {
+                if (treeRef !== null && !released) {
+                    released = true;
+                    lauxlib.luaL_unref(
+                        iterState,
+                        lua.LUA_REGISTRYINDEX,
+                        treeRef,
+                    );
+                }
+                return 0;
+            }
             const cap = captures[idx]!;
             idx++;
             lua.lua_pushinteger(iterState, cap.captureId + 1);
             pushTSNode(iterState, cap.node, source);
+            applyTreeRef(iterState, treeRef);
             pushMetadata(iterState, cap.metadata);
             return 3;
         });
@@ -140,9 +175,21 @@ const queryMethods: Record<string, (state: lua_State) => number> = {
             endRow,
         });
         let idx = 0;
+        const treeRef = refTreeTable(state, 2);
+        let released = false;
 
         lua.lua_pushjsfunction(state, (iterState: lua_State) => {
-            if (idx >= matches.length) return 0;
+            if (idx >= matches.length) {
+                if (treeRef !== null && !released) {
+                    released = true;
+                    lauxlib.luaL_unref(
+                        iterState,
+                        lua.LUA_REGISTRYINDEX,
+                        treeRef,
+                    );
+                }
+                return 0;
+            }
             const match = matches[idx]!;
             idx++;
 
@@ -154,6 +201,7 @@ const queryMethods: Record<string, (state: lua_State) => number> = {
                     const n = nodes[i];
                     if (n) {
                         pushTSNode(iterState, n, source);
+                        applyTreeRef(iterState, treeRef);
                         lua.lua_rawseti(iterState, -2, i + 1);
                     }
                 }
@@ -230,7 +278,16 @@ function pushQueryObject(
 
 export function injectQueryApi(L: lua_State, tsTableIndex: number): void {
     const namedQueries = new NamedQueries();
-    registerStateCleanup(L, () => namedQueries.dispose());
+    // `query.parse()` builds a QueryWrapper that no cache owns, so
+    // `NamedQueries.dispose()` never sees it and every call leaked its
+    // underlying WASM query for the life of the Lua state.
+    const parsedQueries = new Set<QueryWrapper>();
+    registerStateCleanup(L, () => {
+        const disposers: (() => void)[] = [() => namedQueries.dispose()];
+        for (const query of parsedQueries) disposers.push(() => query.delete());
+        parsedQueries.clear();
+        runCleanups(disposers, 'treesitter query');
+    });
     lua.lua_newtable(L);
     const queryIndex = lua.lua_gettop(L);
 
@@ -258,6 +315,7 @@ export function injectQueryApi(L: lua_State, tsTableIndex: number): void {
 
         try {
             const wrapper = new QueryWrapper(language, queryStr);
+            parsedQueries.add(wrapper);
             pushQueryObject(state, wrapper, '');
             return 1;
         } catch (e) {

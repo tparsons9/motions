@@ -53,19 +53,27 @@ function detectCursorContextTreesitter(
         'fenced_code_block',
     );
     if (codeBlock) {
+        // Walked with a cursor, not `child(i)`: each of those allocates a node
+        // in WASM memory while `codeBlock` is still being read, and a parse that
+        // grows that memory moves the buffer out from under it.
         let language: string | undefined;
-        for (let i = 0; i < codeBlock.childCount; i++) {
-            const child = codeBlock.child(i);
-            if (child?.type === 'info_string') {
-                const langNode = child.child(0);
-                if (langNode) {
-                    language = view.state.doc.sliceString(
-                        langNode.startIndex,
-                        langNode.endIndex,
-                    );
-                }
-                break;
+        const cursor = codeBlock.walk();
+        try {
+            if (cursor.gotoFirstChild()) {
+                do {
+                    if (cursor.nodeType !== 'info_string') continue;
+                    if (cursor.gotoFirstChild()) {
+                        language = view.state.doc.sliceString(
+                            cursor.startIndex,
+                            cursor.endIndex,
+                        );
+                        cursor.gotoParent();
+                    }
+                    break;
+                } while (cursor.gotoNextSibling());
             }
+        } finally {
+            cursor.delete();
         }
         return { type: 'code', language: language || undefined };
     }

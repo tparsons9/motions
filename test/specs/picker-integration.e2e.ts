@@ -64,7 +64,9 @@ async function handleEx(
 async function hasPickerSource(name: string): Promise<boolean> {
     return (await browser.executeObsidian(({ app }, n: string) => {
         const plugin = (
-            app as unknown as Record<string, Record<string, unknown>>
+            app as unknown as {
+                plugins?: { plugins?: Record<string, unknown> };
+            }
         ).plugins?.plugins?.['vim-motions'] as
             { pickerAPI?: { hasSource: (n: string) => boolean } } | undefined;
         return plugin?.pickerAPI?.hasSource(n) ?? false;
@@ -74,7 +76,9 @@ async function hasPickerSource(name: string): Promise<boolean> {
 async function getPickerSourceNames(): Promise<string[]> {
     return (await browser.executeObsidian(({ app }) => {
         const plugin = (
-            app as unknown as Record<string, Record<string, unknown>>
+            app as unknown as {
+                plugins?: { plugins?: Record<string, unknown> };
+            }
         ).plugins?.plugins?.['vim-motions'] as
             | { pickerAPI?: { getSources: () => Array<{ name: string }> } }
             | undefined;
@@ -208,7 +212,9 @@ describe('Picker integrations', function () {
 
             await browser.executeObsidian(({ app }) => {
                 const plugin = (
-                    app as unknown as Record<string, Record<string, unknown>>
+                    app as unknown as {
+                        plugins?: { plugins?: Record<string, unknown> };
+                    }
                 ).plugins?.plugins?.['vim-motions'] as
                     { registerBundledIntegrations?: () => void } | undefined;
                 plugin?.registerBundledIntegrations?.();
@@ -225,7 +231,9 @@ describe('Picker integrations', function () {
 
             await browser.executeObsidian(({ app }) => {
                 const plugin = (
-                    app as unknown as Record<string, Record<string, unknown>>
+                    app as unknown as {
+                        plugins?: { plugins?: Record<string, unknown> };
+                    }
                 ).plugins?.plugins?.['vim-motions'] as
                     { registerBundledIntegrations?: () => void } | undefined;
                 plugin?.registerBundledIntegrations?.();

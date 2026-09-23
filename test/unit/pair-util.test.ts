@@ -27,7 +27,7 @@ function call(
         scanLimit,
     );
     const cm = mockCm(lines);
-    const result = fn(cm as never, head, {} as never, {} as never);
+    const result = fn(cm as never, head, {} as never, {} as never, undefined);
     if (!result) return null;
     return result as [VimPos, VimPos];
 }

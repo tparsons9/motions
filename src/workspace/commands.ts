@@ -2,7 +2,12 @@ import { App, FileView, MarkdownView, Notice, TFile } from 'obsidian';
 import type { OilManager } from '../oil/manager';
 import { OilView } from '../oil/oil-view';
 import { createGrepCommand } from './vault-search';
-import type { CmAdapter, ExCommandFn, VimApi } from '../types/vim-api';
+import type {
+    CmAdapter,
+    ExCommandArgs,
+    ExCommandFn,
+    VimApi,
+} from '../types/vim-api';
 import { VimRegistration } from '../vim/registration';
 import { VimInfoModal } from '../ui/vim-info-modal';
 import type { GlobalMappingRegistry } from './global-mapping-registry';
@@ -165,6 +170,70 @@ function getVisualRange(
     };
 }
 
+interface LastVisualSelection {
+    visualMode?: boolean;
+    visualLine?: boolean;
+    visualBlock?: boolean;
+}
+
+/** The range the fork prefills into the ex prompt when `:` is pressed in visual mode. */
+const VISUAL_EX_RANGE = /^\s*:*\s*'<,'>/;
+
+/**
+ * The visual selection the ex dispatcher discarded, in document offsets.
+ *
+ * The fork exits visual mode before running an ex command, so an Obsidian
+ * command dispatched by `:obcommand` sees a collapsed selection. `'<`/`'>` and
+ * `lastSelection` survive that exit and carry columns, so the range can be
+ * rebuilt with character precision — including a selection that lies inside a
+ * single line, which a line range cannot express at all (#192).
+ */
+function getVisualSelectionOffsets(
+    cm: CmAdapter,
+): { from: number; to: number } | null {
+    const vim = cm.state.vim;
+    if (!vim) return null;
+    const last = vim.lastSelection as LastVisualSelection | undefined;
+    if (!last?.visualMode) return null;
+    const start = vim.marks?.['<']?.find();
+    const end = vim.marks?.['>']?.find();
+    if (!start || !end) return null;
+    const doc = cm.cm6.state.doc;
+    if (start.line < 0 || end.line > doc.lines - 1) return null;
+    const startLine = doc.line(start.line + 1);
+    const endLine = doc.line(end.line + 1);
+    if (last.visualLine || last.visualBlock) {
+        return { from: startLine.from, to: endLine.to };
+    }
+    return {
+        from: startLine.from + Math.min(start.ch, startLine.length),
+        to: Math.min(endLine.from + end.ch + 1, endLine.to),
+    };
+}
+
+function restoreSelectionForObCommand(
+    cm: CmAdapter,
+    params: ExCommandArgs,
+): void {
+    // A typed numeric or `%` range asks for whole lines; `'<,'>` asks for the
+    // visual selection, so only the former keeps the line-range behaviour.
+    const explicitLineRange =
+        params.line !== undefined && !VISUAL_EX_RANGE.test(params.input ?? '');
+    if (!explicitLineRange) {
+        const offsets = getVisualSelectionOffsets(cm);
+        if (offsets) {
+            cm.cm6.dispatch({
+                selection: { anchor: offsets.from, head: offsets.to },
+            });
+            return;
+        }
+    }
+    const range = getVisualRange(cm, params);
+    if (range) {
+        expandSelectionFromRange(cm, range.startLine, range.endLine);
+    }
+}
+
 function createObCommand(app: App): ExCommandFn {
     return (cm, params) => {
         if (!params.argString?.trim()) {
@@ -180,10 +249,7 @@ function createObCommand(app: App): ExCommandFn {
             return;
         }
         const commandId = params.argString?.trim() ?? '';
-        const range = getVisualRange(cm, params);
-        if (range) {
-            expandSelectionFromRange(cm, range.startLine, range.endLine);
-        }
+        restoreSelectionForObCommand(cm, params);
         executeCommand(app, commandId);
     };
 }

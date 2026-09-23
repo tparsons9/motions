@@ -1,5 +1,6 @@
 import {
     App,
+    Modal,
     Notice,
     Platform,
     PluginSettingTab,
@@ -25,6 +26,7 @@ import {
 import { getCommandRegistry } from './util/commands';
 import { isBuiltinVimEnabled } from './util/vault';
 import { setClipboardOption, setTextwidth } from './vim/options';
+import { GENERATED_MODULE_NAME } from './rpc/config-export';
 import type { SerializedUndoTree } from './vim/undo-tree';
 import {
     VIMRC_FALLBACK_PATHS,
@@ -118,7 +120,7 @@ export const DEFAULT_CURSOR_SHAPES: CursorShapes = {
 };
 
 const NEOVIM_RPC_DISCLOSURE =
-    'Desktop only. Runs the Neovim binary and configuration you supply. That configuration is arbitrary code, may load native libraries through LuaJIT FFI, and may read or write files outside the vault. No sandbox is provided. Vim Motions does not download or install Neovim or its plugins.';
+    'Desktop only. Runs the Neovim binary and configuration you supply. That configuration is arbitrary code, may load native libraries through LuaJIT FFI, and may read or write files outside the vault. No sandbox is provided. Vim Motions never installs Neovim itself, and installs Neovim plugins only on an explicit confirmed request.';
 const NEOVIM_CONFIG_DESCRIPTION =
     'Absolute path to a Neovim init.lua used only inside Obsidian. Leave empty to load your normal Neovim config. A minimal config avoids loading terminal-only LSP, dashboard, and statusline plugins and starts faster (20 ms versus 106 ms in the measured development setup).';
 
@@ -142,8 +144,22 @@ export interface VimMotionsSettings {
     ripgrepArgs: string;
     grepMode: 'ripgrep' | 'grep';
     neovimRpcEnabled: boolean;
+    /**
+     * Set while an RPC connect or disconnect is in flight and cleared once it
+     * settles. Surviving a restart means the renderer died mid-toggle, which is
+     * the one pattern known to segfault it, so the next start can say so
+     * instead of leaving an unexplained lost window.
+     */
+    neovimToggleInFlight: boolean;
     neovimBinaryPath: string;
     neovimConfigPath: string;
+    neovimConfigExportAutoRefresh: boolean;
+    /**
+     * Fingerprint of the settings the generated Neovim file was last written
+     * from. Differing from the current one is what makes the settings tab
+     * offer to regenerate; it is not user-editable.
+     */
+    neovimConfigExportFingerprint: string;
     frecencyData?: Record<string, { count: number; timestamps: number[] }>;
     persistedMarks?: {
         name: string;
@@ -294,8 +310,11 @@ export const DEFAULT_SETTINGS: VimMotionsSettings = {
     ripgrepArgs: '--smart-case --glob "*.md"',
     grepMode: 'ripgrep' as const,
     neovimRpcEnabled: false,
+    neovimToggleInFlight: false,
     neovimBinaryPath: '',
     neovimConfigPath: '',
+    neovimConfigExportAutoRefresh: false,
+    neovimConfigExportFingerprint: '',
     frecencyData: undefined,
     configMode: 'lua-vimrc',
     enableStatusBar: true,
@@ -592,6 +611,111 @@ export class VimMotionsSettingTab extends PluginSettingTab {
         if (notes.length === 0) return desc ?? '';
         const note = notes.join(' · ');
         return desc ? `${desc} (${note})` : note;
+    }
+
+    // Shared by both settings implementations. The declarative path reaches it
+    // through `render`, the imperative one calls it directly, so the two
+    // cannot drift apart.
+    // Shows exactly what pressing Set up will do — the plugins Neovim will
+    // fetch, and the configuration that will be written — before anything
+    // happens. The install is permissible because the user asked for it here,
+    // so the request has to be informed.
+    private openNeovimSetupModal(plan: {
+        configText: string;
+        repos: string[];
+        missing: string[];
+        connected: boolean;
+    }): void {
+        const modal = new Modal(this.app);
+        modal.setTitle('Set up Neovim');
+        const { contentEl } = modal;
+        contentEl.createEl('p', {
+            text: plan.missing.length
+                ? `Neovim will install or update ${plan.repos.length} plugin(s) into its own data directory. Missing right now: ${plan.missing.join(', ')}.`
+                : `Neovim will update ${plan.repos.length} plugin(s) it already has. Nothing is missing.`,
+        });
+        for (const repo of plan.repos)
+            contentEl.createDiv({
+                text: repo,
+                cls: 'vim-motions-setup-repo',
+            });
+        contentEl.createEl('p', {
+            text: `Then this configuration is written to lua/${GENERATED_MODULE_NAME}.lua. It does nothing until you add require('${GENERATED_MODULE_NAME}') to your init.lua.`,
+        });
+        contentEl.createEl('pre', {
+            text: plan.configText,
+            cls: 'vim-motions-setup-preview',
+        });
+        new Setting(contentEl)
+            .addButton((button) =>
+                button.setButtonText('Cancel').onClick(() => modal.close()),
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText('Install and write')
+                    .setCta()
+                    .onClick(async () => {
+                        modal.close();
+                        const outcome = await this.plugin.applyNeovimSetup();
+                        if (outcome.install)
+                            new Notice(
+                                `Vim Motions: plugin install failed. ${outcome.install}`,
+                                10000,
+                            );
+                        if (outcome.status === 'written')
+                            new Notice(`Vim Motions: wrote ${outcome.path}`);
+                        else if (outcome.status === 'foreign')
+                            new Notice(
+                                `Vim Motions: ${outcome.path} was edited by hand, so it was left alone.`,
+                                10000,
+                            );
+                        else if (outcome.status === 'failed')
+                            new Notice(`Vim Motions: ${outcome.reason}`, 10000);
+                        (
+                            this as unknown as { refreshDomState?(): void }
+                        ).refreshDomState?.();
+                    }),
+            );
+        modal.open();
+    }
+
+    private renderNeovimConfigExport(setting: Setting): void {
+        const stale = this.plugin.isNeovimConfigExportStale();
+        setting
+            .setName('Generate a Neovim configuration')
+            .setDesc(
+                stale
+                    ? 'Your settings have changed since this file was last generated. Regenerate to apply them.'
+                    : `Shows you the plugins Neovim will install or update and the configuration that will be written to lua/${GENERATED_MODULE_NAME}.lua, then applies both once you confirm. The file does nothing until you add require('${GENERATED_MODULE_NAME}') to your init.lua.`,
+            );
+        if (stale) setting.settingEl.addClass('vim-motions-setting-stale');
+        setting.addButton((button) =>
+            button
+                .setButtonText('Copy')
+                .setTooltip('Copy the generated configuration to the clipboard')
+                .onClick(async () => {
+                    await navigator.clipboard.writeText(
+                        this.plugin.generateNeovimConfigText(),
+                    );
+                    new Notice('Vim Motions: configuration copied.');
+                }),
+        );
+        setting.addButton((button) =>
+            button
+                .setButtonText(stale ? 'Review and update' : 'Set up Neovim')
+                .setCta()
+                .onClick(async () => {
+                    const plan = await this.plugin.planNeovimSetup();
+                    if (!plan.connected) {
+                        new Notice(
+                            'Vim Motions: connect the Neovim backend first.',
+                            10000,
+                        );
+                        return;
+                    }
+                    this.openNeovimSetupModal(plan);
+                }),
+        );
     }
 
     getSettingDefinitions(): SettingDefinitionItem[] {
@@ -1069,6 +1193,31 @@ export class VimMotionsSettingTab extends PluginSettingTab {
                                             return 'Path must be absolute (e.g. /home/user/.config/nvim-obsidian/init.lua)';
                                         return undefined;
                                     },
+                                },
+                            },
+                            {
+                                name: 'Generate a Neovim configuration',
+                                visible: Platform.isDesktop,
+                                aliases: [
+                                    'export',
+                                    'migrate',
+                                    'nvim-surround',
+                                    'dial.nvim',
+                                    'spider',
+                                    'yanky',
+                                    'flash.nvim',
+                                ],
+                                render: (setting: Setting) => {
+                                    this.renderNeovimConfigExport(setting);
+                                },
+                            },
+                            {
+                                name: 'Regenerate automatically',
+                                desc: `Rewrite lua/${GENERATED_MODULE_NAME}.lua whenever a setting it covers changes. Off by default: this writes to your Neovim configuration directory.`,
+                                visible: Platform.isDesktop,
+                                control: {
+                                    type: 'toggle' as const,
+                                    key: 'neovimConfigExportAutoRefresh',
                                 },
                             },
                             {
@@ -3711,6 +3860,25 @@ export class VimMotionsSettingTab extends PluginSettingTab {
                             this.plugin.settings.neovimConfigPath = value;
                             await this.plugin.saveSettings();
                             this.plugin.reloadFeatures();
+                        }),
+                );
+
+            this.renderNeovimConfigExport(new Setting(containerEl));
+
+            new Setting(containerEl)
+                .setName('Regenerate automatically')
+                .setDesc(
+                    `Rewrite lua/${GENERATED_MODULE_NAME}.lua whenever a setting it covers changes. Off by default: this writes to your Neovim configuration directory.`,
+                )
+                .addToggle((toggle) =>
+                    toggle
+                        .setValue(
+                            this.plugin.settings.neovimConfigExportAutoRefresh,
+                        )
+                        .onChange(async (value) => {
+                            this.plugin.settings.neovimConfigExportAutoRefresh =
+                                value;
+                            await this.plugin.saveSettings();
                         }),
                 );
         }

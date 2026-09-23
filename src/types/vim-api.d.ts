@@ -112,6 +112,8 @@ export interface VimState {
     };
     marks?: Record<string, { find(): VimPos | undefined; clear(): void }>;
     status?: string;
+    /** True while a pending command awaits a literal `<character>` argument (`r`, `f`, `m`, …). */
+    expectLiteralNext?: boolean;
 }
 
 /** Keymap entry types used by Vim.mapCommand. */

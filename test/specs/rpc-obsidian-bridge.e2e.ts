@@ -118,6 +118,7 @@ const BRIDGE_ABBREVIATIONS = [
     'jumps',
 ];
 const BRIDGE_LEADER_MAPPINGS = [
+    'hintMode',
     'pickerFiles',
     'pickerGrep',
     'pickerBuffers',
@@ -243,6 +244,56 @@ async function getActiveFile(): Promise<string | null> {
     return (await browser.executeObsidian(
         ({ app }) => app.workspace.getActiveFile()?.path ?? null,
     )) as string | null;
+}
+
+const UNBRIDGED_COMMAND_ID = 'workspace:toggle-pin';
+
+async function obsidianCommandExists(id: string): Promise<boolean> {
+    return (await browser.executeObsidian(({ app }, commandId: string) => {
+        const registry = (
+            app as unknown as {
+                commands: { commands: Record<string, unknown> };
+            }
+        ).commands.commands;
+        return Object.prototype.hasOwnProperty.call(registry, commandId);
+    }, id)) as boolean;
+}
+
+// Scoped to the bridge's own entries by their desc marker. Matching every
+// Neovim user command instead picks up whatever the user's config defines --
+// `DapStepInto` lowercases to contain "pin".
+async function bridgeInstalledCommands(): Promise<string[]> {
+    const commands = (await request('nvim_get_commands', [{}])) as Record<
+        string,
+        { definition?: unknown } | undefined
+    >;
+    return Object.entries(commands)
+        .filter(([, info]) => {
+            const definition = info?.definition;
+            return (
+                typeof definition === 'string' &&
+                definition.startsWith('Vim Motions: ')
+            );
+        })
+        .map(([name]) => name)
+        .sort();
+}
+
+async function hintLabels(): Promise<string[]> {
+    return (await browser.executeObsidian(() =>
+        Array.from(
+            activeDocument.querySelectorAll('.vim-motions-hint-label'),
+        ).map((label) => label.textContent ?? ''),
+    )) as string[];
+}
+
+async function activeLeafPinned(): Promise<boolean> {
+    return (await browser.executeObsidian(({ app }) => {
+        const leaf = app.workspace.getMostRecentLeaf();
+        return (
+            (leaf as unknown as { pinned?: boolean } | null)?.pinned ?? false
+        );
+    })) as boolean;
 }
 
 async function getActiveViewType(): Promise<string> {
@@ -460,7 +511,23 @@ async function closeInfoModalInstance(): Promise<void> {
 async function bridgeInventory(): Promise<BridgeInventory> {
     const mappings = (await request('nvim_get_keymap', ['n'])) as Array<{
         desc?: string;
+        lhs?: string;
     }>;
+    // Identified by the leader prefix rather than by desc: the description is
+    // now a human label and no longer encodes the action name.
+    const leaderKey = (await browser.executeObsidian(({ app }) => {
+        const target = (
+            app as unknown as {
+                plugins: {
+                    plugins: Record<
+                        string,
+                        { leaderRegistry?: { getLeaderKey(): string } }
+                    >;
+                };
+            }
+        ).plugins.plugins['vim-motions'];
+        return target?.leaderRegistry?.getLeaderKey() ?? '\\';
+    })) as string;
     const commands = (await request('nvim_get_commands', [
         { builtin: false },
     ])) as Record<string, { definition?: string }>;
@@ -475,13 +542,13 @@ async function bridgeInventory(): Promise<BridgeInventory> {
         commands: Object.keys(commands).filter((name) =>
             BRIDGE_COMMANDS.includes(name),
         ).length,
-        leaderMappings: mappings.filter((mapping) =>
-            BRIDGE_LEADER_MAPPINGS.map(
-                (name) => `vim-motions-rpc:mapping:${name}`,
-            ).includes(mapping.desc ?? ''),
+        leaderMappings: mappings.filter(
+            (mapping) =>
+                mapping.desc?.startsWith('Vim Motions: ') &&
+                mapping.lhs?.startsWith(leaderKey),
         ).length,
         mappings: mappings.filter((mapping) =>
-            mapping.desc?.startsWith('vim-motions-rpc:'),
+            mapping.desc?.startsWith('Vim Motions: '),
         ).length,
     };
 }
@@ -1240,6 +1307,180 @@ describe('Neovim RPC Obsidian feature bridge', function () {
             firstLine: 'x',
             sidebarActions: 0,
         });
+    });
+
+    // The allowlist names only features this plugin registers, so an Obsidian-
+    // or third-party-owned command is unreachable through it by construction.
+    it('runs an unbridged Obsidian command through the generic ob escape hatch', async () => {
+        await waitForMirror('Welcome.md');
+        const bridged = await bridgeInstalledCommands();
+        expect({
+            registered: await obsidianCommandExists(UNBRIDGED_COMMAND_ID),
+            obInstalled: bridged.includes('Ob'),
+            pinInstalled: bridged.some((name) =>
+                name.toLowerCase().includes('pin'),
+            ),
+            pinned: await activeLeafPinned(),
+        }).toEqual({
+            registered: true,
+            obInstalled: true,
+            pinInstalled: false,
+            pinned: false,
+        });
+
+        await input(`:ob ${UNBRIDGED_COMMAND_ID}<CR>`);
+        await browser.waitUntil(async () => await activeLeafPinned(), {
+            timeout: 5000,
+            interval: 100,
+        });
+        expect(await activeLeafPinned()).toBe(true);
+
+        await input(`:ob ${UNBRIDGED_COMMAND_ID}<CR>`);
+        await browser.waitUntil(async () => !(await activeLeafPinned()), {
+            timeout: 5000,
+            interval: 100,
+        });
+        expect(await activeLeafPinned()).toBe(false);
+    });
+
+    it('does not expand ob inside a substitution or run a command', async () => {
+        await request('nvim_buf_set_lines', [0, 0, -1, true, ['ob']]);
+        await input(`:%s/ob/${UNBRIDGED_COMMAND_ID}/<CR>`);
+        await browser.waitUntil(
+            async () => {
+                const lines = (await request('nvim_buf_get_lines', [
+                    0,
+                    0,
+                    1,
+                    true,
+                ])) as string[];
+                return lines[0] === UNBRIDGED_COMMAND_ID;
+            },
+            { timeout: 5000, interval: 100 },
+        );
+        const firstLine = (await request('nvim_buf_get_lines', [
+            0,
+            0,
+            1,
+            true,
+        ])) as string[];
+        expect({
+            firstLine: firstLine[0],
+            pinned: await activeLeafPinned(),
+        }).toEqual({ firstLine: UNBRIDGED_COMMAND_ID, pinned: false });
+    });
+
+    // Hint labels are captured on the document in capture phase, ahead of the
+    // RPC delegation listener on the editor. The load-bearing assertion is the
+    // second one: a label keystroke must not also reach Neovim's buffer.
+    it('activates hint mode from Neovim and keeps its keys out of the buffer', async () => {
+        await waitForMirror('Welcome.md');
+        await request('nvim_buf_set_lines', [
+            0,
+            0,
+            -1,
+            true,
+            ['hint sentinel'],
+        ]);
+        await input(':hintactivate<CR>');
+        await browser.waitUntil(async () => (await hintLabels()).length > 0, {
+            timeout: 5000,
+            interval: 100,
+            timeoutMsg: 'Neovim never activated Obsidian hint mode',
+        });
+
+        const labels = await hintLabels();
+        const firstLabel = labels[0] ?? '';
+        expect(firstLabel.length).toBeGreaterThan(0);
+        for (const character of firstLabel) await browser.keys([character]);
+
+        await browser.waitUntil(async () => (await hintLabels()).length === 0, {
+            timeout: 5000,
+            interval: 100,
+            timeoutMsg: 'the hint overlay never closed',
+        });
+        const lines = (await request('nvim_buf_get_lines', [
+            0,
+            0,
+            -1,
+            true,
+        ])) as string[];
+        expect(lines).toEqual(['hint sentinel']);
+    });
+
+    it('labels its generated Neovim entries readably', async () => {
+        await waitForMirror('Welcome.md');
+        const descriptions = (await request('nvim_exec_lua', [
+            `local out = {}
+for _, map in ipairs(vim.api.nvim_get_keymap('n')) do
+    if map.desc and map.desc:sub(1, 13) == 'Vim Motions: ' then
+        out[#out + 1] = map.desc
+    end
+end
+return out`,
+            [],
+        ])) as string[];
+        expect(descriptions.length).toBeGreaterThan(5);
+        for (const description of descriptions) {
+            expect(description).not.toContain('mapping:');
+            expect(description).not.toContain('command:');
+        }
+        expect(descriptions).toContain('Vim Motions: Picker files');
+        expect(descriptions).toContain('Vim Motions: Hints: activate');
+    });
+
+    it('labels companion motions and text objects readably', async () => {
+        await waitForMirror('Welcome.md');
+        const descriptions = (await request('nvim_exec_lua', [
+            `local out = {}
+for _, map in ipairs(vim.api.nvim_buf_get_keymap(0, 'o')) do
+    if map.desc then out[#out + 1] = map.desc end
+end
+return out`,
+            [],
+        ])) as string[];
+        expect(descriptions).toContain('Vim Motions: Next heading');
+        expect(descriptions).toContain('Vim Motions: Inner code fence');
+        expect(descriptions).toContain('Vim Motions: Around callout');
+        for (const description of descriptions) {
+            expect(description).not.toContain('vim-motions-rpc-');
+        }
+    });
+
+    // Groups exist only so a which-key plugin renders a menu instead of a flat
+    // list. The leader must never gain a mapping of its own, or every leader
+    // sequence stops resolving.
+    it('registers leader groups without mapping the leader itself', async () => {
+        await waitForMirror('Welcome.md');
+        const groups = (await request('nvim_exec_lua', [
+            `local out = {}
+for _, map in ipairs(vim.api.nvim_get_keymap('n')) do
+    if map.desc and map.desc:sub(1, 1) == '+' then
+        out[#out + 1] = map.lhs
+    end
+end
+return out`,
+            [],
+        ])) as string[];
+        const leader = (await browser.executeObsidian(({ app }) => {
+            const target = (
+                app as unknown as {
+                    plugins: {
+                        plugins: Record<
+                            string,
+                            { leaderRegistry?: { getLeaderKey(): string } }
+                        >;
+                    };
+                }
+            ).plugins.plugins['vim-motions'];
+            return target?.leaderRegistry?.getLeaderKey() ?? '\\';
+        })) as string;
+        expect(groups.length).toBeGreaterThan(0);
+        expect(groups).not.toContain(leader);
+        for (const group of groups) {
+            expect(group.startsWith(leader)).toBe(true);
+            expect(group.length).toBeGreaterThan(leader.length);
+        }
     });
 
     it('opens Harpoon slot two at its stored file and cursor', async () => {

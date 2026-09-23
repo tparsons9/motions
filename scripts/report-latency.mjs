@@ -5,11 +5,12 @@ const exitCode = Number(exitCodeRaw ?? '0');
 
 let text = '';
 try {
-    text = readFileSync(logPath, 'utf8');
+    text = logPath ? readFileSync(logPath, 'utf8') : '';
 } catch {
     text = '';
 }
 
+/** @param {string} marker */
 function parseMarker(marker) {
     return text
         .split('\n')
@@ -28,6 +29,7 @@ function parseMarker(marker) {
         .filter((entry) => entry !== null);
 }
 
+/** @param {unknown} value */
 function ms(value) {
     return typeof value === 'number' ? value.toFixed(1) : '—';
 }

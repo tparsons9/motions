@@ -39,6 +39,37 @@ async function getRpcState(): Promise<RpcState> {
     })) as RpcState;
 }
 
+// What the animated cursor's shape and input-method switching read while
+// Neovim owns keys. Both used to read the bundled fork's own state, which
+// stays in normal mode throughout an RPC session.
+async function getExternalVimMode(): Promise<string | null> {
+    return (await browser.executeObsidian(({ app }) => {
+        const plugin = (
+            app as unknown as {
+                plugins: {
+                    plugins: Record<
+                        string,
+                        { getExternalVimModeState(): string | null }
+                    >;
+                };
+            }
+        ).plugins.plugins['vim-motions'];
+        if (!plugin) throw new Error('Vim Motions is not loaded');
+        return plugin.getExternalVimModeState();
+    })) as string | null;
+}
+
+async function waitForExternalMode(expected: string | null): Promise<void> {
+    await browser.waitUntil(
+        async () => (await getExternalVimMode()) === expected,
+        {
+            timeout: 5000,
+            interval: 100,
+            timeoutMsg: `external vim mode to become ${String(expected)}`,
+        },
+    );
+}
+
 async function setRpcSettings(
     enabled: boolean,
     binaryPath = '',
@@ -321,6 +352,32 @@ describe('Neovim RPC connection lifecycle', function () {
             text: 'V-LINE',
             dataAttr: 'v-line',
         });
+    });
+
+    it('reports Neovim mode to the per-mode host features', async () => {
+        await setRpcSettings(true);
+        await waitForConnected();
+        expect(await getExternalVimMode()).toBe('normal');
+        await dispatchKeys('i');
+        await waitForExternalMode('insert');
+        await dispatchKeys('<Esc>');
+        await waitForExternalMode('normal');
+        await dispatchKeys('v');
+        await waitForExternalMode('visual');
+        await dispatchKeys('<Esc>');
+        await dispatchKeys('V');
+        await waitForExternalMode('visual line');
+        await dispatchKeys('<Esc>');
+    });
+
+    it('returns per-mode host features to the fork on disconnect', async () => {
+        await setRpcSettings(true);
+        await waitForConnected();
+        await dispatchKeys('i');
+        await waitForExternalMode('insert');
+        await setRpcSettings(false);
+        await waitForExternalMode(null);
+        expect(await getExternalVimMode()).toBeNull();
     });
 
     it('clears Neovim mode ownership when RPC disconnects', async () => {

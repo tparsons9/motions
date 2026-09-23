@@ -2,6 +2,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 type Handler = (e: unknown) => void;
 
+// fireKeydown() spreads caller-supplied extras onto the event, so the shape is
+// open by design; a closed `{ type: string }` failed the excess-property check
+// on the `key` every keydown test depends on.
+interface MockEvent {
+    type: string;
+    [prop: string]: unknown;
+}
+
 let origActiveDocument: unknown;
 
 interface MockDoc {
@@ -11,7 +19,7 @@ interface MockDoc {
         handler: Handler,
         capture?: boolean,
     ): void;
-    dispatchEvent(event: { type: string }): void;
+    dispatchEvent(event: MockEvent): void;
 }
 
 function createMockDocument(): MockDoc {

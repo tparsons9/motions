@@ -245,6 +245,14 @@ async function bridgedSnapshot(): Promise<NeovimSnapshot> {
     };
 }
 
+/**
+ * Waits for the setting to read back rather than sleeping on it. A fixed 300 ms
+ * pause here is what made `keeps source-rendered frontmatter fully navigable`
+ * fail on macOS: the walk ran with `propertiesInDocument` still `visible`, so
+ * the fork kept its frontmatter interception and the cursor stalled on the
+ * metadata container. The test then reported a navigation failure for what was
+ * really a setup that had not landed yet.
+ */
 async function setPropertiesMode(mode: 'visible' | 'source'): Promise<void> {
     await browser.executeObsidian(({ app }, value: string) => {
         (
@@ -253,7 +261,22 @@ async function setPropertiesMode(mode: 'visible' | 'source'): Promise<void> {
             }
         ).setConfig('propertiesInDocument', value);
     }, mode);
-    await browser.pause(300);
+    await browser.waitUntil(
+        async () =>
+            (await browser.executeObsidian(
+                ({ app }) =>
+                    (
+                        app.vault as unknown as {
+                            getConfig(key: string): unknown;
+                        }
+                    ).getConfig('propertiesInDocument') as string,
+            )) === mode,
+        {
+            timeout: 5000,
+            interval: 50,
+            timeoutMsg: `propertiesInDocument never became "${mode}"`,
+        },
+    );
 }
 
 async function reconnectInPropertiesMode(

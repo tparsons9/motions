@@ -1,6 +1,6 @@
 import { browser, expect } from '@wdio/globals';
 import { obsidianPage } from 'wdio-obsidian-service';
-import { setupEditor, PAUSE } from '../helpers';
+import { setupEditor, getEditorValue, PAUSE } from '../helpers';
 
 async function loadLuaConfig(content: string): Promise<void> {
     await browser.reloadObsidian({ vault: 'test-vault' });
@@ -52,20 +52,43 @@ async function loadLuaConfig(content: string): Promise<void> {
     );
 }
 
-async function getLuaConfigError(): Promise<string | null> {
-    return browser.executeObsidian(({ app }) => {
+// Reads back the vim.g flags the configuration above computed. A flag the
+// config never reached is absent from the JSON rather than null, because
+// vim.json.encode drops nil values -- so a config that errors part-way through
+// fails the assertion for every later flag instead of reporting nothing.
+//
+// This replaces a `plugin.luaLoadResult.error` read. No such member exists on
+// the plugin, so that helper returned null unconditionally and all 12
+// assertions in this file passed against `this is not valid lua @@@ ###`.
+async function readLuaFlags(
+    ...names: string[]
+): Promise<Record<string, unknown>> {
+    await setupEditor('', { line: 0, ch: 0 });
+    const collect = names
+        .map((name) => `out[${JSON.stringify(name)}] = vim.g.${name}`)
+        .join('\n');
+    await browser.executeObsidian(({ app }, luaCode: string) => {
         const plugin = (
             app as unknown as {
                 plugins: {
                     plugins: Record<
                         string,
-                        { luaLoadResult?: { error?: string } }
+                        { executeLuaForTest?: (code: string) => void }
                     >;
                 };
             }
         ).plugins.plugins['vim-motions'];
-        return plugin?.luaLoadResult?.error ?? null;
-    });
+        if (!plugin?.executeLuaForTest)
+            throw new Error('readLuaFlags: executeLuaForTest is unavailable');
+        plugin.executeLuaForTest(luaCode);
+    }, `local out = {}\n${collect}\nvim.api.nvim_buf_set_lines(0, 0, -1, false, { vim.json.encode(out) })`);
+    await browser.pause(PAUSE.EDITOR_SETTLE);
+    const raw = (await getEditorValue()).trim();
+    try {
+        return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+        throw new Error(`readLuaFlags: buffer was not JSON:\n${raw}`);
+    }
 }
 
 describe('vim.treesitter e2e', () => {
@@ -79,8 +102,16 @@ describe('vim.treesitter e2e', () => {
             vim.g.__ts_lang_ok = (type(vim.treesitter.language) == "table")
             vim.g.__ts_query_ok = (type(vim.treesitter.query) == "table")
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags(
+            '__ts_ok',
+            '__ts_lang_ok',
+            '__ts_query_ok',
+        );
+        expect(flags).toEqual({
+            __ts_ok: true,
+            __ts_lang_ok: true,
+            __ts_query_ok: true,
+        });
     });
 
     it('vim.treesitter.language.get_lang works', async () => {
@@ -88,16 +119,17 @@ describe('vim.treesitter e2e', () => {
             local lang = vim.treesitter.language.get_lang("markdown")
             vim.g.__md_lang = lang
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__md_lang');
+        expect(flags.__md_lang).toBe('markdown');
     });
 
     it('vim.treesitter.language.register does not error', async () => {
         await loadLuaConfig(`
             vim.treesitter.language.register("markdown", "md")
+            vim.g.__alias_lang = vim.treesitter.language.get_lang("md")
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__alias_lang');
+        expect(flags.__alias_lang).toBe('markdown');
     });
 
     it('get_string_parser parses markdown without error', async () => {
@@ -106,8 +138,8 @@ describe('vim.treesitter e2e', () => {
             local root = tree:root()
             vim.g.__root_type = root:type()
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__root_type');
+        expect(flags.__root_type).toBe('document');
     });
 
     it('TSNode methods work without errors', async () => {
@@ -125,8 +157,8 @@ describe('vim.treesitter e2e', () => {
             local parent_nil = (root:parent() == nil)
             vim.g.__ts_node_ok = (t ~= nil and cc > 0 and named and sexpr ~= nil and bl > 0 and child ~= nil and parent_nil)
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__ts_node_ok');
+        expect(flags.__ts_node_ok).toBe(true);
     });
 
     it('query.parse and iter_captures work', async () => {
@@ -140,8 +172,8 @@ describe('vim.treesitter e2e', () => {
             end
             vim.g.__capture_count = count
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__capture_count');
+        expect(flags.__capture_count).toBe(2);
     });
 
     it('query.parse and iter_matches work', async () => {
@@ -155,8 +187,8 @@ describe('vim.treesitter e2e', () => {
             end
             vim.g.__match_count = count
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__match_count');
+        expect(flags.__match_count).toBe(1);
     });
 
     it('get_parser returns LanguageTree for active document', async () => {
@@ -168,8 +200,11 @@ describe('vim.treesitter e2e', () => {
                 vim.g.__doc_root_type = root:type()
             end
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__parser_lang', '__doc_root_type');
+        expect(flags).toEqual({
+            __parser_lang: 'markdown',
+            __doc_root_type: 'document',
+        });
     });
 
     it('LanguageTree:for_each_tree iterates trees', async () => {
@@ -181,8 +216,8 @@ describe('vim.treesitter e2e', () => {
             end)
             vim.g.__tree_count = count
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__tree_count');
+        expect(flags.__tree_count).toBe(1);
     });
 
     it('vim.treesitter.is_ancestor works correctly', async () => {
@@ -193,8 +228,8 @@ describe('vim.treesitter e2e', () => {
             vim.g.__is_ancestor = vim.treesitter.is_ancestor(root, child)
             vim.g.__not_ancestor = vim.treesitter.is_ancestor(child, root)
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__is_ancestor', '__not_ancestor');
+        expect(flags).toEqual({ __is_ancestor: true, __not_ancestor: false });
     });
 
     it('vim.treesitter.language.inspect returns grammar info', async () => {
@@ -203,8 +238,8 @@ describe('vim.treesitter e2e', () => {
             vim.g.__has_abi = (info.abi_version ~= nil)
             vim.g.__is_wasm = info._wasm
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__has_abi', '__is_wasm');
+        expect(flags).toEqual({ __has_abi: true, __is_wasm: true });
     });
 
     it('stub functions do not error', async () => {
@@ -216,7 +251,7 @@ describe('vim.treesitter e2e', () => {
             local ok5 = pcall(vim.treesitter.inspect_tree)
             vim.g.__stubs_ok = (ok1 and ok2 and ok3 and ok4 and ok5)
         `);
-        const error = await getLuaConfigError();
-        expect(error).toBeNull();
+        const flags = await readLuaFlags('__stubs_ok');
+        expect(flags.__stubs_ok).toBe(true);
     });
 });

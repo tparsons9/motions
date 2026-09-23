@@ -27,13 +27,7 @@ function dismissParentPopover(app: App): boolean {
 }
 
 export function installEscapeGuard(app: App): void {
-    (
-        Vim as unknown as {
-            setIdleEscapeCallback: (
-                fn: ((cm: CmAdapter) => void) | null,
-            ) => void;
-        }
-    ).setIdleEscapeCallback((cm: CmAdapter) => {
+    Vim.setIdleEscapeCallback((cm: CmAdapter) => {
         if (isHintModeActive() || isEasyMotionActive() || isFlashActive())
             return;
 

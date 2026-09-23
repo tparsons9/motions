@@ -34,7 +34,9 @@ test('native TypeError is extractable via pcall with atnativeerror handler', () 
     installNativeErrorHandler(L);
 
     lua.lua_pushjsfunction(L, function () {
-        const obj = null;
+        // Deliberate: the null deref is what produces the native TypeError
+        // these tests extract through the atnativeerror handler.
+        const obj = null as unknown as { foo: unknown };
         obj.foo;
         return 0;
     });
@@ -60,7 +62,9 @@ test('without atnativeerror handler, native error produces lost message', () => 
     const L = newState();
 
     lua.lua_pushjsfunction(L, function () {
-        const obj = null;
+        // Deliberate: the null deref is what produces the native TypeError
+        // these tests extract through the atnativeerror handler.
+        const obj = null as unknown as { foo: unknown };
         obj.foo;
         return 0;
     });
@@ -180,7 +184,8 @@ test('handler covers coroutine threads (global_State shared)', () => {
     installNativeErrorHandler(L);
 
     lua.lua_pushjsfunction(L, function () {
-        const obj = null;
+        // Deliberate null deref, as above.
+        const obj = null as unknown as { bar: unknown };
         obj.bar;
         return 0;
     });

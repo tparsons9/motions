@@ -7,6 +7,7 @@ import {
     sendVimEscape,
     vimKeys,
     getCursorPos,
+    getEditorValue,
     hasWhichKeyOverlay,
     waitForWhichKey,
     getWhichKeyKeys,
@@ -164,6 +165,48 @@ describe('Space as leader key', function () {
         await browser.pause(600);
         const visible = await hasWhichKeyOverlay();
         expect(visible).toBe(false);
+        await sendVimEscape();
+    });
+
+    it('r<leader> replaces the character without showing which-key (issue #186)', async function () {
+        await loadLuaConfig(
+            [
+                'vim.g.mapleader = " "',
+                'vim.opt.whichkey = "leader"',
+                'vim.obsidian.leader.add({',
+                '  { "f", "switcher:open", desc = "Find" },',
+                '})',
+            ].join('\n'),
+        );
+        await setupEditor('hello world', { line: 0, ch: 0 });
+        await browser.keys(['r']);
+        await browser.pause(PAUSE.KEY_GAP);
+        await browser.keys([' ']);
+        await browser.pause(600);
+        expect(await getEditorValue()).toBe(' ello world');
+        expect(await hasWhichKeyOverlay()).toBe(false);
+        await sendVimEscape();
+    });
+
+    it('a standalone leader still shows which-key after r completes (issue #186)', async function () {
+        await loadLuaConfig(
+            [
+                'vim.g.mapleader = " "',
+                'vim.opt.whichkey = "leader"',
+                'vim.obsidian.leader.add({',
+                '  { "f", "switcher:open", desc = "Find" },',
+                '})',
+            ].join('\n'),
+        );
+        await setupEditor('hello world', { line: 0, ch: 0 });
+        await browser.keys(['r']);
+        await browser.pause(PAUSE.KEY_GAP);
+        await browser.keys(['x']);
+        await browser.pause(PAUSE.EDITOR_SETTLE);
+        expect(await getEditorValue()).toBe('xello world');
+        await browser.keys([' ']);
+        await waitForWhichKey();
+        expect(await hasWhichKeyOverlay()).toBe(true);
         await sendVimEscape();
     });
 

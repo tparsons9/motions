@@ -35,9 +35,9 @@ test('userdata with __gc: finalizer fires when queue is drained', () => {
     const g = L.l_G;
 
     const gcFunc = new lobject.TValue(constant_types.LUA_TLCF, function (
-        gcState,
+        gcState: lua_State,
     ) {
-        lua.lua_pushboolean(gcState, 1);
+        lua.lua_pushboolean(gcState, true);
         lua.lua_setglobal(gcState, to_luastring('gc_fired'));
         return 0;
     });
@@ -88,9 +88,9 @@ test('__gc that errors: error silently swallowed, other finalizers still run', (
         },
     );
     const okGcFunc = new lobject.TValue(constant_types.LUA_TLCF, function (
-        gcState,
+        gcState: lua_State,
     ) {
-        lua.lua_pushboolean(gcState, 1);
+        lua.lua_pushboolean(gcState, true);
         lua.lua_setglobal(gcState, to_luastring('second_gc_fired'));
         return 0;
     });
@@ -156,12 +156,12 @@ test('recursive drain blocked via reentrance guard', () => {
     const g = L.l_G;
     const recursiveGcFunc = new lobject.TValue(
         constant_types.LUA_TLCF,
-        function (gcState) {
+        function (gcState: lua_State) {
             lauxlib.luaL_dostring(
                 gcState,
                 to_luastring('collectgarbage("collect")'),
             );
-            lua.lua_pushboolean(gcState, 1);
+            lua.lua_pushboolean(gcState, true);
             lua.lua_setglobal(gcState, to_luastring('recursive_gc_done'));
             return 0;
         },

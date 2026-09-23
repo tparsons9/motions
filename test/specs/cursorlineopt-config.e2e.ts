@@ -49,6 +49,7 @@ async function setOpt(value: string): Promise<void> {
                 };
             }
         ).plugins.plugins['vim-motions'];
+        if (!plugin) throw new Error('setCursorlineopt: plugin not found');
         plugin.settings.cursorlineopt = v;
         await plugin.saveSettings();
     }, value);

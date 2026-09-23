@@ -206,10 +206,41 @@ local function link_motion(forward)
     end
 end
 
+-- Shown by :map and by any which-key plugin, so these read as labels rather
+-- than as the internal ids they used to carry.
+local structural_labels = {
+    ["]h"] = "Next heading", ["[h"] = "Previous heading",
+    ["]l"] = "Next list item", ["[l"] = "Previous list item",
+    ["]n"] = "Next link", ["[n"] = "Previous link",
+}
+for level = 1, 6 do
+    structural_labels["]" .. level] = "Next heading level " .. level
+    structural_labels["[" .. level] = "Previous heading level " .. level
+end
+
+local textobject_labels = {
+    ["*"] = "emphasis", ["_"] = "underscore emphasis",
+    ["`"] = "inline code", ["$"] = "math",
+    ["~"] = "strikethrough", ["l"] = "link",
+    ["t"] = "HTML tag", ["C"] = "code fence",
+    ["B"] = "blockquote", ["o"] = "callout",
+    ["|"] = "table cell", ["r"] = "table row",
+}
+
+local function structural_desc(lhs)
+    return "Vim Motions: " .. (structural_labels[lhs] or lhs)
+end
+
+local function textobject_desc(lhs)
+    local kind = lhs:sub(1, 1) == "i" and "Inner" or "Around"
+    local object = textobject_labels[lhs:sub(2)] or lhs:sub(2)
+    return "Vim Motions: " .. kind .. " " .. object
+end
+
 local function map_motion(lhs, callback, modes, nowait)
     vim.keymap.set(modes or { "n", "x", "o" }, lhs, callback, {
         buffer = mirror_buf,
-        desc = "vim-motions-rpc-structural:" .. lhs,
+        desc = structural_desc(lhs),
         nowait = nowait,
         silent = true,
     })
@@ -225,7 +256,7 @@ vim.keymap.set("o", "]h", function()
     return heading_operator_motion(true)
 end, {
     buffer = mirror_buf,
-    desc = "vim-motions-rpc-structural:]h",
+    desc = structural_desc("]h"),
     expr = true,
     nowait = true,
     silent = true,
@@ -234,7 +265,7 @@ vim.keymap.set("o", "[h", function()
     return heading_operator_motion(false)
 end, {
     buffer = mirror_buf,
-    desc = "vim-motions-rpc-structural:[h",
+    desc = structural_desc("[h"),
     expr = true,
     nowait = true,
     silent = true,
@@ -753,7 +784,7 @@ for lhs, range_for_object in pairs(textobjects) do
         select_textobject_range(range_for_object(), true)
     end, {
         buffer = mirror_buf,
-        desc = "vim-motions-rpc-textobject:" .. lhs,
+        desc = textobject_desc(lhs),
         nowait = true,
         silent = true,
     })
@@ -761,7 +792,7 @@ for lhs, range_for_object in pairs(textobjects) do
         select_textobject_range(range_for_object(), false)
     end, {
         buffer = mirror_buf,
-        desc = "vim-motions-rpc-textobject:" .. lhs,
+        desc = textobject_desc(lhs),
         nowait = true,
         silent = true,
     })
@@ -782,13 +813,20 @@ local fold_aliases = {
     foldless = "zr",
 }
 
+local function fold_desc(name)
+    if name:sub(1, 6) == "unfold" then
+        return "Vim Motions: Unfold " .. name:sub(7)
+    end
+    return "Vim Motions: Fold " .. name:sub(5)
+end
+
 for name, keys in pairs(fold_aliases) do
     local command = name:sub(1, 1):upper() .. name:sub(2)
     pcall(vim.api.nvim_del_user_command, command)
     vim.api.nvim_create_user_command(command, function(opts)
         local count = opts.count > 0 and tostring(opts.count) or ""
         vim.cmd("normal! " .. count .. keys)
-    end, { count = true, desc = "vim-motions-rpc-fold:" .. name })
+    end, { count = true, desc = fold_desc(name) })
     vim.cmd(string.format(
         "cnoreabbrev <expr> %s getcmdtype() ==# ':' && getcmdpos() == %d ? '%s' : '%s'",
         name,

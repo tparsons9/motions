@@ -8,13 +8,7 @@ describe('Vim Motions plugin', function () {
 
     it('should load the plugin', async function () {
         const pluginIds = await browser.executeObsidian(({ app }) => {
-            return Object.keys(
-                (
-                    app as Record<string, unknown> & {
-                        plugins: { plugins: Record<string, unknown> };
-                    }
-                ).plugins.plugins,
-            );
+            return Object.keys(app.plugins.plugins);
         });
         expect(pluginIds).toContain('vim-motions');
     });

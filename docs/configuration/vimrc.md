@@ -73,7 +73,7 @@ set easymotion
 set nopowerline
 set easymotionlabels=asdghklqwertyuiopzxcvbnmfj
 
-" Cursor shapes (bundled fork mode only)
+" Cursor shapes (bundled engine or Neovim backend; not built-in vim mode)
 set guicursor=n:block,i:bar,v:block,r:underline,o:underline
 
 " Mode prompts

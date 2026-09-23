@@ -113,7 +113,7 @@ describe('discoverHiddenEntries', () => {
 
         const result = await discoverHiddenEntries(app, '');
         expect(result).toHaveLength(1);
-        expect(result[0].name).toBe('.new-hidden.md');
+        expect(result.map((entry) => entry.name)).toEqual(['.new-hidden.md']);
     });
 
     it('excludes .obsidian config directory', async () => {

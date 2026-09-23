@@ -673,6 +673,16 @@ describe('Native table cell navigation', function () {
         const entryCell = await getHighlightedCell();
         expect(entryCell).not.toBeNull();
 
+        // Only the step that actually failed is waited for. Replacing the two
+        // pauses below with waits made this worse, deterministically:
+        // `hasCellEditor()` becomes true as soon as the element exists, which
+        // is sooner than 800 ms, so Escape arrived before the cell editor had
+        // finished initialising and the nav highlight never came back. The
+        // sleeps are covering initialisation that exposes no signal to wait on.
+        //
+        // The macOS failure was the last step -- `expect(afterJ).not.toBeNull()`
+        // after a fixed 300 ms -- where the highlight simply had not repainted.
+        // That one has a signal, so it waits.
         await browser.keys(['Enter']);
         await browser.pause(800);
         expect(await hasCellEditor()).toBe(true);
@@ -682,7 +692,14 @@ describe('Native table cell navigation', function () {
         expect(await hasTableNavHighlight()).toBe(true);
 
         await browser.keys(['j']);
-        await browser.pause(300);
+        await browser.waitUntil(
+            async () => (await getHighlightedCell()) !== null,
+            {
+                timeout: 10000,
+                interval: 50,
+                timeoutMsg: 'no highlighted cell after j',
+            },
+        );
 
         const afterJ = await getHighlightedCell();
         expect(afterJ).not.toBeNull();

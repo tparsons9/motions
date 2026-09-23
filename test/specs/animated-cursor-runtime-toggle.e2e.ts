@@ -47,7 +47,7 @@ async function cursorIsPainted(): Promise<boolean> {
         if (!ctx || canvas.width === 0) return false;
         const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         for (let i = 3; i < d.length; i += 4) {
-            if (d[i] > 8) return true;
+            if ((d[i] ?? 0) > 8) return true;
         }
         return false;
     })) as boolean;

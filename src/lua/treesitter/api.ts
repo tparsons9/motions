@@ -2,12 +2,14 @@ import { lua, lauxlib, to_luastring, to_jsstring } from '../../lib/fengari';
 import type { lua_State } from '../../lib/fengari';
 import type { Tree } from 'web-tree-sitter';
 import { pushTSNode, extractNode } from './node';
-import { pushTSTree } from './tree';
+import { pushTSTree, setTreeOwner } from './tree';
 import { pushLanguageTree } from './language-tree-api';
 import { injectLanguageApi, setLanguageRuntime } from './language';
 import { injectQueryApi, setQueryRuntime } from './query-api';
 import { setJsApiModules } from '../../treesitter/js-api';
 import type { CoroutineRunner } from '../coroutine-runner';
+import { registerStateCleanup } from '../engine';
+import { runCleanups } from '../../util/cleanup';
 import {
     preloadQueryFiles,
     type QueryFileAdapter,
@@ -40,12 +42,6 @@ export async function initTreesitterRuntime(
     await _runtime.loadLanguage('html');
 }
 
-const parserCache = new Map<string, { tree: Tree; sourceText: string }>();
-const ltreeCache = new Map<
-    string,
-    import('../../treesitter/language-tree').LanguageTree
->();
-
 function readLuaString(L: lua_State, index: number): string | null {
     if (!lua.lua_isstring(L, index)) return null;
     const raw = lua.lua_tolstring(L, index);
@@ -63,6 +59,33 @@ export function injectTreesitterApi(
     runner: CoroutineRunner | undefined,
     getDocumentText: () => string | null,
 ): void {
+    // Per state, not per module. These held WASM trees, parsers and injection
+    // queries for the life of the page: `lua_close` left both maps populated,
+    // so a reloaded config inherited the previous state's trees and nothing
+    // was ever freed.
+    const parserCache = new Map<string, { tree: Tree; sourceText: string }>();
+    const ltreeCache = new Map<
+        string,
+        import('../../treesitter/language-tree').LanguageTree
+    >();
+    // Trees handed to Lua that no cache owns: `get_string_parser` and
+    // `TSTree:copy()`. Left untracked their only reclaim is a GC finalizer.
+    const ownedTrees = new Set<Tree>();
+    setTreeOwner((tree) => ownedTrees.add(tree));
+    registerStateCleanup(L, () => {
+        const disposers: (() => void)[] = [];
+        for (const { tree } of parserCache.values())
+            disposers.push(() => tree.delete());
+        for (const ltree of ltreeCache.values())
+            disposers.push(() => ltree.destroy());
+        for (const tree of ownedTrees) disposers.push(() => tree.delete());
+        parserCache.clear();
+        ltreeCache.clear();
+        ownedTrees.clear();
+        setTreeOwner(null);
+        runCleanups(disposers, 'treesitter parser cache');
+    });
+
     lua.lua_getglobal(L, to_luastring('vim'));
     const vimIndex = lua.lua_gettop(L);
 
@@ -157,6 +180,7 @@ export function injectTreesitterApi(
             );
         }
 
+        ownedTrees.add(tree);
         pushTSTree(state, tree, str);
         return 1;
     });

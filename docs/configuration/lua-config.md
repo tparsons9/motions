@@ -2140,6 +2140,31 @@ Useful for comparing keys returned by `vim.fn.getcharstr()` against special key 
 
 ## vim.treesitter
 
+> [!warning] Do not hold a node across a re-parse
+> A `TSNode` returned by `get_node()`, `iter_captures()`, `tree:root()` or any
+> node method is backed by memory inside the WebAssembly parser. Calls such as
+> `get_node()` and `get_parser()` re-parse whenever the document has changed,
+> and a re-parse can move that memory, which leaves an earlier node pointing at
+> a buffer that no longer exists. Reading it can crash Obsidian's window rather
+> than raise a Lua error.
+>
+> Read what you need from a node immediately — `:type()`, `:range()`, text —
+> and store those values. Do not keep a node in a table, an upvalue, or across
+> a `vim.schedule()` or autocommand boundary.
+>
+> ```lua
+> -- risky: node is used after another call re-parses
+> local node = vim.treesitter.get_node()
+> vim.schedule(function() print(node:type()) end)
+>
+> -- safe: the value is extracted before anything else can parse
+> local node_type = vim.treesitter.get_node():type()
+> vim.schedule(function() print(node_type) end)
+> ```
+>
+> This applies whether or not the Neovim backend is enabled; the Lua parser
+> cache is independent of it.
+
 The Lua Treesitter API uses bundled `web-tree-sitter` WASM grammars for `markdown`, `markdown_inline`, and `html`, alongside Obsidian's native Lezer parser. Lua configuration loading awaits runtime initialization and query-file preloading so synchronous `query.get()` calls in `init.lua` can use the snapshot immediately. This does not replace native highlighting or implement every Neovim Treesitter UI API; see [[known-limitations#Treesitter integration (`vim.treesitter`)]].
 
 ### Named queries

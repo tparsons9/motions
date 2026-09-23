@@ -11,6 +11,7 @@ import { CoroutineRunner } from '../../../src/lua/coroutine-runner';
 
 function newState(): lua_State {
     const L = lauxlib.luaL_newstate();
+    if (!L) throw new Error('luaL_newstate returned null');
     lualib.luaL_openlibs(L);
     return L;
 }

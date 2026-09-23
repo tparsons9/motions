@@ -41,7 +41,7 @@ Duration is configurable via the **Yank highlight duration** slider (50–3000ms
 > Override the highlight color with a CSS snippet: set `--vim-motions-yank-bg` on `.theme-dark` or `.theme-light` (e.g., `--vim-motions-yank-bg: rgba(255, 200, 0, 0.4);`).
 
 > [!info]
-> Yank highlight requires bundled fork mode (built-in vim mode OFF). The built-in vim does not emit the `vim-yank` event used for detection. Works with remapped yank keys — detection is based on the actual yank operation, not keypress sniffing.
+> Yank highlight requires the bundled fork engine or the Neovim backend (built-in vim mode OFF). The built-in vim does not emit the `vim-yank` event used for detection; under the Neovim backend a `TextYankPost` notification drives the same renderer, so both `solid` and `fade` work. Works with remapped yank keys — detection is based on the actual yank operation, not keypress sniffing.
 
 ## Yank-ring paste cycling
 

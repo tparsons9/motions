@@ -1,0 +1,83 @@
+id: treesitter-handle-leak
+language: typescript
+severity: error
+message: A web-tree-sitter TreeCursor is allocated but never deleted in this scope.
+note: |
+    `web-tree-sitter` registers every handle with a `FinalizationRegistry`, and
+    `delete()`'s first act is to `unregister()` it. Dropping a handle therefore
+    does not leak it -- it defers the free to a GC-determined moment.
+
+    For a `TreeCursor` that is a use-after-free, not a late free. The cursor
+    registers holding its **tree's** pointer, not its own:
+
+        var finalizer3 = newFinalizer((address) => {
+            C._ts_tree_cursor_delete_wasm(address);   // address === this.tree[0]
+        });
+        constructor(internal, tree) {
+            finalizer3?.register(this, this.tree[0], this);
+        }
+
+    So a dropped cursor whose tree was since freed -- which the CM6 bridge does
+    on every re-parse -- fires `_ts_tree_cursor_delete_wasm` against a dangling
+    pointer from a GC callback, corrupting the WASM allocator.
+
+    This shipped. `getAllNodesOfType()` in src/treesitter/js-api.ts called
+    `root.walk()` and returned without deleting the cursor, and it segfaulted
+    Obsidian's renderer. Isolating the two halves of the fix measured the leak
+    at 5 of 8 container runs with no nodes retained, against 0 of 6 for the
+    retaining walk with the cursor freed -- the leak is the cause, and node
+    retention was never it. Faults carried the `base + 0x7fffffff` fingerprint
+    at JIT offset `...b57`.
+
+    Free it on every path:
+
+        const cursor = root.walk();
+        try {
+            ...
+        } finally {
+            cursor.delete();
+        }
+
+    Precedent: `getNodeSummariesOfType` in src/treesitter/js-api.ts and
+    `detectContext` in src/snippets/context.ts.
+
+    Coverage was measured against a probe of every form, not assumed. It fires
+    on `const`/`let`/`var` bindings never freed in scope, on a discarded
+    `node.walk();`, and on a reassignment in a scope with no `delete()` at all.
+    It is flow-insensitive, so it does **not** fire on `cursor = b.walk()` in a
+    scope that frees some other cursor -- a known false negative, accepted
+    because the alternative flagged correct code.
+
+    Scope: this covers `TreeCursor` only. `Tree` and `Query` handles are
+    deliberately not matched, because `parse()` and `new QueryWrapper()`
+    legitimately transfer ownership to a cache or a caller in
+    `bridge.ts`/`language-tree.ts`/`named-queries.ts`, and a rule that flagged
+    them would be noise. Their owners are asserted by
+    `test/unit/lua/treesitter-queries.test.ts` instead.
+files:
+    - 'src/**/*.ts'
+ignores:
+    - 'src/lib/fengari/**'
+rule:
+    any:
+        # Bound to a name whose scope never frees it.
+        - all:
+              - any:
+                    - pattern: const $CURSOR = $NODE.walk()
+                    - pattern: let $CURSOR = $NODE.walk()
+                    - pattern: var $CURSOR = $NODE.walk()
+                    - pattern: $CURSOR = $NODE.walk()
+              - not:
+                    inside:
+                        stopBy: end
+                        kind: statement_block
+                        has:
+                            stopBy: end
+                            pattern: $CURSOR.delete()
+        # Allocated and discarded: nothing can ever free it. The `has` is
+        # deliberately direct-child only -- with `stopBy: end` it also matches
+        # `cursor = node.walk();`, flagging a correctly freed reassignment.
+        - all:
+              - kind: expression_statement
+              - has:
+                    pattern: $NODE.walk()

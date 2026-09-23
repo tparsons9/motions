@@ -24,6 +24,7 @@ import {
     isReducedMotion,
 } from './config';
 import { getCmAdapterFromEditorView } from '../vim-api';
+import { resolveVimModeWithExternal } from '../external-mode';
 import {
     setCursorSuppressedForView,
     clearCursorSuppressedForView,
@@ -506,6 +507,10 @@ class CursorController implements Tickable {
     }
 
     private resolveVimMode(): string | undefined {
+        return resolveVimModeWithExternal(this.resolveForkVimMode());
+    }
+
+    private resolveForkVimMode(): string | undefined {
         try {
             const adapter = getCmAdapterFromEditorView(this.view);
             if (!adapter) return undefined;

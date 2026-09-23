@@ -20,6 +20,10 @@ on:
                 description: 'Parallel jobs, each contributing one cold start'
                 required: true
                 default: '1'
+            variant:
+                description: 'RPC_CYCLE_VARIANT for rpc-connect-cycle (bare, workspace, workspace+source)'
+                required: false
+                default: 'bare'
             os:
                 description: 'Runner'
                 required: true
@@ -29,6 +33,16 @@ on:
                     - macos-latest
                     - windows-latest
                     - ubuntu-latest
+
+# Neovim writes stdpath('log') only for some levels and the child does not
+# resolve the runner's HOME the way a shell would, so a crash left nothing
+# readable. Obsidian inherits this and spawns the child, so it propagates.
+env:
+    NVIM_LOG_FILE: /tmp/nvim-debug.log
+    # Selects how much of the real hooks' surroundings rpc-connect-cycle adds
+    # back, so the bisect runs where the failure rate is high rather than
+    # locally, where every variant settles.
+    RPC_CYCLE_VARIANT: ${{ inputs.variant }}
 
 jobs:
     # Only the first iteration of a job is a cold start, and a cold start is
@@ -145,7 +159,7 @@ jobs:
                     # The per-test traces are the point of the run, so keep them
                     # even when the iteration passed.
                     printf '%s\n' "$out" | sed 's/\x1b\[[0-9;]*m//g' \
-                      | grep -aoE '(FOLDTRACE|FOLDENV|CURSORENV|CURSORDIAG|UIENV|RPCTASKS) \{.*\}' \
+                      | grep -aoE '(FOLDTRACE|FOLDENV|CURSORENV|CURSORDIAG|UIENV|RPCTASKS|RPCCYCLE) \{.*\}' \
                       | sed "s/^/iter $i /" >> traces.txt || true
                   done
 
@@ -157,6 +171,14 @@ jobs:
                     echo "| pass | $pass |"
                     echo "| fail | $fail |"
                     echo
+                    if [ -s /tmp/nvim-debug.log ]; then
+                      echo '<details><summary>Neovim log tail</summary>'
+                      echo
+                      echo '```'
+                      tail -40 /tmp/nvim-debug.log
+                      echo '```'
+                      echo '</details>'
+                    fi
                     if [ -s failing-tests.txt ]; then
                       echo '<details><summary>Failing tests</summary>'
                       echo

@@ -48,10 +48,11 @@ describe('Mode indicators', function () {
                         .cm as Record<string, unknown>
                 )?.cm;
                 if (Vim?.Vim && cm)
-                    (Vim.Vim as Record<string, Function>).handleKey(
-                        cm,
-                        '<C-v>',
-                    );
+                    (
+                        Vim.Vim as {
+                            handleKey: (cm: unknown, key: string) => boolean;
+                        }
+                    ).handleKey(cm, '<C-v>');
             });
             await browser.pause(PAUSE.MODE_SWITCH);
             const status = await getStatusBarMode();
@@ -173,10 +174,11 @@ describe('Mode indicators', function () {
                         .cm as Record<string, unknown>
                 )?.cm;
                 if (Vim?.Vim && cm)
-                    (Vim.Vim as Record<string, Function>).handleKey(
-                        cm,
-                        '<C-g>',
-                    );
+                    (
+                        Vim.Vim as {
+                            handleKey: (cm: unknown, key: string) => boolean;
+                        }
+                    ).handleKey(cm, '<C-g>');
             });
             await browser.pause(PAUSE.MODE_SWITCH);
             status = await getStatusBarMode();
@@ -229,10 +231,11 @@ describe('Mode indicators', function () {
                         .cm as Record<string, unknown>
                 )?.cm;
                 if (Vim?.Vim && cm)
-                    (Vim.Vim as Record<string, Function>).handleKey(
-                        cm,
-                        '<C-o>',
-                    );
+                    (
+                        Vim.Vim as {
+                            handleKey: (cm: unknown, key: string) => boolean;
+                        }
+                    ).handleKey(cm, '<C-o>');
             });
             await browser.pause(PAUSE.MODE_SWITCH);
             const status = await getStatusBarMode();
@@ -257,11 +260,16 @@ describe('Mode indicators', function () {
                         .cm as Record<string, unknown>
                 )?.cm;
                 if (Vim?.Vim && cm) {
-                    (Vim.Vim as Record<string, Function>).handleKey(
-                        cm,
-                        '<C-o>',
-                    );
-                    (Vim.Vim as Record<string, Function>).handleKey(cm, 'l');
+                    (
+                        Vim.Vim as {
+                            handleKey: (cm: unknown, key: string) => boolean;
+                        }
+                    ).handleKey(cm, '<C-o>');
+                    (
+                        Vim.Vim as {
+                            handleKey: (cm: unknown, key: string) => boolean;
+                        }
+                    ).handleKey(cm, 'l');
                 }
             });
             await browser.pause(PAUSE.MODE_SWITCH);

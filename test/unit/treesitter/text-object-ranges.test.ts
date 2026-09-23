@@ -86,7 +86,7 @@ describe('tree-backed text object ranges', () => {
         const range = motion(
             cm,
             head,
-            { textObjectInner: inner },
+            { repeat: 1, textObjectInner: inner },
             {} as VimState,
             undefined,
         );

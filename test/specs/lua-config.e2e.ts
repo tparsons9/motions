@@ -219,7 +219,12 @@ describe('Lua config support', function () {
                             plugins: {
                                 plugins: Record<
                                     string,
-                                    { settings?: { configMode?: string } }
+                                    {
+                                        settings?: {
+                                            configMode?: string;
+                                            scrolloffLines?: number;
+                                        };
+                                    }
                                 >;
                             };
                         }

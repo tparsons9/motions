@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { browser, expect } from '@wdio/globals';
 import { resolve } from 'node:path';
 import {
@@ -42,6 +43,45 @@ interface ParityCase {
 const TEST_CONFIG_PATH = resolve('test/fixtures/nvim/init.lua');
 const spawnedPids = new Set<number>();
 
+function nvimExitLogSize(): number {
+    try {
+        return statSync(NVIM_EXIT_LOG).size;
+    } catch {
+        return 0;
+    }
+}
+
+let nvimExitOffset = 0;
+
+function nvimLogPath(): string | undefined {
+    for (const candidate of [
+        process.env.NVIM_LOG_FILE,
+        `${process.env.HOME ?? ''}/.local/state/nvim/log`,
+        `${process.env.HOME ?? ''}/.cache/nvim/log`,
+    ]) {
+        if (!candidate) continue;
+        try {
+            statSync(candidate);
+            return candidate;
+        } catch {
+            /* try the next location */
+        }
+    }
+    return undefined;
+}
+
+function nvimLogSize(): number {
+    const path = nvimLogPath();
+    if (!path) return 0;
+    try {
+        return statSync(path).size;
+    } catch {
+        return 0;
+    }
+}
+
+let nvimLogOffset = 0;
+
 function pidIsAlive(pid: number): boolean {
     try {
         process.kill(pid, 0);
@@ -63,9 +103,25 @@ async function getRpcState(): Promise<RpcState> {
     });
 }
 
+// Resolved in Node: the callback below runs in the browser, where node:path
+// does not exist. Wiring this inline produced "resolvePath is not defined".
+// The wrapper records how Neovim exited, which no channel inside the session
+// survives to report.
+const NVIM_EXIT_LOG = '/tmp/nvim-exit.log';
+const NVIM_WRAPPER =
+    process.platform === 'win32'
+        ? ''
+        : resolvePath('test/fixtures/nvim-exit-wrapper.sh');
+
 async function setRpcEnabled(enabled: boolean, textwidth = 80): Promise<void> {
     await browser.executeObsidian(
-        async ({ app }, next: boolean, configPath: string, width: number) => {
+        async (
+            { app },
+            next: boolean,
+            configPath: string,
+            width: number,
+            binaryPath: string,
+        ) => {
             const plugin = (
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
@@ -75,7 +131,7 @@ async function setRpcEnabled(enabled: boolean, textwidth = 80): Promise<void> {
             Object.assign(plugin.settings, {
                 enableHardWrap: true,
                 enableNavigation: true,
-                neovimBinaryPath: '',
+                neovimBinaryPath: binaryPath,
                 neovimConfigPath: configPath,
                 neovimRpcEnabled: next,
                 textwidth: width,
@@ -98,6 +154,7 @@ async function setRpcEnabled(enabled: boolean, textwidth = 80): Promise<void> {
         enabled,
         TEST_CONFIG_PATH,
         textwidth,
+        NVIM_WRAPPER,
     );
 }
 
@@ -262,6 +319,12 @@ describe('Neovim RPC structural navigation and hard-wrap', function () {
         await useSourceProperties();
         await setRpcEnabled(false);
         await waitForRpc(false);
+        // NVIM_LOG_FILE is one path per runner, and this spec starts a fresh
+        // Neovim for every test, so the file accumulates all of them. Record
+        // where this test starts so afterEach reads only its own bytes rather
+        // than whatever an earlier test happened to write last.
+        nvimLogOffset = nvimLogSize();
+        nvimExitOffset = nvimExitLogSize();
         // ChromeDriver reports "Timed out receiving message from renderer:
         // 30.000" and the session dies before any test can report, so the
         // failing test name is never recorded. A thirty-second silence is a
@@ -318,6 +381,11 @@ describe('Neovim RPC structural navigation and hard-wrap', function () {
                 } catch (e) {
                     docLength = `threw: ${String(e)}`;
                 }
+                const mem = (
+                    performance as unknown as {
+                        memory?: { usedJSHeapSize: number };
+                    }
+                ).memory;
                 return {
                     count: all.length,
                     worst: all
@@ -326,6 +394,12 @@ describe('Neovim RPC structural navigation and hard-wrap', function () {
                         .slice(0, 3),
                     totalMs: all.reduce((sum, e) => sum + e.d, 0),
                     docLength,
+                    heapMiB: mem
+                        ? Math.round(mem.usedJSHeapSize / 1048576)
+                        : -1,
+                    domNodes: document.getElementsByTagName('*').length,
+                    cmEditors: document.querySelectorAll('.cm-editor').length,
+                    leaves: document.querySelectorAll('.workspace-leaf').length,
                 };
             })
             .catch(() => null);
@@ -335,6 +409,28 @@ describe('Neovim RPC structural navigation and hard-wrap', function () {
         // long task is ever reported, so getValue() is not slow for any
         // JavaScript reason; the remaining candidate is a native block, and
         // the Neovim child is the native thing these specs add.
+        // Why the child exits is the open question, and its own log is the
+        // cheapest place to look: a Lua error in the companion, a fatal signal
+        // or an orderly quit all read differently there. Only collected when a
+        // tracked pid is gone, so healthy runs stay quiet.
+        // Collected whenever the test did not pass, not only when a tracked
+        // pid is gone: a local reproduction reported an empty pid set at the
+        // failing boundary, so keying the capture on a dead pid missed the
+        // case it was written for.
+        let nvimLog = '';
+        const anyDead = [...spawnedPids].some((pid) => !pidIsAlive(pid));
+        if (anyDead || this.currentTest?.state !== 'passed') {
+            const path = nvimLogPath();
+            if (path) {
+                try {
+                    nvimLog = readFileSync(path, 'utf8')
+                        .slice(nvimLogOffset)
+                        .slice(-600);
+                } catch {
+                    /* absent when Neovim logged nothing */
+                }
+            }
+        }
         const nvim = [...spawnedPids].map((pid) => {
             let state = 'unknown';
             try {
@@ -352,6 +448,20 @@ describe('Neovim RPC structural navigation and hard-wrap', function () {
                     state: this.currentTest?.state,
                     tasks,
                     nvim,
+                    nvimLog,
+                    // Healthy runs record rc=0. A signalled child reads as
+                    // 128+signal, so a crash and an orderly quit are
+                    // distinguishable from this one number.
+                    nvimExit: (() => {
+                        try {
+                            return readFileSync(NVIM_EXIT_LOG, 'utf8')
+                                .slice(nvimExitOffset)
+                                .trim()
+                                .slice(-200);
+                        } catch {
+                            return '';
+                        }
+                    })(),
                 }),
         );
         await setRpcEnabled(false);

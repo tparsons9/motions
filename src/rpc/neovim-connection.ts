@@ -7,6 +7,7 @@ import {
     NeovimDocumentSync,
     neovimByteToUtf16,
     utf16ToNeovimByte,
+    type NeovimEditorOptions,
 } from './document-sync';
 import { NeovimKeyDelegation } from './key-delegation';
 import { NeovimDecorationBridge } from './decorations';
@@ -20,6 +21,7 @@ import {
 } from './obsidian-feature-bridge';
 import type { VimRegistration } from '../vim/registration';
 import type { VimModeTracker } from '../vim/mode-tracker';
+import { neovimModeToVimMode, setExternalVimMode } from '../vim/external-mode';
 import { NeovimModeStatus } from './mode-status';
 
 type ProcessError = Error & { code?: string | number; signal?: string | null };
@@ -59,6 +61,8 @@ type ChildProcessHandle = {
         listener: (code: number | null, signal: string | null) => void,
     ): void;
     kill(signal?: string | number): boolean;
+    removeAllListeners(): void;
+    unref(): void;
 };
 
 type ChildProcessModule = {
@@ -85,7 +89,7 @@ export interface NeovimConnectionState {
 const REQUIRED_API_LEVEL = 12;
 const REQUIRED_VERSION = '0.12';
 const CONNECT_TIMEOUT_MS = 10_000;
-const GRACEFUL_EXIT_TIMEOUT_MS = 2_000;
+const SIGKILL_ESCALATION_MS = 2_000;
 
 let childProcessCache: ChildProcessModule | null = null;
 
@@ -127,6 +131,33 @@ export function resolveNeovimBinaryPath(configuredPath: string): string {
     return trimmed ? expandTilde(trimmed) : 'nvim';
 }
 
+// The only filesystem path this may carry is the user's own neovimConfigPath.
+// Nothing derived from pluginAutoFetch, which writes into the vault's lua/
+// tree, may reach Neovim's runtimepath: that would make the plugin install
+// executable dependencies for the real runtime, which the Developer Policies
+// forbid. test/unit/rpc/plugin-autofetch-boundary.test.ts holds this.
+export function buildNeovimSpawnArgs(configPath: string | null): string[] {
+    const args = ['--embed', '--headless'];
+    if (configPath) {
+        args.push(
+            '--clean',
+            '--cmd',
+            `lua vim.opt.runtimepath:prepend(${JSON.stringify(parentDirOf(configPath))})`,
+            // --clean strips the user packpath, which silently breaks
+            // vim.pack: it clones the plugin to disk and then never puts it on
+            // the runtimepath, so require() still fails. Measured. Restoring
+            // only the standard site directory re-enables packages without
+            // bringing back the wrapper-injected runtimepath that --clean is
+            // here to exclude.
+            '--cmd',
+            "lua vim.opt.packpath:append(vim.fs.joinpath(vim.fn.stdpath('data'), 'site'))",
+            '-u',
+            configPath,
+        );
+    }
+    return args;
+}
+
 export class NeovimConnection {
     private child: ChildProcessHandle | null = null;
     private rpc: MsgpackRpcClient | null = null;
@@ -157,12 +188,13 @@ export class NeovimConnection {
         ) => HostNavigationTarget | null = () => null,
         private readonly getModeTracker: () => VimModeTracker | null = () =>
             null,
+        private readonly getLeaderKey: () => string = () => '\\',
     ) {}
 
     async connect(
         configuredPath: string,
         configuredConfigPath: string,
-        textwidth: number,
+        editorOptions: NeovimEditorOptions,
     ): Promise<boolean> {
         if (!Platform.isDesktop) return false;
         const binaryPath = resolveNeovimBinaryPath(configuredPath);
@@ -183,16 +215,7 @@ export class NeovimConnection {
 
         let child: ChildProcessHandle;
         try {
-            const args = ['--embed', '--headless'];
-            if (configPath) {
-                args.push(
-                    '--clean',
-                    '--cmd',
-                    `lua vim.opt.runtimepath:prepend(${JSON.stringify(parentDirOf(configPath))})`,
-                    '-u',
-                    configPath,
-                );
-            }
+            const args = buildNeovimSpawnArgs(configPath);
             child = getChildProcess().spawn(binaryPath, args, {
                 stdio: ['pipe', 'pipe', 'pipe'],
             });
@@ -235,7 +258,7 @@ export class NeovimConnection {
             const documentSync = new NeovimDocumentSync(
                 this.app,
                 rpc,
-                textwidth,
+                editorOptions,
             );
             this.documentSync = documentSync;
             await documentSync.start();
@@ -249,8 +272,13 @@ export class NeovimConnection {
                 typeof initialMode === 'object' &&
                 initialMode !== null &&
                 typeof (initialMode as { mode?: unknown }).mode === 'string'
-            )
+            ) {
                 this.mode = (initialMode as { mode: string }).mode;
+                // Published here as well as on every key, so the per-mode host
+                // features do not read the stood-down fork in the window
+                // between connecting and the first keystroke.
+                setExternalVimMode(neovimModeToVimMode(this.mode));
+            }
             const decorationBridge = new NeovimDecorationBridge(
                 rpc,
                 documentSync,
@@ -281,6 +309,7 @@ export class NeovimConnection {
                 this.getRegistration,
                 channelId,
                 this.getNavigationTarget,
+                this.getLeaderKey,
             );
             this.featureBridge = featureBridge;
             await featureBridge.start();
@@ -290,6 +319,7 @@ export class NeovimConnection {
                 documentSync,
                 (mode) => {
                     this.mode = mode;
+                    setExternalVimMode(neovimModeToVimMode(mode));
                 },
             );
             keyDelegation.start();
@@ -353,8 +383,8 @@ export class NeovimConnection {
         return this.rpc.request(method, args);
     }
 
-    async setTextwidth(textwidth: number): Promise<void> {
-        await this.documentSync?.setTextwidth(textwidth);
+    async setEditorOptions(options: NeovimEditorOptions): Promise<void> {
+        await this.documentSync?.setEditorOptions(options);
     }
 
     isKeyDelegating(): boolean {
@@ -442,6 +472,15 @@ export class NeovimConnection {
         child: ChildProcessHandle,
         rpc: MsgpackRpcClient,
     ): Promise<void> {
+        // Published before the awaits, not after. stop() issues one request per
+        // installed mapping, command and abbreviation to a Neovim that is
+        // already on its way out, and a request that never settles is not
+        // caught by its .catch -- it waits out the request timeout, leaving
+        // observers reading connected === true for that entire window.
+        this.expectedExit = true;
+        this.connected = false;
+        this.apiLevel = null;
+
         await this.featureBridge?.stop();
         this.featureBridge = null;
         this.keyDelegation?.dispose();
@@ -460,39 +499,48 @@ export class NeovimConnection {
         this.redrawDispatcher = null;
         this.documentSync?.dispose();
         this.documentSync = null;
-        this.expectedExit = true;
-        this.connected = false;
-        this.apiLevel = null;
         if (child.exitCode !== null || child.signalCode !== null) {
             rpc.dispose();
             if (this.child === child) this.resetState();
             return;
         }
 
-        try {
-            rpc.notify('nvim_command', ['qa!']);
-        } catch (error) {
-            console.warn(
-                'Vim Motions: Neovim graceful shutdown failed:',
-                error,
-            );
-        }
+        child.removeAllListeners();
+        child.unref();
+        this.scheduleChildShutdown(child);
 
-        await new Promise<void>((resolve) => {
-            let forceTimer = 0;
-            const onClose = (): void => {
-                if (forceTimer) window.clearTimeout(forceTimer);
-                child.removeListener('close', onClose);
-                resolve();
-            };
-            child.once('close', onClose);
-            forceTimer = window.setTimeout(() => {
-                if (child.exitCode === null && child.signalCode === null)
-                    child.kill('SIGKILL');
-            }, GRACEFUL_EXIT_TIMEOUT_MS);
-        });
         rpc.dispose();
         if (this.child === child) this.resetState();
+    }
+
+    /**
+     * Ends the child without awaiting it.
+     *
+     * This used to defer the whole shutdown by three seconds, as a mitigation
+     * for a renderer SIGSEGV on disconnect. That crash has since been root
+     * caused -- a leaked `web-tree-sitter` `TreeCursor` whose GC finalizer
+     * freed a tree the CM6 bridge had already deleted, nothing to do with
+     * teardown -- and the deferral is gone with it. The measurement that
+     * justified it was confounded: both of its arms contained the leak. With
+     * the leak fixed, the reproducer spec measures 0 segfaults in 16 runs both
+     * with the deferral and with the original synchronous quit-and-wait, which
+     * used to crash 24 of 46.
+     *
+     * What is kept is not the mitigation but the shape, which is better on its
+     * own merits. Nothing is awaited, so disconnect returns immediately instead
+     * of blocking for up to four seconds. No `qa!`: that made Neovim exit
+     * immediately, while SIGTERM lets it exit on its own terms. Both paths
+     * self-check `exitCode`/`signalCode`, so a child that has already gone is
+     * left alone, and if the window dies first the pipes close with it and
+     * `nvim --embed` exits on channel close regardless.
+     */
+    private scheduleChildShutdown(child: ChildProcessHandle): void {
+        if (child.exitCode !== null || child.signalCode !== null) return;
+        child.kill('SIGTERM');
+        window.setTimeout(() => {
+            if (child.exitCode !== null || child.signalCode !== null) return;
+            child.kill('SIGKILL');
+        }, SIGKILL_ESCALATION_MS);
     }
 
     private handleClose(
@@ -549,6 +597,7 @@ export class NeovimConnection {
         this.connected = false;
         this.apiLevel = null;
         this.mode = null;
+        setExternalVimMode(null);
         this.binaryPath = null;
         this.configPath = null;
         this.expectedExit = false;

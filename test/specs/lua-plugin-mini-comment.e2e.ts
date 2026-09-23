@@ -234,6 +234,15 @@ describe('mini.comment plugin integration', function () {
                                     k: string,
                                     o?: { noremap?: boolean },
                                 ) => void;
+                                defineAction?: (
+                                    name: string,
+                                    fn: () => void,
+                                ) => void;
+                                mapCommand?: (
+                                    keys: string,
+                                    type: string,
+                                    name: string,
+                                ) => void;
                             };
                         };
                     }
@@ -258,17 +267,10 @@ describe('mini.comment plugin integration', function () {
                         { line: 0, ch: line.length },
                     );
                 });
-                (Vim as Record<string, unknown>).defineAction?.(
-                    '__test_action',
-                    () => {
-                        Vim.feedKeys?.(cm, 'g@_', { noremap: true });
-                    },
-                );
-                (Vim as Record<string, unknown>).mapCommand?.(
-                    'Q',
-                    'action',
-                    '__test_action',
-                );
+                Vim.defineAction?.('__test_action', () => {
+                    Vim.feedKeys?.(cm, 'g@_', { noremap: true });
+                });
+                Vim.mapCommand?.('Q', 'action', '__test_action');
                 Vim.handleKey(cm, 'Q');
             });
             await browser.pause(PAUSE.EDITOR_SETTLE);
@@ -450,9 +452,9 @@ describe('mini.comment plugin integration', function () {
             await vimRawKeys('gcj');
             await browser.pause(PAUSE.EDITOR_SETTLE);
             const value = await getEditorValue();
-            const lines = value.split('\n');
-            expect(lines[0].trim()).toBe('%% first line %%');
-            expect(lines[1].trim()).toBe('%% second line %%');
+            const lines = value.split('\n').map((line) => line.trim());
+            expect(lines[0]).toBe('%% first line %%');
+            expect(lines[1]).toBe('%% second line %%');
         });
 
         it.skip('gcc on empty line adds comment markers', async function () {
@@ -473,10 +475,10 @@ describe('mini.comment plugin integration', function () {
             await vimRawKeys('Vjgc');
             await browser.pause(PAUSE.EDITOR_SETTLE);
             const value = await getEditorValue();
-            const lines = value.split('\n');
-            expect(lines[0].trim()).toBe('%% line one %%');
-            expect(lines[1].trim()).toBe('%% line two %%');
-            expect(lines[2].trim()).toBe('line three');
+            const lines = value.split('\n').map((line) => line.trim());
+            expect(lines[0]).toBe('%% line one %%');
+            expect(lines[1]).toBe('%% line two %%');
+            expect(lines[2]).toBe('line three');
         });
     });
 
@@ -575,9 +577,9 @@ describe('mini.comment plugin integration', function () {
             await vimRawKeys('gcj');
             await browser.pause(PAUSE.EDITOR_SETTLE);
             const value = await getEditorValue();
-            const lines = value.split('\n');
-            expect(lines[0].trim()).toBe('// first');
-            expect(lines[1].trim()).toBe('// second');
+            const lines = value.split('\n').map((line) => line.trim());
+            expect(lines[0]).toBe('// first');
+            expect(lines[1]).toBe('// second');
         });
     });
 

@@ -35,6 +35,9 @@ const EXCLUDED_SETTINGS_KEYS = new Set([
     'frecencyData',
     'persistedUndoTrees',
     'persistedImState',
+    // Crash breadcrumb: written around an RPC toggle so the next start can tell
+    // the user the renderer died mid-switch. Meaningless to set by hand.
+    'neovimToggleInFlight',
 
     // Meta — controls the config system itself (circular to set from config)
     'configMode',
@@ -58,6 +61,10 @@ const EXCLUDED_SETTINGS_KEYS = new Set([
     'neovimRpcEnabled',
     'neovimBinaryPath',
     'neovimConfigPath',
+    'neovimConfigExportAutoRefresh',
+    // Machine-written state: the fingerprint of the settings the generated
+    // Neovim file was last produced from, not a user-editable preference.
+    'neovimConfigExportFingerprint',
 
     // Nested objects — configured via dedicated commands or sub-options
     'modePrompts', // via `let g:mode_prompt_*`

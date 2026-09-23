@@ -17,6 +17,15 @@ import {
  */
 
 interface Probe {
+    loaded?: {
+        flash?: boolean;
+        config?: boolean;
+        state?: boolean;
+        flash_err?: string;
+        cfg_err?: string;
+        state_err?: string;
+    };
+    require_in_callback?: string;
     tabwins?: number | string;
     bufs?: number | string;
     listwins?: number | string;

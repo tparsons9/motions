@@ -1,6 +1,8 @@
 ---
 title: Vim Motions
 description: A polished, Neovim-native experience inside Obsidian. Markdown-aware text objects, structural navigation, EasyMotion, workspace control, and more.
+tags:
+    - getting-started
 ---
 
 A polished, Neovim-native experience inside [Obsidian](https://obsidian.md). Vim Motions adds what's missing from Obsidian's built-in Vim mode: Markdown-aware text objects, structural navigation, hard-wrap formatting, workspace keyboard control, EasyMotion, a telescope-style fuzzy picker, Lua configuration with `vim.keymap.set` / `vim.opt` / `vim.fn` / `vim.api` / `vim.ob` / `vim.tbl_*` / autocommands / timers / highlight groups / global keymaps / which-key labels, and a built-in `.obsidian.vimrc` loader.
@@ -31,13 +33,13 @@ A polished, Neovim-native experience inside [Obsidian](https://obsidian.md). Vim
 - **[[settings|Settings reference]]** — all 100 configurable items with defaults and vimrc equivalents
 - **[[known-limitations|Known limitations]]** — architectural constraints and workarounds
 
-## What's new in 0.150.0
+## What's new in 1.0.0
 
-- **Gutter settings apply immediately again** — toggling `number`, `relativenumber`, `signcolumn`, `foldcolumn`, `statuscolumn` or `cursorline` from settings, vimrc or `vim.opt` stored the value but never touched the editor, so every gutter change needed an Obsidian restart. All five reconfigure paths now reach the live editor, and the "requires a restart" note is gone from the docs ([[settings|settings reference]], [#184](https://github.com/saberzero1/motions/issues/184))
-- **`cursorlineopt` accepts Neovim's full grammar, including `screenline`** — comma-separated lists over `line`, `screenline`, `number` and `both`, in any order, with Neovim's own rejections preserved. `screenline` highlights only the cursor's display row of a wrapped line. The default becomes Neovim's `both`; existing vaults are pinned to `number` so nothing changes appearance ([[vimrc|vimrc]], [[lua-config|Lua config]])
-- **`Open configuration directory in system explorer`** — reveals the folder containing your active `init.lua` / `.obsidian.vimrc` with the file selected. That folder is the one `require()` searches for a `lua/` directory. Both configuration commands now handle configurations stored outside the vault, which previously opened nothing at all. Desktop only ([#182](https://github.com/saberzero1/motions/issues/182))
-- **Four broken ex commands** — `:changes` was recognized but did nothing, `:edit!` created a junk note named `!.md` instead of reverting the buffer, `:violations!` printed the list it was asked to clear, and `:fold` was reachable only by accident. All four now behave as documented ([[ex-commands|ex commands]])
-- **`zz` centers wrapped lines correctly** — centering measured the line's first display row, so on a long wrapped line `zz` pushed the cursor down and, past a full viewport, off screen entirely. `zt`/`z<CR>`/`zb`/`z-` gained the same cursor-visibility clamp; unwrapped lines are unchanged ([#183](https://github.com/saberzero1/motions/issues/183))
-- **Lua coordinate correctness and stricter option writes** — byte offsets, cursor/mark reads, text, legacy positions and extmark columns now go through one typed adapter across 23 enumerated APIs, and `vim.opt` validates string options exactly as `set` does instead of storing illegal values verbatim ([[lua-config|Lua config]], [[known-limitations|known limitations]])
+- **Optional Neovim backend** — a desktop-only msgpack-RPC connection to your own Neovim 0.12+. Neovim owns text, keys, mode, cursor, registers, undo, folds, dot-repeat and macros, while Obsidian renders: extmarks, virtual text and floating windows become CM6 decorations and positioned overlays, native IME composition is forwarded on commit, and Neovim's messages, command line, popup-menu completion and mode display drive Obsidian's own UI. Opt-in — enabling it runs the binary and configuration you supply as arbitrary code, with no sandbox ([[neovim-backend|Neovim backend]])
+- **Obsidian features keep working while Neovim owns the keys** — the picker, Oil, Harpoon, cross-note `<C-o>`/`<C-i>`, marks, workspace splits and tabs, go-to-definition, hint mode, the undo-tree sidebar, and `:ob <command-id>` for any Obsidian command. Structural heading, list and link motions plus 26 Markdown text objects run inside Neovim as treesitter-backed mappings, with native `gq`/`gw` at your configured `textwidth` ([[structural-navigation|structural navigation]], [[text-objects|text objects]])
+- **Generate a Neovim configuration from your settings** — **Vim engine → Set up Neovim** translates your enabled features into `nvim-surround`, `dial.nvim`, `spider.nvim`, `yanky.nvim`, `flash.nvim`, `mini.operators` and `LuaSnip` (writing the bundled snippets out beside it), previews exactly what will be fetched and written, and applies only on confirmation ([[settings|settings reference]])
+- **Renderer crash fixed** — structural heading motions leaked a `web-tree-sitter` cursor, so garbage collection later freed a tree the editor had already released and corrupted the WASM allocator, segfaulting Obsidian. Measured 24 of 46 runs before the fix and 0 of 16 after. Three further unowned tree-sitter handles in the Lua API were given owners ([[known-limitations|known limitations]])
+- **`]h` and `[h` move immediately again** — both had become a prefix of longer mappings and waited out the full 1-second ambiguity timeout before moving. Also fixed: `g-`/`g+` navigating the wrong undo tree, Oil's sort cycling, hidden-file toggle and `y.` register, and Harpoon losing stored cursor positions on same-pane navigation ([[undo-tree|undo tree]], [[oil-explorer|Oil explorer]])
+- **Minimum Obsidian version is now 1.8.7** — up from 1.7.2, for the notice styling the Neovim backend needs. Vaults on 1.7.2 through 1.8.6 will not receive this release ([[installation]])
 
 See the [[changelog|full changelog]] for details.

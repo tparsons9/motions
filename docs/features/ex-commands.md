@@ -73,6 +73,14 @@ exmap toggleDarkMode obcommand theme:use-dark
 nmap <leader>d :toggleDarkMode<CR>
 ```
 
+Running `:ob` from visual mode hands the selection to the Obsidian command, so selection-dependent commands (Templater, Note Composer, **Toggle bold**) behave as they do from the command palette. Characterwise, linewise, and blockwise selections each restore as themselves:
+
+```lua
+vim.keymap.set("v", "<C-n>", ":ob templater-obsidian:create-new-note-from-template<CR>")
+```
+
+An explicit line range still selects whole lines — `:1,3ob {command-id}` passes lines 1 to 3.
+
 ## Picker commands
 
 The unified fuzzy picker provides [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)-style search across vault content. The picker uses a terminal-inspired visual presentation with monospace fonts, compact item density, and floating border titles showing the source name (e.g. "Files"), "Results", and "Preview" on each section's top border. All colors use Obsidian CSS variables for full theme compatibility. All picker commands are available in both editor and non-editor views.

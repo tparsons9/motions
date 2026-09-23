@@ -172,7 +172,7 @@ describe('Animated cursor scrolling (#181)', function () {
                     for (let y = 0; y < h; y++) {
                         const row = y * w * 4;
                         for (let x = 0; x < w; x++) {
-                            if (data[row + x * 4 + 3] > 8) {
+                            if ((data[row + x * 4 + 3] ?? 0) > 8) {
                                 if (x < minX) minX = x;
                                 if (x > maxX) maxX = x;
                                 if (y < minY) minY = y;
@@ -390,7 +390,7 @@ describe('Animated cursor scrolling (#181)', function () {
                     for (let y = 0; y < h; y++) {
                         const row = y * w * 4;
                         for (let x = 0; x < w; x++) {
-                            if (data[row + x * 4 + 3] > 8) {
+                            if ((data[row + x * 4 + 3] ?? 0) > 8) {
                                 if (x < minX) minX = x;
                                 if (x > maxX) maxX = x;
                                 if (y < minY) minY = y;

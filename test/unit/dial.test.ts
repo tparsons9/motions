@@ -1,15 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { DIAL_RULES } from '../../src/actions/dial-rules';
+import { DIAL_RULES, type DialRule } from '../../src/actions/dial-rules';
 import { tryDial } from '../../src/actions/dial';
 
-const [
-    checkboxRule,
-    booleanRule,
-    hexColorRule,
-    dateRule,
-    cssValueRule,
-    integerRule,
-] = DIAL_RULES;
+// The suite addresses DIAL_RULES positionally: a reordered or shortened
+// registry must fail here by name, not as "possibly undefined" at each use.
+function ruleAt(index: number): DialRule {
+    const rule = DIAL_RULES[index];
+    if (!rule) {
+        throw new Error(
+            `DIAL_RULES[${index}] is missing; ${DIAL_RULES.length} rule(s) registered`,
+        );
+    }
+    return rule;
+}
+
+const checkboxRule = ruleAt(0);
+const booleanRule = ruleAt(1);
+const hexColorRule = ruleAt(2);
+const dateRule = ruleAt(3);
+const cssValueRule = ruleAt(4);
+const integerRule = ruleAt(5);
 
 describe('dial-rules', () => {
     describe('checkbox (DIAL_RULES[0])', () => {

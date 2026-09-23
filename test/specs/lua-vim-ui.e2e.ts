@@ -178,11 +178,38 @@ describe('vim.ui', function () {
         );
         await setupEditor('x\n', { line: 0, ch: 0 });
         await vimRawKeys('Q');
-        await browser.pause(PAUSE.EDITOR_SETTLE);
-        expect(await pickerOpen()).toBe(true);
+        // Waited for, not slept on: a fixed settle here cannot tell "the picker
+        // never opened" from "the reload failed to close it", and those are a
+        // test race and the product leak this test exists to catch.
+        await browser.waitUntil(async () => await pickerOpen(), {
+            timeout: 10000,
+            interval: 50,
+            timeoutMsg: 'picker never opened after Q',
+        });
 
         await loadLuaConfig(`vim.opt.scrolloff = 3`);
-        await browser.pause(300);
+        try {
+            await browser.waitUntil(async () => !(await pickerOpen()), {
+                timeout: 10000,
+                interval: 50,
+            });
+        } catch {
+            // A genuine leak still fails, but it fails saying what survived.
+            // This entry has only ever been seen once, on Windows, and cannot
+            // be reproduced locally, so the next failure has to carry its own
+            // evidence.
+            const leaked = await browser.executeObsidian(() => ({
+                pickers: document.querySelectorAll('.vim-motions-picker')
+                    .length,
+                modalContainers:
+                    document.querySelectorAll('.modal-container').length,
+                prompts: document.querySelectorAll('.prompt').length,
+                activeEl: document.activeElement?.className ?? null,
+            }));
+            throw new Error(
+                `picker survived the config reload: ${JSON.stringify(leaked)}`,
+            );
+        }
         expect(await pickerOpen()).toBe(false);
     });
 

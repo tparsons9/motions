@@ -41,6 +41,18 @@ export function extractTree(L: lua_State, index: number): Tree {
     return tree;
 }
 
+// `TSTree:copy()` allocates a handle that no cache owns. Without an owner the
+// only thing that frees it is web-tree-sitter's FinalizationRegistry, at a
+// GC-determined moment, which is what makes node staleness unpredictable.
+// `injectTreesitterApi` installs the owner for the state it is injecting into;
+// the module-global mirrors `setQueryRuntime`/`setLanguageRuntime` here and
+// assumes one live Lua state, as those do.
+let takeTreeOwnership: ((tree: Tree) => void) | null = null;
+
+export function setTreeOwner(owner: ((tree: Tree) => void) | null): void {
+    takeTreeOwnership = owner;
+}
+
 const treeHandlers: Record<string, (L: lua_State) => number> = {
     root: (state) => {
         const tree = extractTree(state, 1);
@@ -53,7 +65,9 @@ const treeHandlers: Record<string, (L: lua_State) => number> = {
     copy: (state) => {
         const tree = extractTree(state, 1);
         const sourceText = extractSourceText(state, 1);
-        pushTSTree(state, tree.copy(), sourceText);
+        const copy = tree.copy();
+        takeTreeOwnership?.(copy);
+        pushTSTree(state, copy, sourceText);
         return 1;
     },
     included_ranges: (state) => {

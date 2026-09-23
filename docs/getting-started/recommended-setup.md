@@ -29,14 +29,15 @@ The bundled fork provides:
 
 The plugin also works with built-in vim mode enabled — it extends whatever vim engine is active. You get all the plugin features (text objects, navigation, EasyMotion, workspace control, etc.) but without the fork's Neovim-correct behavior and async motion support.
 
-> [!info] Fork-only features
+> [!info] Not available in built-in vim mode
 > These features require the bundled fork (built-in vim disabled):
 >
 > - Operator-pending EasyMotion (`d` + easymotion)
 > - Surround (vim-surround)
-> - Per-mode cursor shapes
 > - Neovim-correct cursor positioning
 > - Visual-line mode Live Preview fixes
+>
+> Per-mode cursor shapes need the bundled fork **or** the [[neovim-backend|Neovim backend]]; only built-in vim mode lacks them.
 
 ## Ecosystem compatibility
 

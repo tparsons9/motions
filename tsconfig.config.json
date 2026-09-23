@@ -1,0 +1,42 @@
+{
+    // The root-level configuration files were type-checked by nothing:
+    // tsconfig.json includes src/**/*.ts and tsconfig.test.json includes
+    // test/**/*.ts, so wdio.conf.mts (403 lines, including the afterTest
+    // cleanup hook whose failure surfaces as cross-test flakiness rather than
+    // a red test) was never checked at all. It reported 22 errors on first
+    // measurement.
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "noUnusedLocals": false,
+        // Required for .mts. `node` and `bundler` both fail to resolve
+        // wdio-obsidian-service's types, which leaves every
+        // `declare global` augmentation of WebdriverIO.Browser invisible and
+        // reports 40 errors that are resolution artifacts rather than defects.
+        "moduleResolution": "nodenext",
+        "module": "nodenext",
+        // The .mjs build, release and CI-reporting scripts are plain JS and
+        // were checked by nothing. report-e2e-failures.mjs is the script that
+        // reports CI failures, so a throw there degrades diagnostics exactly
+        // when something has already gone wrong.
+        "allowJs": true,
+        "checkJs": true,
+        "lib": ["ES2021", "DOM", "DOM.Iterable"],
+        "types": [
+            "@obsidian-typings/obsidian-public-latest",
+            "node",
+            "mocha",
+            "vitest/globals"
+        ]
+    },
+    "include": [
+        "wdio.conf.mts",
+        "eslint.config.mts",
+        "vitest.config.ts",
+        "esbuild.config.mjs",
+        "version-bump.mjs",
+        "scripts/*.mjs",
+        "src/**/*.d.ts",
+        "src/types/globals.ts"
+    ]
+}

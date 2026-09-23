@@ -21,7 +21,7 @@ Configure the three options under **Settings → Vim Motions → Vim engine**:
 ## Security
 
 > [!warning] Neovim is not sandboxed
-> Enabling this backend runs the binary and configuration you supply as arbitrary code. That code can load native libraries through LuaJIT FFI and read or write files outside the vault. Vim Motions does not download or install Neovim or its plugins.
+> Enabling this backend runs the binary and configuration you supply as arbitrary code. That code can load native libraries through LuaJIT FFI and read or write files outside the vault. Vim Motions never downloads or installs Neovim itself; it installs or updates Neovim plugins only when you ask it to and confirm what will be fetched.
 
 ## Ownership
 
@@ -37,9 +37,128 @@ Obsidian continues to own the vault, Markdown rendering, properties widgets, wor
 
 Both **Settings → Editor → Properties in document** modes are supported. Source frontmatter remains navigable. Rendered frontmatter is protected by a Neovim fold while the properties widget remains owned by Obsidian.
 
+## Configuration
+
+RPC mode uses your own Neovim configuration for everything Neovim owns. The plugin's `.obsidian.init.lua` and `.obsidian.vimrc` continue to load, but they configure the bundled Vim engine, which stands down while Neovim owns keys.
+
+- **Editor keymaps defined in the plugin's Lua or vimrc config do not fire in RPC mode.** A `vim.keymap.set('n', ...)` there targets the bundled engine. Put the Neovim equivalent in your `init.lua` instead.
+- **Features Obsidian renders from synchronised state still apply**: line-number, sign, and fold gutters, cursor-line highlighting, the status bar, and the picker.
+- **Features driven by the bundled engine's own key and mode events do not**, because that engine is stood down. See [What changes in RPC mode](#what-changes-in-rpc-mode).
+- **The Obsidian action bindings the bridge installs into Neovim come from the plugin's own registration data.** They follow your configured leader key, but not arbitrary `vim.keymap.set` remaps.
+
+## What changes in RPC mode
+
+Most behaviour that lives in the bundled Vim engine is not carried across, because Neovim owns editor keys. This is by design — Neovim users are expected to configure their own equivalents — so the feature list elsewhere in these docs describes bundled-engine behaviour unless a page says otherwise.
+
+**Carried across from your settings**, where Neovim can provide the behaviour natively and the setting is projected onto the mirrored buffer:
+
+| Setting                 | In RPC mode                                                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Smart list continuation | `o`/`O` continues `-`, `*`, and `+` bullets. Numbered lists are not continued, because Vim's `comments` cannot increment a counter.   |
+| Yank highlight          | Both `solid` and `fade` render at the configured duration. Blockwise yanks are skipped, matching the bundled engine.                  |
+| Hard-wrap width         | `textwidth` drives native `gq`/`gw`.                                                                                                  |
+| Cursor shapes           | The per-mode shape follows Neovim's mode, including operator-pending and the three visual modes.                                      |
+| Input-method switching  | Automatic per-mode switching fires on Neovim's mode, so CJK input methods follow insert and normal as they do in bundled-engine mode. |
+
+**Neovim's own behaviour applies instead:**
+
+| Feature             | In RPC mode                                                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Increment/decrement | Native `<C-a>`/`<C-x>`. Hex colours, booleans, dates, and checkboxes are not recognised.                                           |
+| Subword motions     | Native `w`/`b`/`e`/`ge`. camelCase, snake_case, and kebab-case boundaries are not recognised.                                      |
+| Flash motions       | Native `f`/`F`/`t`/`T` without labels, multi-line targeting, or clever-f. `s` is Vim's substitute, not a flash jump.               |
+| Marks               | Neovim owns lowercase marks. Uppercase `A`–`Z` cross-file motions are deferred, and the sign gutter does not track Neovim's marks. |
+
+**Unavailable in RPC mode — but the plugin can set them up for you.** Most of these features were modelled on a Neovim plugin, so **Settings → Vim Motions → Vim engine → Set up Neovim** offers to install or update the originals and write configuration wiring them to your settings:
+
+| Feature                      | Generated for    |
+| ---------------------------- | ---------------- |
+| Surround (`ys`/`cs`/`ds`)    | `nvim-surround`  |
+| Increment/decrement          | `dial.nvim`      |
+| Subword motions              | `spider.nvim`    |
+| Yank-ring cycling            | `yanky.nvim`     |
+| Flash motions, EasyMotion    | `flash.nvim`     |
+| Replace-with-register (`gr`) | `mini.operators` |
+| Snippets (JSON)              | `LuaSnip`        |
+
+It writes `lua/vim_motions.lua` beside your Neovim configuration and **does nothing until you opt in**, by adding one line to your `init.lua`:
+
+```lua
+require('vim_motions')
+```
+
+Place that line before your own plugin setup if you want yours to win, or after if you want the generated values to. Equally, treat the file as a starting point and copy the parts you want — there is a **Copy** button for exactly that.
+
+> [!info] Installing is opt-in and shown to you first
+> **Set up Neovim** previews exactly what will happen — which plugins Neovim will fetch or update, and the configuration that will be written — and does nothing until you confirm. Installing uses Neovim's own `vim.pack`, into Neovim's data directory; Vim Motions never installs Neovim itself. Every generated block is wrapped in `pcall(require, …)`, so the file is safe to require even if you decline the install or remove a plugin later.
+
+The file is yours once you touch it: if its generated header is gone, regenerating refuses to overwrite and points you at **Copy** instead. When settings it covers change, the setting shows that a regeneration is due; **Regenerate automatically** (off by default) does it for you.
+
+> [!warning] A starting point, not parity
+> The generated configuration wires up the plugin each feature was modelled on, and tunes it where a default would fall short — `dial.nvim` is configured with boolean, hex-colour and checkbox augends alongside its built-in number and date handling, so `<C-a>` behaves as it does in bundled-engine mode. It still will not match the bundled behaviour in every detail: these are different implementations and their edge cases differ. Treat the file as a working starting point and tune it from there.
+
+**Snippets work for JSON, not for the Lua DSL.** The plugin's JSON snippets are plain VS Code format, which LuaSnip reads verbatim, so **Set up Neovim** installs LuaSnip, writes the bundled snippets beside the generated config, points it at those and at your own snippet directory, and maps `<Tab>`/`<S-Tab>` to expand and jump.
+
+The Lua DSL does not carry across. Its `vim.snippet.s/t/i/c` namespace and `add(trigger, …)` signature differ from LuaSnip's, and its reactive `f()`/`d()` nodes call into Obsidian's vault and workspace, which Neovim has no equivalent for. The `context` field on a JSON snippet is also a Vim Motions extension that LuaSnip ignores, so context-gated snippets become unconditional.
+
+**The table-nav overlay works.** Obsidian's keymap scope consumes its keys before the delegation listener sees them, so navigating a table does not also move Neovim's cursor. Measured: `l` moved the highlighted cell from column 0 to column 1 while Neovim's row stayed put and the buffer was unchanged. Setting **table widget mode** to `raw` disables the overlay and leaves the table as ordinary Markdown, which is the option to choose if you would rather use a Neovim table plugin.
+
+**Modal overlays work, once triggered from Neovim.** They capture keys on the document ahead of the editor, so their keystrokes never reach Neovim's buffer. Hint mode is bridged: `:hintactivate`, `:hintopennew`, `:hintyank`, `:hintclose`, `:hintcontextmenu`, and the `<leader><leader>h` binding. Flash and EasyMotion triggers are not bridged, because `s` and `<leader><leader>` already mean something to Neovim.
+
+**Host features that read the bundled engine's events:**
+
+| Feature   | In RPC mode                                                                                                                                                                                                                                                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which-key | Not shown in the Markdown editor; it renders the bundled engine's keymap, which is not the one in force. Install [which-key.nvim](https://github.com/folke/which-key.nvim) instead — it draws in a floating window, which the bridge already renders, and it shows Neovim's real keymap including the bindings generated below. |
+
+## Obsidian commands
+
+The bridge installs the plugin's own features into Neovim as real keymaps and user commands, which an allowlist enumerates. `:ob` is the exception that escapes it: it runs **any** Obsidian command by ID, including commands registered by other plugins, which an allowlist cannot enumerate by construction.
+
+```vim
+:ob theme:use-dark
+:ob workspace:toggle-pin
+```
+
+Every generated binding carries a readable `desc`, prefixed `Vim Motions:`, so `:map`, `:command` and which-key.nvim describe them in words rather than as internal ids. That covers the companion's structural motions and Markdown text objects as well as the bridged actions — `]h` reads as "Next heading", `iC` as "Inner code fence".
+
+The leader prefixes are registered as `<Nop>` mappings carrying only a group label (`+find`, `+harpoon`), so which-key.nvim renders a menu rather than a flat list. Nothing executes them: Neovim resolves the longer binding, and the leader key itself is never mapped.
+
+Because the bridged entries are ordinary Neovim objects, your own `init.lua` can build on them:
+
+```lua
+vim.keymap.set('n', '<leader>td', function() vim.cmd('Ob theme:use-dark') end)
+```
+
+Run `:ob` with no arguments for the command picker. The plugin's `exmap` and `gmap` are bundled-engine constructs and do not apply here — use `vim.keymap.set` as above instead.
+
+## Plugin compatibility
+
+Neovim plugins run inside your own Neovim, so the question is never whether a plugin loads — it is whether what the plugin draws can reach Obsidian. The bridge carries buffer-coordinate data only and never reconstructs Neovim's screen grid, which is attached purely as a redraw clock. That boundary decides compatibility by mechanism rather than by plugin name.
+
+Bridged:
+
+- Buffer text, cursor, modes, registers, marks, undo and redo, dot-repeat, and macros.
+- Persistent extmarks in every namespace — highlights and `overlay`, `eol`, and `inline` virtual text, carrying Neovim's own priorities and highlight groups.
+- `nvim_buf_add_highlight()`, which creates an ordinary extmark and renders like any other.
+- Floating windows, including their buffer content, extmarks, border presence, and z-index. Placement is approximate.
+- Folds, treesitter, and LuaJIT FFI, all native to the Neovim you supply.
+
+Not bridged, by construction:
+
+| Mechanism                                   | Why it cannot cross                                                                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `screenpos()` and other screen-cell queries | The bridge transports buffer coordinates. Grid events are discarded, and proportional Markdown typography has no stable cell grid to answer with. |
+| `matchadd()`                                | Matches are window-local and are not extmarks, so no buffer extmark query returns them.                                                           |
+| Ephemeral extmarks                          | They exist only during Neovim's own redraw pass and are gone before any query can read them.                                                      |
+| Legacy non-extmark highlights               | Same: nothing persists for the bridge to read.                                                                                                    |
+
+> [!info] This is a class boundary, not a per-plugin certification
+> A plugin whose output is extmarks and floating windows will render; one that positions by screen cell will not. flash.nvim is the measured case — its labels, jump, and floating prompt all bridge, and its own extmarks are the oracle the decoration and float test suites assert against.
+
 ## Supported keybindings
 
-The backend uses the same documented bindings rather than a separate keymap.
+These bindings are provided in RPC mode, by Neovim companion mappings or by the feature bridge, and match their bundled-engine spelling. They are not the plugin's whole keymap — see [What changes in RPC mode](#what-changes-in-rpc-mode) for what the bundled engine keeps.
 
 ![[keybindings#Markdown text objects]]
 
@@ -51,6 +170,9 @@ The backend uses the same documented bindings rather than a separate keymap.
 
 ## Known limitations
 
+- Which-key is not shown in the Markdown editor; use which-key.nvim instead.
+- Editor keymaps from the plugin's own Lua and vimrc config do not fire; Neovim owns editor keys. See [Configuration](#configuration).
+- Bundled-engine features are replaced by Neovim's own or need a Neovim equivalent. See [What changes in RPC mode](#what-changes-in-rpc-mode).
 - Only the active Markdown editor is mirrored; multi-leaf and multi-buffer ownership is deferred.
 - Floating-window terminal cells are mapped onto proportional Markdown typography, so placement is approximate.
 - Ephemeral extmarks and legacy non-extmark highlights are not mirrored.

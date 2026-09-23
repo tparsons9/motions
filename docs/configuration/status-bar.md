@@ -73,7 +73,7 @@ let g:mode_prompt_insert_normal = "(i)"
 Supports any text including emoji — e.g., `vim.g.mode_prompt_normal = "🟢"`.
 
 > [!info] Fork mode required
-> Select, V-Replace, Command, Search, and Insert-Normal indicators require the fork's vim engine (recommended setup with built-in vim mode OFF). In built-in vim mode, only NORMAL, INSERT, VISUAL, and REPLACE are shown.
+> Select, V-Replace, Command, Search, and Insert-Normal indicators require the fork's vim engine or the Neovim backend, which reports its own mode into the status bar. In built-in vim mode, only NORMAL, INSERT, VISUAL, and REPLACE are shown.
 
 ## Chord display
 

@@ -21,6 +21,20 @@ export function wasmBinaryPlugin(): Plugin {
     };
 }
 
+// Mirrors esbuild's `'.lua': 'text'` loader. Without it nothing under
+// test/unit can import a module that reaches src/rpc/companion.lua, because
+// Vite tries to parse the Lua as JavaScript.
+export function luaTextPlugin(): Plugin {
+    return {
+        name: 'lua-text',
+        enforce: 'pre',
+        load(id: string) {
+            if (!id.endsWith('.lua')) return;
+            return `export default ${JSON.stringify(readFileSync(id, 'utf8'))};`;
+        },
+    };
+}
+
 export const PAUSE = {
     KEY_GAP: 30,
     MODE_SWITCH: 50,
@@ -322,7 +336,9 @@ export async function sendVimEscape(): Promise<void> {
         const Vim = (
             window as unknown as {
                 CodeMirrorAdapter?: {
-                    Vim?: {};
+                    Vim?: {
+                        handleKey: (cm: unknown, key: string) => boolean;
+                    };
                 };
             }
         ).CodeMirrorAdapter?.Vim;
@@ -719,7 +735,16 @@ export async function hasWhichKeyOverlay(): Promise<boolean> {
     })) as boolean;
 }
 
-export async function waitForWhichKey(timeout = 2000): Promise<void> {
+/**
+ * The budget has to be measured from *after* the deferral, not from the
+ * keypress. `<Space>` is a prefix, so the overlay cannot appear until
+ * `operatorshadowtimeout` expires — 1000 ms by default — which left the old
+ * 2000 ms default with 1000 ms of real margin, polled at 100 ms plus an
+ * `executeObsidian` round trip each time. That is thin by construction on a
+ * loaded runner, and `which-key shows after space press` is a standing Windows
+ * flake in test/flaky-inventory.md.
+ */
+export async function waitForWhichKey(timeout = 5000): Promise<void> {
     await browser.waitUntil(
         async () =>
             (await browser.executeObsidian(
@@ -855,7 +880,7 @@ export async function canvasPaintSupported(): Promise<boolean> {
             if (!ctx) return false;
             ctx.fillStyle = 'rgba(255,0,0,1)';
             ctx.fillRect(0, 0, 8, 8);
-            return ctx.getImageData(0, 0, 8, 8).data[3] > 8;
+            return (ctx.getImageData(0, 0, 8, 8).data[3] ?? 0) > 8;
         } catch {
             return false;
         }

@@ -7,6 +7,7 @@ import {
 } from '../../../src/lib/fengari';
 import { createSandboxedState, destroyState } from '../../../src/lua/engine';
 import { injectVimApi } from '../../../src/lua/api';
+import { AutocmdManager } from '../../../src/lua/autocmd';
 import { DecorationProviderManager } from '../../../src/lua/decoration-provider';
 import type { EditorView } from '@codemirror/view';
 
@@ -23,6 +24,7 @@ describe('nvim_set_decoration_provider', () => {
             getVaultName: () => 'vault',
             onKeymap: () => {},
             onKeymapDel: () => {},
+            autocmdManager: new AutocmdManager(L),
             decorationProviders: manager,
         });
     });

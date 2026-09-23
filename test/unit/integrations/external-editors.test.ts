@@ -307,6 +307,7 @@ describe('editor API', () => {
         const api = createEditorApi(
             setup().registry,
             new LanguageProviderRegistry(),
+            hooks(),
         );
 
         installEditorApi(api);

@@ -1805,3 +1805,22 @@ settings:
     width: 100%;
     margin-top: 8px;
 }
+
+.vim-motions-setting-stale .setting-item-description {
+    color: var(--text-accent);
+}
+
+.vim-motions-setup-repo {
+    font-family: var(--font-monospace);
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+.vim-motions-setup-preview {
+    max-height: 40vh;
+    overflow: auto;
+    font-size: var(--font-ui-smaller);
+    background: var(--background-secondary);
+    padding: var(--size-4-2);
+    border-radius: var(--radius-s);
+}

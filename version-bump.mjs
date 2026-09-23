@@ -1,6 +1,13 @@
 import { readFileSync, writeFileSync } from 'fs';
 
 const targetVersion = process.env.npm_package_version;
+// Run directly rather than through `npm version`, this was silently writing a
+// version-less manifest.json and a literal "undefined" key into versions.json.
+if (!targetVersion) {
+    throw new Error(
+        'npm_package_version is unset — run this via `npm version`, not directly',
+    );
+}
 
 // read minAppVersion from manifest.json and bump version to target version
 let manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));

@@ -62,7 +62,9 @@ class RateLimitedNotice {
         this.shownAt.set(key, now);
         const notice = new Notice(message);
         if (severity !== 'info')
-            notice.noticeEl.classList.add(`vim-motions-rpc-notice-${severity}`);
+            notice.messageEl.classList.add(
+                `vim-motions-rpc-notice-${severity}`,
+            );
     }
 
     clear(): void {

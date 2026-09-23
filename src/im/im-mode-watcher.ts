@@ -7,6 +7,7 @@ import {
 import type { Extension } from '@codemirror/state';
 import { getCmAdapterFromEditorView } from '../vim/vim-api';
 import type { CmAdapter, VimModeChange } from '../types/vim-api';
+import { onExternalVimMode } from '../vim/external-mode';
 
 type ImModeCallback = (viewId: string) => void;
 
@@ -20,6 +21,7 @@ let nextId = 0;
 class ImModeWatcher implements PluginValue {
     private adapter: CmAdapter | null = null;
     private handler: ((mode: VimModeChange) => void) | null = null;
+    private externalCleanup: (() => void) | null = null;
     private inInsert = false;
     private destroyed = false;
     readonly viewId: string;
@@ -27,6 +29,23 @@ class ImModeWatcher implements PluginValue {
     constructor(private view: EditorView) {
         this.viewId = `imw_${nextId++}`;
         this.tryBind();
+        // A backend that owns keys reports its mode here instead of through
+        // the fork's event, which never fires while the fork is stood down.
+        this.externalCleanup = onExternalVimMode((mode) => {
+            if (mode === null) return;
+            this.applyMode(INSERT_MODES.has(mode));
+        });
+    }
+
+    private applyMode(nowInsert: boolean): void {
+        if (this.destroyed) return;
+        if (nowInsert && !this.inInsert) {
+            this.inInsert = true;
+            onEnterInsert?.(this.viewId);
+        } else if (!nowInsert && this.inInsert) {
+            this.inInsert = false;
+            onLeaveInsert?.(this.viewId);
+        }
     }
 
     update(_update: ViewUpdate): void {
@@ -45,6 +64,8 @@ class ImModeWatcher implements PluginValue {
 
     destroy(): void {
         this.destroyed = true;
+        this.externalCleanup?.();
+        this.externalCleanup = null;
         this.unbind();
         cleanupCallback?.(this.viewId);
     }
@@ -65,15 +86,7 @@ class ImModeWatcher implements PluginValue {
             (vim?.mode as string | undefined) === 'replace';
 
         this.handler = (mode: VimModeChange) => {
-            if (this.destroyed) return;
-            const nowInsert = INSERT_MODES.has(mode.mode);
-            if (nowInsert && !this.inInsert) {
-                this.inInsert = true;
-                onEnterInsert?.(this.viewId);
-            } else if (!nowInsert && this.inInsert) {
-                this.inInsert = false;
-                onLeaveInsert?.(this.viewId);
-            }
+            this.applyMode(INSERT_MODES.has(mode.mode));
         };
         this.adapter.on('vim-mode-change', this.handler);
     }

@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitest/config';
-import { wasmBinaryPlugin } from './test/helpers';
+import { luaTextPlugin, wasmBinaryPlugin } from './test/helpers.js';
 
 export default defineConfig({
-    plugins: [wasmBinaryPlugin()],
+    plugins: [wasmBinaryPlugin(), luaTextPlugin()],
     define: {
         __DEV__: 'true',
     },

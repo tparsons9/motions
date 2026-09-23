@@ -257,8 +257,9 @@ describe('Table movement with enableTableNav=false (#136)', function () {
             await browser.pause(PAUSE.MODE_SWITCH);
             await waitForTableWidget();
 
-            const cells = await $$('.cm-table-widget td');
+            const cells = await $$('.cm-table-widget td').getElements();
             const lastCell = cells[cells.length - 1];
+            if (!lastCell) throw new Error('table widget rendered no cells');
             await lastCell.click();
             await browser.pause(PAUSE.EDITOR_SETTLE);
 
@@ -311,8 +312,9 @@ describe('Table movement with enableTableNav=false (#136)', function () {
             await browser.pause(PAUSE.MODE_SWITCH);
             await waitForTableWidget();
 
-            const cells = await $$('.cm-table-widget td');
+            const cells = await $$('.cm-table-widget td').getElements();
             const lastCell = cells[cells.length - 1];
+            if (!lastCell) throw new Error('table widget rendered no cells');
             await lastCell.click();
             await browser.pause(PAUSE.EDITOR_SETTLE);
 

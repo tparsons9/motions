@@ -3,6 +3,12 @@ import { Platform } from 'obsidian';
 type FsPromisesType = {
     readFile(path: string, options: { encoding: string }): Promise<string>;
     access(path: string): Promise<void>;
+    writeFile(
+        path: string,
+        data: string,
+        options: { encoding: string },
+    ): Promise<void>;
+    mkdir(path: string, options: { recursive: boolean }): Promise<unknown>;
 };
 
 type osType = {
@@ -102,6 +108,29 @@ export async function readExternalFile(
         return await fs.readFile(resolved, { encoding: 'utf-8' });
     } catch {
         return null;
+    }
+}
+
+/**
+ * Write a file to an absolute filesystem path, creating parent directories.
+ * Guarded by `Platform.isDesktop` — returns false on mobile or on failure.
+ */
+export async function writeExternalFile(
+    filePath: string,
+    contents: string,
+): Promise<boolean> {
+    if (!Platform.isDesktop) return false;
+
+    const resolved = expandTilde(filePath);
+    try {
+        const fs = getFs();
+        const separator = resolved.includes('\\') ? '\\' : '/';
+        const parent = resolved.slice(0, resolved.lastIndexOf(separator));
+        if (parent) await fs.mkdir(parent, { recursive: true });
+        await fs.writeFile(resolved, contents, { encoding: 'utf-8' });
+        return true;
+    } catch {
+        return false;
     }
 }
 

@@ -14,8 +14,84 @@ import {
 } from '../lua/coordinates';
 import { runCleanups } from '../util/cleanup';
 import { getEditorView } from '../util/editor';
+import { showYankHighlight } from '../vim/yank-highlight';
 import { NeovimFrontmatterFold } from './frontmatter-fold';
 import type { MsgpackRpcClient } from './msgpack-rpc';
+
+export interface NeovimEditorOptions {
+    textwidth: number;
+    listContinuation: boolean;
+    yankHighlight: { mode: 'off' | 'solid' | 'fade'; duration: number };
+}
+
+// Numbered lists are out of reach here: `comments` cannot increment a counter.
+const APPLY_EDITOR_OPTIONS_LUA = `
+local buf, textwidth, listContinuation, yankHighlight = ...
+vim.api.nvim_set_option_value('textwidth', textwidth, { buf = buf })
+-- Derive from the ftplugin's values, captured once, so that turning the
+-- setting off restores them and turning it on repeatedly cannot accumulate.
+if vim.b[buf].vim_motions_stock_comments == nil then
+    vim.b[buf].vim_motions_stock_comments =
+        vim.api.nvim_get_option_value('comments', { buf = buf })
+    vim.b[buf].vim_motions_stock_formatoptions =
+        vim.api.nvim_get_option_value('formatoptions', { buf = buf })
+end
+local stock_comments = vim.b[buf].vim_motions_stock_comments
+vim.api.nvim_set_option_value('comments', stock_comments, { buf = buf })
+vim.api.nvim_set_option_value(
+    'formatoptions', vim.b[buf].vim_motions_stock_formatoptions, { buf = buf })
+pcall(vim.keymap.del, 'n', 'o', { buffer = buf })
+pcall(vim.keymap.del, 'n', 'O', { buffer = buf })
+if listContinuation then
+    local formatoptions = vim.b[buf].vim_motions_stock_formatoptions
+    for flag in ('ro'):gmatch('.') do
+        if not formatoptions:find(flag, 1, true) then
+            formatoptions = formatoptions .. flag
+        end
+    end
+    vim.api.nvim_set_option_value('formatoptions', formatoptions, { buf = buf })
+    -- 'comments' decides both what o continues and how gq wraps a list, and
+    -- the ftplugin's f flag is what separates them: it gives gq its hanging
+    -- indent while stopping o repeating the marker. Dropping f outright makes
+    -- gq re-bullet every wrapped line, so the continuation form is swapped in
+    -- only for the duration of an o/O insert. The mapping is expr and returns
+    -- the key, so count, undo and dot-repeat stay native.
+    for _, key in ipairs({ 'o', 'O' }) do
+        vim.keymap.set('n', key, function()
+            vim.api.nvim_set_option_value(
+                'comments', 'b:-,b:*,b:+,n:>', { buf = buf })
+            vim.api.nvim_create_autocmd('InsertLeave', {
+                buffer = buf,
+                once = true,
+                callback = function()
+                    vim.api.nvim_set_option_value(
+                        'comments', stock_comments, { buf = buf })
+                end,
+            })
+            return key
+        end, { buffer = buf, expr = true })
+    end
+end
+local group = vim.api.nvim_create_augroup('vim_motions_rpc_yank', { clear = false })
+vim.api.nvim_clear_autocmds({ group = group, buffer = buf })
+if yankHighlight then
+    vim.api.nvim_create_autocmd('TextYankPost', {
+        group = group,
+        buffer = buf,
+        callback = function()
+            local event = vim.v.event or {}
+            if event.operator ~= 'y' then return end
+            vim.rpcnotify(
+                0,
+                'vim_motions_yank',
+                buf,
+                vim.api.nvim_buf_get_mark(buf, '['),
+                vim.api.nvim_buf_get_mark(buf, ']'),
+                event.regtype or 'v')
+        end,
+    })
+end
+`;
 
 export function neovimByteToUtf16(text: string, column: number): number {
     return byteToUtf16(text, column as ByteCol);
@@ -64,6 +140,7 @@ export class NeovimDocumentSync {
     private writeNotificationCleanup: (() => void) | null = null;
     private readNotificationCleanup: (() => void) | null = null;
     private cursorNotificationCleanup: (() => void) | null = null;
+    private yankNotificationCleanup: (() => void) | null = null;
     private activation = 0;
     private activationPromise: Promise<void> = Promise.resolve();
     private remirroring = false;
@@ -75,7 +152,7 @@ export class NeovimDocumentSync {
     constructor(
         private readonly app: App,
         private readonly rpc: MsgpackRpcClient,
-        private textwidth: number,
+        private editorOptions: NeovimEditorOptions,
     ) {
         this.frontmatterFold = new NeovimFrontmatterFold(app, rpc);
     }
@@ -103,6 +180,10 @@ export class NeovimDocumentSync {
             'vim_motions_cursor',
             (args) => this.handleCursorNotification(args),
         );
+        this.yankNotificationCleanup = this.rpc.onNotification(
+            'vim_motions_yank',
+            (args) => this.handleYankNotification(args),
+        );
         this.remirroring = true;
         try {
             await this.rpc.request('nvim_buf_attach', [buffer, true, {}]);
@@ -126,6 +207,8 @@ export class NeovimDocumentSync {
         const writeNotificationCleanup = this.writeNotificationCleanup;
         const readNotificationCleanup = this.readNotificationCleanup;
         const cursorNotificationCleanup = this.cursorNotificationCleanup;
+        const yankNotificationCleanup = this.yankNotificationCleanup;
+        this.yankNotificationCleanup = null;
         this.leafChangeRef = null;
         this.lineNotificationCleanup = null;
         this.writeNotificationCleanup = null;
@@ -140,6 +223,7 @@ export class NeovimDocumentSync {
                 () => writeNotificationCleanup?.(),
                 () => readNotificationCleanup?.(),
                 () => cursorNotificationCleanup?.(),
+                () => yankNotificationCleanup?.(),
                 () => {
                     if (leafChangeRef) this.app.workspace.offref(leafChangeRef);
                 },
@@ -156,15 +240,61 @@ export class NeovimDocumentSync {
         return this.buffer;
     }
 
-    async setTextwidth(textwidth: number): Promise<void> {
-        this.textwidth = textwidth;
+    async setEditorOptions(options: NeovimEditorOptions): Promise<void> {
+        this.editorOptions = options;
+        await this.applyEditorOptions();
+    }
+
+    private async applyEditorOptions(): Promise<void> {
         const buffer = this.buffer;
         if (buffer === null || this.disposed) return;
-        await this.rpc.request('nvim_set_option_value', [
-            'textwidth',
-            textwidth,
-            { buf: buffer },
+        const { textwidth, listContinuation, yankHighlight } =
+            this.editorOptions;
+        await this.rpc.request('nvim_exec_lua', [
+            APPLY_EDITOR_OPTIONS_LUA,
+            [buffer, textwidth, listContinuation, yankHighlight.mode !== 'off'],
         ]);
+    }
+
+    // Neovim reports the yanked region and Obsidian renders it with the same
+    // component bundled-fork mode uses. Routing it through an extmark instead
+    // looks simpler and does not work: a yank changes no text, so the
+    // decoration provider never re-runs and the mark reaches CM6 only on some
+    // later redraw -- long after the highlight was due to expire. That path
+    // also cannot express the 'fade' mode, which is a CSS animation.
+    private handleYankNotification(args: unknown[]): void {
+        const [buffer, start, end, regtype] = args;
+        if (buffer !== this.buffer || this.disposed) return;
+        const { mode, duration } = this.editorOptions.yankHighlight;
+        const editorView = this.editorView;
+        if (mode === 'off' || !editorView) return;
+        if (!Array.isArray(start) || !Array.isArray(end)) return;
+        if (regtype === '\x16') return;
+        const from = this.bufferPositionToOffset(
+            Number(start[0]) - 1,
+            Number(start[1]),
+        );
+        const lastCharacter = this.bufferPositionToOffset(
+            Number(end[0]) - 1,
+            Number(end[1]),
+        );
+        if (from === null || lastCharacter === null) return;
+        const document = editorView.state.doc;
+        const to =
+            regtype === 'V'
+                ? document.lineAt(lastCharacter).to
+                : Math.min(
+                      document.length,
+                      lastCharacter +
+                          ([
+                              ...document.sliceString(
+                                  lastCharacter,
+                                  Math.min(document.length, lastCharacter + 2),
+                              ),
+                          ][0]?.length ?? 0),
+                  );
+        if (from >= to) return;
+        showYankHighlight(editorView, [{ from, to }], duration, mode);
     }
 
     bufferPositionToOffset(row: number, byteColumn: number): number | null {
@@ -235,7 +365,7 @@ export class NeovimDocumentSync {
                 'acwrite',
                 { buf: buffer },
             ]);
-            await this.setTextwidth(this.textwidth);
+            await this.applyEditorOptions();
             await this.rpc.request('nvim_set_option_value', [
                 'modified',
                 false,

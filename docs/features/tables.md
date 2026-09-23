@@ -111,7 +111,7 @@ When the cursor enters a table in Live Preview with `tablenav` enabled, a naviga
 | `.`                             | Repeat the last structural command                   |
 
 > [!info] Fork-only feature
-> Table-nav mode requires the bundled vim engine (fork mode). If you are using Obsidian's built-in vim mode, the plugin falls back to standard cell editing.
+> Table-nav mode requires the bundled vim engine or the Neovim backend. If you are using Obsidian's built-in vim mode, the plugin falls back to standard cell editing. Under the Neovim backend the overlay works normally: Obsidian's keymap scope consumes its keys before they reach Neovim.
 
 > [!tip]
 > The **native** mode provides the best vim editing experience for tables. Obsidian's native table widget handles rendering while vim is injected into cell editors. Structural commands let you add, delete, and move rows and columns without leaving the table. Notes with multiple tables are fully supported — each table is independently navigable.

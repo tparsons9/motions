@@ -13,5 +13,10 @@
         "repo": "folke/flash.nvim",
         "ref": "5f0f270fdc7c5b0c21d903ee85b9cb06f2ac636a",
         "dirs": ["lua/flash"]
+    },
+    {
+        "repo": "L3MON4D3/LuaSnip",
+        "ref": "0abc8f390b278c3b4aabc4c004ac8a088b65cf24",
+        "dirs": ["lua/luasnip"]
     }
 ]

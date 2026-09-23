@@ -1,5 +1,5 @@
 import type { MotionFn, VimPos } from '../types/vim-api';
-import { isTreeAvailable, getAllNodesOfType } from '../treesitter/js-api';
+import { isTreeAvailable, getNodeSummariesOfType } from '../treesitter/js-api';
 import { findFenceLines } from '../text-objects/code-block';
 
 /**
@@ -13,12 +13,10 @@ export function codeCellLines(cm: Parameters<MotionFn>[0]): number[] {
     ).cm6;
     const blocks =
         view && isTreeAvailable(view)
-            ? getAllNodesOfType(view, 'fenced_code_block').map((node) => ({
-                  openLine: node.startPosition.row,
+            ? getNodeSummariesOfType(view, 'fenced_code_block').map((node) => ({
+                  openLine: node.startRow,
                   closeLine:
-                      node.endPosition.column === 0
-                          ? node.endPosition.row - 1
-                          : node.endPosition.row,
+                      node.endColumn === 0 ? node.endRow - 1 : node.endRow,
               }))
             : findFenceLines(cm);
     return blocks

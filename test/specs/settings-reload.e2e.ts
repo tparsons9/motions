@@ -508,7 +508,15 @@ describe('Settings hot-reload', function () {
             const Vim = (
                 window as unknown as {
                     CodeMirrorAdapter?: {
-                        Vim?: Record<string, (...args: unknown[]) => unknown>;
+                        Vim?: {
+                            handleKey: (cm: unknown, key: string) => boolean;
+                            getRegisterController: () => {
+                                getRegister: (name: string) => {
+                                    toString: () => string;
+                                    linewise: boolean;
+                                } | null;
+                            };
+                        };
                     };
                 }
             ).CodeMirrorAdapter?.Vim;
@@ -525,14 +533,8 @@ describe('Settings hot-reload', function () {
             if (!adapter) return { error: 'no adapter' };
             Vim.handleKey(adapter, '<Esc>');
             Vim.handleKey(adapter, 'Y');
-            const controller = Vim.getRegisterController() as Record<
-                string,
-                (...args: unknown[]) => unknown
-            >;
-            const reg = controller.getRegister('"') as {
-                toString: () => string;
-                linewise: boolean;
-            } | null;
+            const controller = Vim.getRegisterController();
+            const reg = controller.getRegister('"');
             return {
                 text: reg?.toString() ?? '',
                 linewise: reg?.linewise ?? false,
@@ -1285,7 +1287,10 @@ describe('Settings hot-reload', function () {
             const Vim = (
                 window as unknown as {
                     CodeMirrorAdapter?: {
-                        Vim?: Record<string, (...args: unknown[]) => unknown>;
+                        Vim?: {
+                            handleKey: (cm: unknown, key: string) => boolean;
+                            unmap: (lhs: string, ctx: string) => boolean;
+                        };
                     };
                 }
             ).CodeMirrorAdapter?.Vim;

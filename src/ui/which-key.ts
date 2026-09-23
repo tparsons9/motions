@@ -399,6 +399,7 @@ export class WhichKeyOverlay {
     private leaderPrefix = '';
     private lastStatus = '';
     private suppressNextKeypress = false;
+    private awaitingLiteralArgument = false;
 
     constructor(
         app: App,
@@ -530,6 +531,7 @@ export class WhichKeyOverlay {
             }
             this.lastAdapter = null;
         }
+        this.awaitingLiteralArgument = false;
     }
 
     destroy(): void {
@@ -555,9 +557,19 @@ export class WhichKeyOverlay {
             return;
         }
 
+        // `r`, `f`, `m` and friends buffer a partial match and wait for a
+        // literal `<character>`. The fork signals `vim-keypress` only after it
+        // has consumed that character, so the argument key is indistinguishable
+        // from a standalone press unless the previous key's pending state is
+        // carried across (issue #186).
+        const wasLiteralArgument =
+            this.awaitingLiteralArgument &&
+            (vim?.inputState?.keyBuffer.length ?? 0) === 0;
+        this.awaitingLiteralArgument = vim?.expectLiteralNext === true;
+
         if (this.generalMode) {
             this.onKeyPressGeneral();
-        } else {
+        } else if (!wasLiteralArgument) {
             this.onKeyPressLeaderOnly(key);
         }
     }

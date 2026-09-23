@@ -1,7 +1,7 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { Parser, Language } from 'web-tree-sitter';
+import { Parser, Language, Edit } from 'web-tree-sitter';
 
 const runtimeWasmPath = resolve(
     __dirname,
@@ -102,14 +102,16 @@ describe('tree-sitter WASM runtime', () => {
         const original = '# Hello\n\nWorld';
         const tree1 = parser.parse(original);
 
-        tree1!.edit({
-            startIndex: 2,
-            oldEndIndex: 7,
-            newEndIndex: 10,
-            startPosition: { row: 0, column: 2 },
-            oldEndPosition: { row: 0, column: 7 },
-            newEndPosition: { row: 0, column: 10 },
-        });
+        tree1!.edit(
+            new Edit({
+                startIndex: 2,
+                oldEndIndex: 7,
+                newEndIndex: 10,
+                startPosition: { row: 0, column: 2 },
+                oldEndPosition: { row: 0, column: 7 },
+                newEndPosition: { row: 0, column: 10 },
+            }),
+        );
 
         const modified = '# Greetings\n\nWorld';
         const tree2 = parser.parse(modified, tree1!);

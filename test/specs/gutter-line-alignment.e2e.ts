@@ -145,7 +145,7 @@ async function measureGutterAlignment(): Promise<Measurement> {
             for (let node = walker.nextNode(); node; node = walker.nextNode()) {
                 const text = node.textContent ?? '';
                 for (let offset = 0; offset < text.length; offset++) {
-                    if (/\s/.test(text[offset])) continue;
+                    if (/\s/.test(text.charAt(offset))) continue;
                     const range = document.createRange();
                     range.setStart(node, offset);
                     range.setEnd(node, offset + 1);
@@ -210,6 +210,17 @@ async function measureGutterAlignment(): Promise<Measurement> {
 describe('Gutter line-number vertical alignment (#184)', function () {
     let measurement: Measurement;
 
+    function measuredLine(index: number): LineMeasurement {
+        if (measurement.error !== undefined)
+            throw new Error(`measurement failed: ${measurement.error}`);
+        const line = measurement.lines[index];
+        if (!line)
+            throw new Error(
+                `no measurement for line ${index}; ${measurement.lines.length} measured`,
+            );
+        return line;
+    }
+
     before(async function () {
         await browser.reloadObsidian({ vault: 'test-vault' });
         await obsidianPage.openFile('Welcome.md');
@@ -232,48 +243,44 @@ describe('Gutter line-number vertical alignment (#184)', function () {
 
     it('renders a fixture whose heading and wrapped lines are genuinely taller', function () {
         expect(measurement.error).toBeUndefined();
-        const lines = measurement.lines as LineMeasurement[];
-        const normal = lines[NORMAL].blockHeight;
+        const normal = measuredLine(NORMAL).blockHeight;
 
         // Without these guards a Live Preview that failed to render the heading,
         // or an editor wide enough not to wrap, would make both alignment
         // assertions trivially true.
-        expect(lines[HEADING].blockHeight).toBeGreaterThan(normal * 1.3);
-        expect(lines[WRAPPED].blockHeight).toBeGreaterThan(normal * 1.8);
+        expect(measuredLine(HEADING).blockHeight).toBeGreaterThan(normal * 1.3);
+        expect(measuredLine(WRAPPED).blockHeight).toBeGreaterThan(normal * 1.8);
         // A wrapped heading is tall for BOTH reasons at once, so it must be
         // taller than the unwrapped heading rather than merely taller than a
         // body line.
-        expect(lines[WRAPPED_HEADING].blockHeight).toBeGreaterThan(
-            lines[HEADING].blockHeight * 1.5,
+        expect(measuredLine(WRAPPED_HEADING).blockHeight).toBeGreaterThan(
+            measuredLine(HEADING).blockHeight * 1.5,
         );
         // Anchors the row-centre formula: on a plain single-row line the row IS
         // the block, so a platform that pads above the text fails here rather
         // than silently skewing every other case.
-        expect(Math.abs(lines[NORMAL].rowOffset)).toBeLessThanOrEqual(
+        expect(Math.abs(measuredLine(NORMAL).rowOffset)).toBeLessThanOrEqual(
             TOLERANCE_PX,
         );
     });
 
     it('aligns the number with the heading text on a tall heading line', function () {
         expect(measurement.error).toBeUndefined();
-        const lines = measurement.lines as LineMeasurement[];
-        expect(Math.abs(lines[HEADING].rowOffset)).toBeLessThanOrEqual(
+        expect(Math.abs(measuredLine(HEADING).rowOffset)).toBeLessThanOrEqual(
             TOLERANCE_PX,
         );
     });
 
     it('aligns the number on a heading that is tall AND wrapped', function () {
         expect(measurement.error).toBeUndefined();
-        const lines = measurement.lines as LineMeasurement[];
-        expect(Math.abs(lines[WRAPPED_HEADING].rowOffset)).toBeLessThanOrEqual(
-            TOLERANCE_PX,
-        );
+        expect(
+            Math.abs(measuredLine(WRAPPED_HEADING).rowOffset),
+        ).toBeLessThanOrEqual(TOLERANCE_PX);
     });
 
     it('keeps the number on the first display row of a wrapped line', function () {
         expect(measurement.error).toBeUndefined();
-        const lines = measurement.lines as LineMeasurement[];
-        expect(Math.abs(lines[WRAPPED].rowOffset)).toBeLessThanOrEqual(
+        expect(Math.abs(measuredLine(WRAPPED).rowOffset)).toBeLessThanOrEqual(
             TOLERANCE_PX,
         );
     });

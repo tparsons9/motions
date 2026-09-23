@@ -54,6 +54,10 @@ const MAPPING_NAMES = new Set([
     'gotoDefinitionNewTab',
     'gotoDefinitionSplitH',
     'gotoDefinitionSplitV',
+    // The overlay itself already works under RPC: it captures on the document
+    // in capture phase, ahead of the delegation listener on the editor, and
+    // stops propagation. Only the trigger had to cross.
+    'hintMode',
 ]);
 const EX_COMMAND_NAMES = new Set([
     'Oil',
@@ -73,6 +77,9 @@ const EX_COMMAND_NAMES = new Set([
     'ls',
     'files',
     'commands',
+    // Reaches commands this allowlist cannot enumerate, including other plugins'.
+    'ob',
+    'obcommand',
     'headings',
     'outline',
     'tags',
@@ -95,7 +102,81 @@ const EX_COMMAND_NAMES = new Set([
     'UndoTreeToggle',
     'UndoTreeShow',
     'UndoTreeHide',
+    'hintactivate',
+    'hintopennew',
+    'hintyank',
+    'hintclose',
+    'hintcontextmenu',
 ]);
+
+// Shown by `:map`, `:command`, and any which-key plugin the user runs, so it
+// reads as a label rather than an internal id. The prefix is what identifies
+// a generated entry.
+const DESC_PREFIX = 'Vim Motions: ';
+
+const ACTION_LABELS: Record<string, string> = {
+    ob: 'Run an Obsidian command',
+    obcommand: 'Run an Obsidian command',
+    hintMode: 'Hints: activate',
+    hintactivate: 'Hints: activate',
+    hintopennew: 'Hints: open in a new tab',
+    hintyank: 'Hints: yank a link',
+    hintclose: 'Hints: close a tab',
+    hintcontextmenu: 'Hints: open the context menu',
+    gt: 'Go to tab by count',
+    gototab: 'Go to tab by number',
+    ls: 'List buffers',
+    Picker: 'Open a named picker source',
+    Oil: 'Open the Oil file explorer',
+    jumpListWalk: 'Walk the cross-note jump list',
+};
+
+const LEADER_GROUP_LABELS: Record<string, string> = {
+    f: '+find',
+    h: '+harpoon',
+};
+
+/**
+ * Prefixes of the installed leader bindings, so a which-key plugin renders
+ * them as groups instead of a flat list. Nothing executes these: Neovim
+ * resolves the longer mapping, and the stub exists only for its description.
+ *
+ * The leader itself is excluded deliberately. Mapping it would turn it into a
+ * complete binding and break every leader sequence.
+ */
+export function leaderGroupPrefixes(
+    keys: readonly string[],
+    leader: string,
+): string[] {
+    if (!leader) return [];
+    const prefixes = new Set<string>();
+    for (const key of keys) {
+        if (!key.startsWith(leader)) continue;
+        for (let length = leader.length + 1; length < key.length; length += 1) {
+            prefixes.add(key.slice(0, length));
+        }
+    }
+    return [...prefixes].sort();
+}
+
+export function leaderGroupLabel(prefix: string, leader: string): string {
+    const suffix = prefix.slice(leader.length);
+    return LEADER_GROUP_LABELS[suffix] ?? (suffix === leader ? '+more' : '+…');
+}
+
+export function bridgeActionLabel(name: string): string {
+    const explicit = ACTION_LABELS[name];
+    if (explicit) return explicit;
+    const words = name
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/([a-zA-Z])(\d)/g, '$1 $2')
+        .split(' ');
+    const [first = '', ...rest] = words;
+    return [
+        first.charAt(0).toUpperCase() + first.slice(1),
+        ...rest.map((word) => word.toLowerCase()),
+    ].join(' ');
+}
 const CURSOR_NAV_MAPPING_NAMES = new Set([
     'harpoonNext',
     'harpoonPrevious',
@@ -131,6 +212,7 @@ type BridgeAction =
     | {
           id: string;
           kind: 'mapping';
+          name: string;
           keys: string;
           mode: string;
           run: (payload: DispatchPayload) => Promise<void>;
@@ -179,6 +261,7 @@ export class NeovimObsidianFeatureBridge {
         private readonly getNavigationTarget: (
             actionName: string,
         ) => HostNavigationTarget | null,
+        private readonly getLeaderKey: () => string,
     ) {}
 
     async start(): Promise<void> {
@@ -193,9 +276,27 @@ export class NeovimObsidianFeatureBridge {
         );
         try {
             for (const action of actions) await this.install(action);
+            await this.installLeaderGroups();
         } catch (error) {
             await this.stop();
             throw error;
+        }
+    }
+
+    private async installLeaderGroups(): Promise<void> {
+        const leader = this.getLeaderKey();
+        const prefixes = leaderGroupPrefixes(
+            this.installedMappings
+                .filter((mapping) => mapping.mode === 'n')
+                .map((mapping) => mapping.keys),
+            leader,
+        );
+        for (const prefix of prefixes) {
+            await this.rpc.request('nvim_exec_lua', [
+                "local lhs, desc = ...; vim.keymap.set('n', lhs, '<Nop>', { desc = desc })",
+                [prefix, leaderGroupLabel(prefix, leader)],
+            ]);
+            this.installedMappings.push({ mode: 'n', keys: prefix });
         }
     }
 
@@ -292,6 +393,7 @@ export class NeovimObsidianFeatureBridge {
             actions.push({
                 id,
                 kind: 'mapping',
+                name: mapping.name,
                 keys: mapping.keys,
                 mode: neovimMode(mapping.context),
                 run,
@@ -380,8 +482,14 @@ export class NeovimObsidianFeatureBridge {
     private async install(action: BridgeAction): Promise<void> {
         if (action.kind === 'mapping') {
             await this.rpc.request('nvim_exec_lua', [
-                "local mode, lhs, chan, id = ...; vim.keymap.set(mode, lhs, function() vim.rpcnotify(chan, 'obsidian_action', { id = id, count = vim.v.count }) end, { noremap = true, silent = true, desc = 'vim-motions-rpc:' .. id })",
-                [action.mode, action.keys, this.channelId, action.id],
+                "local mode, lhs, chan, id, desc = ...; vim.keymap.set(mode, lhs, function() vim.rpcnotify(chan, 'obsidian_action', { id = id, count = vim.v.count }) end, { noremap = true, silent = true, desc = desc })",
+                [
+                    action.mode,
+                    action.keys,
+                    this.channelId,
+                    action.id,
+                    DESC_PREFIX + bridgeActionLabel(action.name),
+                ],
             ]);
             this.installedMappings.push({
                 mode: action.mode,
@@ -391,8 +499,13 @@ export class NeovimObsidianFeatureBridge {
         }
         const commandName = uppercaseCommand(action.name);
         await this.rpc.request('nvim_exec_lua', [
-            "local name, chan, id = ...; vim.api.nvim_create_user_command(name, function(opts) vim.rpcnotify(chan, 'obsidian_action', { id = id, args = opts.args }) end, { nargs = '*', desc = 'vim-motions-rpc:' .. id })",
-            [commandName, this.channelId, action.id],
+            "local name, chan, id, desc = ...; vim.api.nvim_create_user_command(name, function(opts) vim.rpcnotify(chan, 'obsidian_action', { id = id, args = opts.args }) end, { nargs = '*', desc = desc })",
+            [
+                commandName,
+                this.channelId,
+                action.id,
+                DESC_PREFIX + bridgeActionLabel(action.name),
+            ],
         ]);
         this.installedCommands.push(commandName);
         if (commandName === action.name) return;

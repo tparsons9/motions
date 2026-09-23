@@ -20,6 +20,11 @@ export function getNodeAtPosition(
 }
 
 export function hasAncestorOfType(node: Node, type: string): boolean {
+    // A cursor cannot replace this walk: `node.walk()` is rooted at that node,
+    // so `gotoParent()` returns false immediately and the ancestor is never
+    // reached. The chain is also the low-risk shape -- each step allocates a
+    // node and reads it straight away, rather than retaining several across
+    // later allocations, which is what corrupted the heading walk.
     let current: Node | null = node.parent;
     while (current) {
         if (current.type === type) return true;
@@ -49,40 +54,79 @@ export function findContainingNodeOfType(
     return findAncestorOfType(node, type);
 }
 
-function collectNodesOfType(
-    cursor: ReturnType<Node['walk']>,
+/**
+ * Plain data, extracted during the walk. A `Node` is a JavaScript object holding
+ * an address into WASM linear memory, and any parse that grows that memory
+ * replaces the backing buffer and leaves retained nodes pointing into a detached
+ * one. Collecting nodes and reading them afterwards -- which is what this used
+ * to do -- segfaulted the renderer: measured 8 of 16 runs against 0 of 16 with
+ * the read removed. `TreeCursor` navigates in place and exposes types and
+ * positions without allocating a node, so nothing survives to go stale.
+ */
+export interface NodeSummary {
+    readonly type: string;
+    readonly startRow: number;
+    readonly startColumn: number;
+    readonly endRow: number;
+    readonly endColumn: number;
+    readonly childTypes: readonly string[];
+}
+
+type Cursor = ReturnType<Node['walk']>;
+
+function summariseAtCursor(cursor: Cursor): NodeSummary {
+    const type = cursor.nodeType;
+    const start = cursor.startPosition;
+    const end = cursor.endPosition;
+    const childTypes: string[] = [];
+    if (cursor.gotoFirstChild()) {
+        do {
+            childTypes.push(cursor.nodeType);
+        } while (cursor.gotoNextSibling());
+        cursor.gotoParent();
+    }
+    return {
+        type,
+        startRow: start.row,
+        startColumn: start.column,
+        endRow: end.row,
+        endColumn: end.column,
+        childTypes,
+    };
+}
+
+function collectSummaries(
+    cursor: Cursor,
     types: string[],
-    results: Node[],
+    results: NodeSummary[],
 ): void {
-    const node = cursor.currentNode;
-    if (types.includes(node.type)) {
-        results.push(node);
-    }
-    let moved = cursor.gotoFirstChild();
-    while (moved) {
-        collectNodesOfType(cursor, types, results);
-        moved = cursor.gotoNextSibling();
-    }
+    if (types.includes(cursor.nodeType))
+        results.push(summariseAtCursor(cursor));
+    if (!cursor.gotoFirstChild()) return;
+    do {
+        collectSummaries(cursor, types, results);
+    } while (cursor.gotoNextSibling());
     cursor.gotoParent();
 }
 
-export function getAllNodesOfType(
+export function getNodeSummariesOfType(
     view: EditorView,
     type: string | string[],
-): Node[] {
+): NodeSummary[] {
     const root = getRootNode(view);
     if (!root) return [];
-
     const types = Array.isArray(type) ? type : [type];
-    const results: Node[] = [];
+    const results: NodeSummary[] = [];
     const cursor = root.walk();
-
-    let moved = cursor.gotoFirstChild();
-    while (moved) {
-        collectNodesOfType(cursor, types, results);
-        moved = cursor.gotoNextSibling();
+    try {
+        if (cursor.gotoFirstChild()) {
+            do {
+                collectSummaries(cursor, types, results);
+            } while (cursor.gotoNextSibling());
+        }
+    } finally {
+        cursor.delete();
     }
-
     return results;
 }
 

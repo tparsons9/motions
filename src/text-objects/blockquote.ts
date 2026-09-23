@@ -1,4 +1,5 @@
 import type { MotionFn, VimPos } from '../types/vim-api';
+import type { Node } from 'web-tree-sitter';
 import { adjustRangeForVisualMode } from './delimiter';
 import {
     isTreeAvailable,
@@ -32,14 +33,21 @@ function treesitterBlockquoteRange(
     // The outer quote supplies structural bounds even when the cursor is on
     // a prefix marker. Vim selects the explicit depth of the cursor's line,
     // not CommonMark's lazy paragraph continuations within those bounds.
-    let outer = node;
+    // The row is read from each candidate as it is encountered, rather than
+    // keeping the outermost node and reading it after the walk. Every `.parent`
+    // allocates a node in WASM linear memory, and a parse that grows that
+    // memory moves the buffer, leaving a node held across those steps pointing
+    // into a detached one -- the shape that segfaulted the heading motion.
+    const rowsOf = (candidate: Node): [number, number] => [
+        candidate.startPosition.row,
+        candidate.endPosition.column === 0
+            ? candidate.endPosition.row - 1
+            : candidate.endPosition.row,
+    ];
+    let [startRow, endRow] = rowsOf(node);
     for (let parent = node.parent; parent; parent = parent.parent) {
-        if (parent.type === 'block_quote') outer = parent;
+        if (parent.type === 'block_quote') [startRow, endRow] = rowsOf(parent);
     }
-    const endRow =
-        outer.endPosition.column === 0
-            ? outer.endPosition.row - 1
-            : outer.endPosition.row;
 
     const depth = quoteDepth(cm.getLine(cursorLine));
     if (depth === 0) return null;
@@ -47,7 +55,7 @@ function treesitterBlockquoteRange(
         cm,
         cursorLine,
         (line) => quoteDepth(line) >= depth,
-        outer.startPosition.row,
+        startRow,
         endRow,
     );
 }
