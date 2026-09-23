@@ -78,7 +78,7 @@ Saved states can be navigated by count with `:earlier Nf` / `:later Nf` (where `
 - `Q` replays the last recorded macro (`@@`) instead of entering Ex mode
 - `&` repeats last `:s` substitution on current line; `g&` repeats on all lines
 - `gM` goes to middle character of text line (distinct from `gm` — middle of screen line)
-- `K` triggers keyword lookup — hover page preview on wikilinks, opens external URLs, char info on plain text
+- `K` triggers keyword lookup — hover page preview on wikilinks, opens external URLs, char info on plain text. The preview opens whether or not the **Page preview** core plugin is set to require Ctrl/Cmd for that source, since pressing `K` is itself the explicit request, and stays open until you click or move the mouse off the editor
 - `]<Space>` / `[<Space>` adds blank lines below/above cursor (supports count)
 - `v_*` / `v_#` searches for selected text from visual mode
 - `g<C-A>` / `g<C-X>` increments/decrements numbers sequentially in visual selection

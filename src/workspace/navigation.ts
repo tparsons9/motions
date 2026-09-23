@@ -92,6 +92,32 @@ function createOpenUrlAction(app: App): ActionFn {
     };
 }
 
+/**
+ * Obsidian's page preview reads two things off the hover event that a bare
+ * `new MouseEvent('mouseover')` gets wrong.
+ *
+ * The Mod flag: every hover-link source can be configured to require Ctrl/Cmd,
+ * and without it page preview only arms a listener that waits for a real Mod
+ * keydown — so for those users `K` appeared to do nothing at all.
+ *
+ * The client coordinates: page preview records them as the pointer position,
+ * and the popover then hides itself every 500ms unless `elementFromPoint()`
+ * there still resolves inside `targetEl`. An event at (0, 0) therefore made the
+ * preview disappear again about a second after it showed up. (#188)
+ */
+function hoverEventAtCursor(cm: CmAdapter, targetEl: HTMLElement): MouseEvent {
+    const rect =
+        cm.cm6.coordsAtPos(cm.indexFromPos(cm.getCursor())) ??
+        targetEl.getBoundingClientRect();
+    return new MouseEvent('mouseover', {
+        clientX: rect.left,
+        clientY: (rect.top + rect.bottom) / 2,
+        ctrlKey: true,
+        metaKey: true,
+        view: targetEl.win,
+    });
+}
+
 function createKeywordLookupAction(app: App, charInfoFn: ActionFn): ActionFn {
     return () => {
         const view = app.workspace.getActiveViewOfType(MarkdownView);
@@ -107,7 +133,7 @@ function createKeywordLookupAction(app: App, charInfoFn: ActionFn): ActionFn {
             } else {
                 const sourcePath = view.file?.path ?? '';
                 app.workspace.trigger('hover-link', {
-                    event: new MouseEvent('mouseover'),
+                    event: hoverEventAtCursor(cm, view.contentEl),
                     source: 'preview',
                     hoverParent: view,
                     targetEl: view.contentEl,
