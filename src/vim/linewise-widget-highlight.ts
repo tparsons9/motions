@@ -1,5 +1,6 @@
 import { type Extension } from '@codemirror/state';
 import { ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import { blockWidgetSpans } from './block-widgets';
 import { getCmAdapterFromEditorView } from './vim-api';
 
 const HIGHLIGHT_CLASS = 'cm-vim-linewise-widget-selection';
@@ -29,50 +30,34 @@ class LinewiseWidgetHighlight {
 
         const startLine = Math.min(vim.sel.anchor.line, vim.sel.head.line);
         const endLine = Math.max(vim.sel.anchor.line, vim.sel.head.line);
-        const doc = update.view.state.doc;
 
         const stillActive = new Set<HTMLElement>();
 
-        for (const child of Array.from(update.view.contentDOM.children)) {
-            const el = child as HTMLElement;
-            if (el.classList.contains('cm-line')) continue;
-            if (el.classList.contains('cm-widgetBuffer')) continue;
-            if (el.getBoundingClientRect().height === 0) continue;
-
-            let widgetStartLine: number;
-            let widgetEndLine: number;
-            try {
-                const posStart = update.view.posAtDOM(el, 0);
-                const posEnd = update.view.posAtDOM(el, el.childNodes.length);
-                widgetStartLine = doc.lineAt(posStart).number - 1;
-                widgetEndLine = doc.lineAt(posEnd).number - 1;
-            } catch {
-                continue;
-            }
-
+        for (const span of blockWidgetSpans(update.view)) {
             const overlaps =
-                widgetStartLine <= endLine && widgetEndLine >= startLine;
+                span.startLine <= endLine && span.endLine >= startLine;
 
             if (overlaps) {
-                el.classList.add(HIGHLIGHT_CLASS);
-                stillActive.add(el);
+                span.el.classList.add(HIGHLIGHT_CLASS);
+                stillActive.add(span.el);
             } else {
-                el.classList.remove(HIGHLIGHT_CLASS);
+                span.el.classList.remove(HIGHLIGHT_CLASS);
             }
         }
 
         for (const el of this.highlighted) {
-            if (!stillActive.has(el)) {
-                if (el.isConnected) el.classList.remove(HIGHLIGHT_CLASS);
-            }
+            if (!stillActive.has(el)) el.classList.remove(HIGHLIGHT_CLASS);
         }
         this.highlighted = stillActive;
     }
 
+    // Never skip a detached element. Live Preview swaps a callout's widget for
+    // source lines the moment the selection head enters it, then re-attaches
+    // that same cached element when the cursor leaves again — so the element
+    // this loop is least likely to find connected is exactly the one whose
+    // highlight would come back and never leave (issue #190).
     private cleanup(): void {
-        for (const el of this.highlighted) {
-            if (el.isConnected) el.classList.remove(HIGHLIGHT_CLASS);
-        }
+        for (const el of this.highlighted) el.classList.remove(HIGHLIGHT_CLASS);
         this.highlighted.clear();
     }
 

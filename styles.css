@@ -1441,6 +1441,45 @@ settings:
     }
 }
 
+/* Rendered blocks (callouts, embeds) are CodeMirror block widgets, which a
+   mark decoration cannot reach, so they are painted directly. The fade must
+   animate background-color rather than opacity — opacity would take the
+   block's own rendered content down with it. */
+
+.cm-editor .cm-scroller .cm-content .vim-motions-yank-highlight-widget {
+    --vim-motions-yank-widget-bg: var(
+        --vim-motions-yank-bg,
+        color-mix(in oklch, var(--text-accent) 40%, transparent)
+    );
+
+    background-color: var(--vim-motions-yank-widget-bg);
+    border-radius: var(--radius-s, 2px);
+}
+
+.cm-editor .cm-scroller .cm-content .vim-motions-yank-highlight-widget-fade {
+    animation: vim-motions-yank-widget-fade
+        var(--vim-motions-yank-duration, 200ms) ease-out forwards;
+}
+
+@keyframes vim-motions-yank-widget-fade {
+    0% {
+        background-color: var(--vim-motions-yank-widget-bg);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cm-editor
+        .cm-scroller
+        .cm-content
+        .vim-motions-yank-highlight-widget-fade {
+        animation: none;
+    }
+}
+
 .vim-motions-picker-group-header {
     padding: 4px 12px 2px;
     font-size: 0.8em;

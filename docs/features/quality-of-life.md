@@ -37,6 +37,8 @@ Duration is configurable via the **Yank highlight duration** slider (50–3000ms
 - `vim.opt.yankhighlightmode = "solid"` / `vim.opt.yankhighlightduration = 200` in Lua
 - `set yankhighlightmode=solid` / `set yankhighlightduration=200` in vimrc
 
+Blocks that Live Preview renders — callouts, embedded notes, images, and tables — are highlighted as a whole when the yank reaches any of their lines. A rendered block is opaque, so it is either highlighted or not; there is no partial highlight within one.
+
 > [!tip]
 > Override the highlight color with a CSS snippet: set `--vim-motions-yank-bg` on `.theme-dark` or `.theme-light` (e.g., `--vim-motions-yank-bg: rgba(255, 200, 0, 0.4);`).
 
