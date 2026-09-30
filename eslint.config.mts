@@ -19,6 +19,8 @@ export default defineConfig(
         'scripts/report-latency.mjs',
         'scripts/report-e2e-failures.mjs',
         'scripts/typecheck-tests.mjs',
+        'scripts/reconcile-upstream.mjs',
+        'scripts/reconcile-upstream.test.mjs',
         'versions.json',
         'main.js',
         'package.json',

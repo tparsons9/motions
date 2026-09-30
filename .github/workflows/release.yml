@@ -2,7 +2,7 @@ name: Release Obsidian plugin
 
 # Two entry points, and they do different jobs:
 #
-# - A tag push builds that tag and publishes the release. This is the only path
+# - A tag push builds that tag and creates a draft release. This is the only path
 #   that releases, because obsidianmd/obsidian-workflows reads GITHUB_REF and
 #   refuses to run unless it starts with refs/tags/.
 # - workflow_dispatch bumps the version, commits and pushes the tag. It does not

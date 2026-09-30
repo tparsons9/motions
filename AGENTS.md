@@ -8,6 +8,8 @@
 
 ## Environment & tooling
 
+- **Fork upstream sync:** `.github/workflows/sync-upstream.yml` runs every six hours for `tparsons9/motions`, pauses while `sync/upstream` has an open PR, and checks a normal merge before opening a reviewable PR. `scripts/reconcile-upstream.mjs` reconciles release JSON while preserving fork versions and the HTTPS Vim dependency; source and overlapping non-release metadata conflicts require manual review. `scripts/reconcile-upstream.test.mjs` exercises real Git merges (`node --test scripts/reconcile-upstream.test.mjs`). After merge, CI dispatches a patch bump; keep `npm ci` before `npm version`, `RELEASE_TOKEN` for commit/tag pushes, and the tag-triggered draft release action. See CONTRIBUTING.md for manual resolution.
+
 - Node.js: use current LTS (Node 18+ recommended).
 - **Package manager: npm** (required for this sample - `package.json` defines npm scripts and dependencies).
 - **Bundler: esbuild** (required for this sample - `esbuild.config.mjs` and build scripts depend on it). Alternative bundlers like Rollup or webpack are acceptable for other projects if they bundle all external dependencies into `main.js`.
@@ -181,6 +183,8 @@ npm run build
     scripts/install-neovim.sh                  # Linux/macOS official-release installer and API-floor check
     scripts/install-neovim.ps1                 # Windows official-release installer and API-floor check
     scripts/neovim-version.txt                 # Single cross-platform Neovim version pin
+    scripts/reconcile-upstream.mjs             # Field-level fork release metadata merge
+    scripts/reconcile-upstream.test.mjs        # Real-Git sync conflict and preservation fixtures
     test/specs/rpc-prerequisites.ts            # Shared Neovim/API-level/fixture skip guard for RPC specs
     ```
 - Keep the plugin small. Avoid large dependencies. Prefer browser-compatible packages.
