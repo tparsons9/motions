@@ -1,7 +1,8 @@
 name: Sync from upstream
 
 # Preserve fork changes with a normal merge. Only release metadata is reconciled
-# automatically; source and overlapping non-release JSON edits require review.
+# automatically, alongside upstream-owned AGENTS.md and CHANGELOG.md; code
+# and overlapping non-release JSON edits require review.
 on:
     schedule:
         - cron: '0 */6 * * *'
@@ -117,7 +118,7 @@ jobs:
                   cat > "$RUNNER_TEMP/sync-pr.md" <<'EOF_BODY'
                   Automated merge from saberzero1/motions. Review the connector and source diff before merging.
 
-                  Preserves the fork version and HTTPS codemirror-vim override, merges independent metadata fields, combines release histories with fork precedence, and regenerates package-lock.json. Dependency installation, build, static checks, and unit tests passed before this branch was pushed.
+                  Preserves the fork version and HTTPS codemirror-vim override, merges independent metadata fields, combines release histories with fork precedence, takes upstream AGENTS.md and CHANGELOG.md verbatim, and regenerates package-lock.json. Dependency installation, build, static checks, and unit tests passed before this branch was pushed.
 
                   Scheduled syncs pause while this PR is open to preserve review fixes. After merge, post-sync CI dispatches a patch bump; RELEASE_TOKEN pushes the commit/tag and the tag workflow creates a draft release for review.
                   EOF_BODY
@@ -131,7 +132,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   cat > "$RUNNER_TEMP/sync-issue.md" <<'EOF_BODY'
-                  Automated upstream sync needs manual review. The merge was aborted and no branch was pushed. Connector/source conflicts are never resolved by choosing an entire side.
+                  Automated upstream sync needs manual review. The merge was aborted and no branch was pushed. Plugin source conflicts are never resolved by choosing an entire side. AGENTS.md and CHANGELOG.md are taken from upstream automatically.
 
                   Fetch upstream and merge upstream/master on a review branch based on master. Resolve the listed conflicts, preserve the fork version and HTTPS codemirror-vim dependency, regenerate the lockfile, and run checks before opening a PR. Use sync/upstream as the PR branch to retain the post-merge draft release flow.
 

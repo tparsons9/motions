@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Upstream-owned documentation** — take upstream `AGENTS.md` and `CHANGELOG.md` verbatim during syncs, while preserving the fork version and connector code and retaining manual review for other conflicts.
+
 - **Scheduled fork upstream sync** — reconcile release metadata field by field, preserve the fork version and HTTPS codemirror-vim dependency, regenerate the lockfile, and run checks before opening a PR. Open sync PRs pause automation to preserve review fixes; source and overlapping non-release metadata conflicts are flagged for manual review.
 - **Post-sync draft releases** — explicitly authorize workflow dispatch and retain dependency installation before the version bump, alongside `RELEASE_TOKEN` commit/tag pushes and tag-triggered draft release creation.
 
@@ -22,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-Git sync fixtures cover metadata reconciliation, connector preservation, clean merges, and manual-review conflicts. Negative controls changed the preserved version from `1.0.0` to `9.9.9` and disabled conflict rejection (exit `0` instead of `1`); all four fixtures failed before restoration.
 
 - Three shell-step regression fixtures reproduce denied issue lookup, creation, and update. Before the fix each exited `1` without a summary or warning; after adding fallbacks, omitting `GH_REPO` still produced an empty repository instead of `tparsons9/motions`.
+
+- A documentation-conflict fixture failed with exit `1` and conflict markers in both files before the policy change; it now verifies upstream contents, fork version, connector preservation, and a fully resolved index.
 
 ### Documentation
 

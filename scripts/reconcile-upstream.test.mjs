@@ -17,7 +17,7 @@ const metadata = [
     'package-lock.json',
 ];
 
-/** @param {import('node:test').TestContext} t @param {'metadata' | 'source' | 'field' | 'clean'} kind */
+/** @param {import('node:test').TestContext} t @param {'metadata' | 'source' | 'field' | 'clean' | 'docs'} kind */
 function fixture(t, kind) {
     const cwd = mkdtempSync(join(tmpdir(), 'motions-sync-'));
     t.after(() => rmSync(cwd, { recursive: true, force: true }));
@@ -42,6 +42,8 @@ function fixture(t, kind) {
     write('versions.json', { '0.1.0': '1.8.7' });
     write('package-lock.json', { version: '0.1.0' });
     writeFileSync(join(cwd, 'connector.ts'), 'base\n');
+    for (const file of ['AGENTS.md', 'CHANGELOG.md'])
+        writeFileSync(join(cwd, file), 'base docs\n');
     git('add', '.');
     git('commit', '-m', 'base');
     git('branch', 'upstream');
@@ -58,6 +60,9 @@ function fixture(t, kind) {
     write('versions.json', { '0.1.0': '1.8.7', '1.0.0': '1.8.7' });
     write('package-lock.json', { version: '1.0.0', fork: true });
     writeFileSync(join(cwd, 'connector.ts'), 'stable connector\n');
+    if (kind === 'docs')
+        for (const file of ['AGENTS.md', 'CHANGELOG.md'])
+            writeFileSync(join(cwd, file), 'fork docs\n');
     git('add', '.');
     git('commit', '-m', 'connector and fork release');
     git('switch', 'upstream');
@@ -79,6 +84,9 @@ function fixture(t, kind) {
         });
         write('versions.json', { '0.1.0': '1.9.0', '0.2.0': '1.9.0' });
         write('package-lock.json', { version: '0.2.0' });
+        if (kind === 'docs')
+            for (const file of ['AGENTS.md', 'CHANGELOG.md'])
+                writeFileSync(join(cwd, file), 'upstream docs\n');
         if (kind === 'source')
             writeFileSync(join(cwd, 'connector.ts'), 'upstream connector\n');
     }
@@ -254,3 +262,29 @@ exit 1
         );
     });
 }
+
+test('takes upstream AGENTS.md and CHANGELOG.md while preserving fork connector and version', (t) => {
+    const { cwd, git, result } = fixture(t, 'docs');
+    assert.deepEqual(
+        {
+            status: result.status,
+            agents: readFileSync(join(cwd, 'AGENTS.md'), 'utf8'),
+            changelog: readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8'),
+            connector: readFileSync(join(cwd, 'connector.ts'), 'utf8'),
+            version: JSON.parse(
+                result.status === 0
+                    ? readFileSync(join(cwd, 'package.json'), 'utf8')
+                    : git('show', 'HEAD:package.json'),
+            ).version,
+            unresolved: git('diff', '--name-only', '--diff-filter=U'),
+        },
+        {
+            status: 0,
+            agents: 'upstream docs\n',
+            changelog: 'upstream docs\n',
+            connector: 'stable connector\n',
+            version: '1.0.0',
+            unresolved: '',
+        },
+    );
+});

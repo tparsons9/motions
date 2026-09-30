@@ -8,6 +8,7 @@ const metadata = [
     'manifest.json',
     'versions.json',
 ];
+const upstreamDocuments = ['AGENTS.md', 'CHANGELOG.md'];
 const vimDependency = 'https://github.com/saberzero1/codemirror-vim.git';
 
 /** @param {string[]} args */
@@ -77,7 +78,7 @@ try {
         .split('\0')
         .filter(Boolean);
     const sourceConflicts = conflicts.filter(
-        (file) => !metadata.includes(file),
+        (file) => !metadata.includes(file) && !upstreamDocuments.includes(file),
     );
     if (sourceConflicts.length) {
         throw new Error(
@@ -124,6 +125,16 @@ try {
         [String(oursPackage.version)]:
             resolved.get('manifest.json').minAppVersion,
     });
+    // This compatibility fork deliberately follows upstream's instructions and changelog.
+    git([
+        'restore',
+        '--source',
+        upstream,
+        '--staged',
+        '--worktree',
+        '--',
+        ...upstreamDocuments,
+    ]);
     for (const [file, value] of resolved) {
         writeFileSync(file, `${JSON.stringify(value, null, 4)}\n`);
     }
