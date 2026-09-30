@@ -9,14 +9,21 @@ name: Release after upstream sync
 
 on:
     pull_request:
+        branches: [master]
         types: [closed]
     workflow_dispatch:
+
+permissions:
+    contents: read
+    actions: write
+    issues: write
 
 jobs:
     test:
         if: >
             github.event_name == 'workflow_dispatch' ||
-            (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'sync/upstream')
+            (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'sync/upstream' &&
+             github.event.pull_request.head.repo.full_name == github.repository)
         uses: ./.github/workflows/lint.yml
 
     release:
@@ -25,7 +32,7 @@ jobs:
         steps:
             - env:
                   GH_TOKEN: ${{ github.token }}
-              run: gh workflow run release.yml --repo ${{ github.repository }} -f release_type=patch
+              run: gh workflow run release.yml --repo ${{ github.repository }} --ref master -f release_type=patch
 
     notify-failure:
         needs: test

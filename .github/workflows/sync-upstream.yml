@@ -1,17 +1,7 @@
 name: Sync from upstream
 
-# This fork doesn't push back to saberzero1/motions (see README's "Personal fork"
-# note). This workflow pulls the other direction instead: on a schedule, it tries
-# to merge new upstream commits into this fork.
-#
-# - Clean merge -> pushes a `sync/upstream` branch and opens a PR. Merging that PR
-#   (see post-sync-release.yml) runs CI and, if it passes, cuts a new release.
-# - Conflicting merge -> aborts cleanly and files (or updates) a tracking issue
-#   instead of leaving a broken branch around. Expect conflicts in manifest.json /
-#   versions.json / package.json specifically, since both sides bump those
-#   independently — see CONTRIBUTING.md for how to resolve them.
-# - No new upstream commits -> no-op, no branch/PR/issue noise.
-
+# Preserve fork changes with a normal merge. Only release metadata is reconciled
+# automatically; source and overlapping non-release JSON edits require review.
 on:
     schedule:
         - cron: '0 */6 * * *'
@@ -28,6 +18,7 @@ concurrency:
 
 jobs:
     sync:
+        if: github.repository == 'tparsons9/motions'
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v7
@@ -35,73 +26,118 @@ jobs:
                   fetch-depth: 0
                   ref: master
 
-            - name: Configure git identity
+            - name: Preserve an open sync PR
+              id: pending
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  existing=$(gh pr list --base master --head sync/upstream --state open --json number --jq '.[0].number')
+                  echo "number=$existing" >> "$GITHUB_OUTPUT"
+                  if [ -n "$existing" ]; then
+                      echo "Sync PR #$existing is open; preserving its commits and review fixes." >> "$GITHUB_STEP_SUMMARY"
+                  fi
+
+            - uses: actions/setup-node@v7
+              if: steps.pending.outputs.number == ''
+              with:
+                  node-version: 24
+                  cache: npm
+
+            - name: Fetch upstream
+              if: steps.pending.outputs.number == ''
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-            - name: Add upstream remote
-              run: git remote add upstream https://github.com/saberzero1/motions.git
-
-            - name: Fetch upstream
-              run: git fetch upstream master
+                  git remote add upstream https://github.com/saberzero1/motions.git
+                  git fetch upstream master
+                  cp scripts/reconcile-upstream.mjs "$RUNNER_TEMP/reconcile-upstream.mjs"
 
             - name: Check for new upstream commits
               id: check
+              if: steps.pending.outputs.number == ''
               run: |
                   count=$(git rev-list origin/master..upstream/master --count)
                   echo "count=$count" >> "$GITHUB_OUTPUT"
 
-            - name: Attempt merge
+            - name: Merge and reconcile release metadata
               id: merge
-              if: steps.check.outputs.count != '0'
+              if: steps.pending.outputs.number == '' && steps.check.outputs.count != '0'
               run: |
                   git switch -C sync/upstream origin/master
-                  if git merge --no-edit upstream/master; then
+                  # Exit 1 is expected for conflicts; other merge errors must fail the run.
+                  status=0
+                  git merge --no-commit --no-ff upstream/master || status=$?
+                  if [ "$status" -gt 1 ] || ! git rev-parse -q --verify MERGE_HEAD; then
+                      exit 1
+                  fi
+                  if node "$RUNNER_TEMP/reconcile-upstream.mjs" upstream/master > "$RUNNER_TEMP/sync-conflicts.txt" 2>&1; then
                       echo "conflict=false" >> "$GITHUB_OUTPUT"
                   else
+                      cat "$RUNNER_TEMP/sync-conflicts.txt"
                       git merge --abort
                       echo "conflict=true" >> "$GITHUB_OUTPUT"
                   fi
 
+            - name: Regenerate lockfile and complete merge
+              if: steps.merge.outputs.conflict == 'false'
+              run: |
+                  npm install --package-lock-only --ignore-scripts
+                  # npm can normalize the public Git dependency back to SSH.
+                  node <<'EOF_NODE'
+                  const fs = require('node:fs');
+                  const path = 'package-lock.json';
+                  const lock = JSON.parse(fs.readFileSync(path, 'utf8'));
+                  const vim = lock.packages['node_modules/@replit/codemirror-vim'];
+                  vim.resolved = vim.resolved.replace('git+ssh://git@github.com/', 'git+https://github.com/');
+                  fs.writeFileSync(path, JSON.stringify(lock, null, 4) + '\n');
+                  EOF_NODE
+                  npm ci
+                  npx prettier --write package.json package-lock.json manifest.json versions.json
+                  git add package.json package-lock.json manifest.json versions.json
+                  git commit -m "Merge upstream/master, preserving fork release metadata"
+
+            - name: Check merged result
+              if: steps.merge.outputs.conflict == 'false'
+              run: |
+                  node --test scripts/reconcile-upstream.test.mjs
+                  npm run build
+                  npm run verify
+                  npm run test:unit
+
             - name: Push sync branch and open PR
-              if: steps.check.outputs.count != '0' && steps.merge.outputs.conflict == 'false'
+              if: steps.merge.outputs.conflict == 'false'
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  git push origin sync/upstream --force
-                  existing=$(gh pr list --head sync/upstream --state open --json number --jq '.[0].number')
-                  if [ -z "$existing" ]; then
-                      cat > /tmp/pr-body.md <<'EOF'
-                  Automated merge of new commits from upstream. Review the diff before merging.
+                  # Lease protects against changes made after this run's checkout.
+                  git push origin sync/upstream --force-with-lease
+                  cat > "$RUNNER_TEMP/sync-pr.md" <<'EOF_BODY'
+                  Automated merge from saberzero1/motions. Review the connector and source diff before merging.
 
-                  Merging this PR triggers CI and, if it passes, an automatic patch release (see post-sync-release.yml). Re-running this workflow while this PR is open force-updates this branch with the latest upstream commits.
-                  EOF
-                      gh pr create --base master --head sync/upstream \
-                          --title "Sync from upstream (saberzero1/motions)" \
-                          --body-file /tmp/pr-body.md
-                  fi
+                  Preserves the fork version and HTTPS codemirror-vim override, merges independent metadata fields, combines release histories with fork precedence, and regenerates package-lock.json. Dependency installation, build, static checks, and unit tests passed before this branch was pushed.
 
-            - name: File or update conflict issue
-              if: steps.check.outputs.count != '0' && steps.merge.outputs.conflict == 'true'
-              continue-on-error: true
+                  Scheduled syncs pause while this PR is open to preserve review fixes. After merge, post-sync CI dispatches a patch bump; RELEASE_TOKEN pushes the commit/tag and the tag workflow creates a draft release for review.
+                  EOF_BODY
+                  gh pr create --base master --head sync/upstream \
+                      --title "Sync from upstream (saberzero1/motions)" \
+                      --body-file "$RUNNER_TEMP/sync-pr.md"
+
+            - name: Flag conflicts for manual review
+              if: steps.merge.outputs.conflict == 'true'
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  cat > /tmp/issue-body.md <<'EOF'
-                  Automated sync from upstream (saberzero1/motions) hit a merge conflict and could not proceed automatically.
+                  cat > "$RUNNER_TEMP/sync-issue.md" <<'EOF_BODY'
+                  Automated upstream sync needs manual review. The merge was aborted and no branch was pushed. Connector/source conflicts are never resolved by choosing an entire side.
 
-                  To resolve locally:
-                  ```
-                  git fetch upstream
-                  git merge upstream/master
-                  # resolve conflicts (check manifest.json / versions.json / package.json first)
-                  git push origin master
-                  ```
-                  EOF
-                  existing=$(gh issue list --search "\"Upstream sync conflict\" in:title" --state open --json number --jq '.[0].number')
+                  Fetch upstream and merge upstream/master on a review branch based on master. Resolve the listed conflicts, preserve the fork version and HTTPS codemirror-vim dependency, regenerate the lockfile, and run checks before opening a PR. Use sync/upstream as the PR branch to retain the post-merge draft release flow.
+
+                  Conflicts:
+                  EOF_BODY
+                  cat "$RUNNER_TEMP/sync-conflicts.txt" >> "$RUNNER_TEMP/sync-issue.md"
+                  existing=$(gh issue list --search '"Upstream sync conflict" in:title' --state open --json number --jq '.[0].number')
                   if [ -n "$existing" ]; then
-                      gh issue comment "$existing" --body-file /tmp/issue-body.md
+                      gh issue edit "$existing" --body-file "$RUNNER_TEMP/sync-issue.md"
                   else
-                      gh issue create --title "Upstream sync conflict" --body-file /tmp/issue-body.md
+                      gh issue create --title "Upstream sync conflict" --body-file "$RUNNER_TEMP/sync-issue.md"
                   fi

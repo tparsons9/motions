@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Scheduled fork upstream sync** — reconcile release metadata field by field, preserve the fork version and HTTPS codemirror-vim dependency, regenerate the lockfile, and run checks before opening a PR. Open sync PRs pause automation to preserve review fixes; source and overlapping non-release metadata conflicts are flagged for manual review.
+- **Post-sync draft releases** — explicitly authorize workflow dispatch and install dependencies before the version bump, retaining `RELEASE_TOKEN` commit/tag pushes and tag-triggered draft release creation.
+
+### Tests
+
+- Real-Git sync fixtures cover metadata reconciliation, connector preservation, clean merges, and manual-review conflicts. Negative controls changed the preserved version from `1.0.0` to `9.9.9` and disabled conflict rejection (exit `0` instead of `1`); all four fixtures failed before restoration.
+
+### Documentation
+
+- `AGENTS.md`, `CONTRIBUTING.md`, `README.md`, and `CHANGELOG.md`: fork sync policy, manual resolution, validation, and draft release flow.
+
 ### Fixed
 
 - **Which-key overlay no longer opens on a literal-argument leader key** — `r<leader>`, and any other command awaiting a literal `<character>` argument (`f`, `t`, `m`, `q`, `"`), opened the leader overlay when the leader key was used as that argument. The fork signals `vim-keypress` only after it has consumed the argument, so the key was indistinguishable from a standalone leader press; the overlay now carries the previous key's `expectLiteralNext` state across the event and skips leader handling when the key was consumed as an argument. ([#186](https://github.com/saberzero1/motions/issues/186))
