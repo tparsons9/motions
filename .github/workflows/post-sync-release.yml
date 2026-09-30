@@ -43,5 +43,6 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   gh issue create \
+                      --repo "${{ github.repository }}" \
                       --title "Upstream sync merge failed CI — no release cut" \
                       --body "The upstream sync merge (PR #${{ github.event.pull_request.number }}) passed review but failed CI after merging. No release was cut. See the failed run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

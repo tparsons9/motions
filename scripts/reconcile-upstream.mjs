@@ -8,6 +8,8 @@ const metadata = [
     'manifest.json',
     'versions.json',
 ];
+const forkIdentityFields = ['id', 'author', 'authorUrl'];
+const upstreamDocuments = ['AGENTS.md', 'CHANGELOG.md'];
 const vimDependency = 'https://github.com/saberzero1/codemirror-vim.git';
 
 /** @param {string[]} args */
@@ -77,7 +79,7 @@ try {
         .split('\0')
         .filter(Boolean);
     const sourceConflicts = conflicts.filter(
-        (file) => !metadata.includes(file),
+        (file) => !metadata.includes(file) && !upstreamDocuments.includes(file),
     );
     if (sourceConflicts.length) {
         throw new Error(
@@ -100,6 +102,8 @@ try {
         const theirs = read(upstream, file);
         for (const value of [ancestor, ours, theirs]) {
             delete value.version;
+            if (file === 'manifest.json')
+                for (const field of forkIdentityFields) delete value[field];
             if (file === 'package.json' && isObject(value.dependencies)) {
                 delete value.dependencies['@replit/codemirror-vim'];
             }
@@ -108,6 +112,11 @@ try {
         if (!isObject(result))
             throw new Error(`Expected merged object: ${file}`);
         result.version = oursPackage.version;
+        if (file === 'manifest.json')
+            for (const field of forkIdentityFields) {
+                if (oursManifest[field] !== undefined)
+                    result[field] = oursManifest[field];
+            }
         if (file === 'package.json') {
             const dependencies = isObject(result.dependencies)
                 ? result.dependencies
@@ -124,6 +133,16 @@ try {
         [String(oursPackage.version)]:
             resolved.get('manifest.json').minAppVersion,
     });
+    // This compatibility fork deliberately follows upstream's instructions and changelog.
+    git([
+        'restore',
+        '--source',
+        upstream,
+        '--staged',
+        '--worktree',
+        '--',
+        ...upstreamDocuments,
+    ]);
     for (const [file, value] of resolved) {
         writeFileSync(file, `${JSON.stringify(value, null, 4)}\n`);
     }

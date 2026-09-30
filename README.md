@@ -1,6 +1,6 @@
 # Vim Motions
 
-> **Personal fork.** This is [tparsons9](https://github.com/tparsons9)'s fork of [saberzero1/motions](https://github.com/saberzero1/motions), maintained for their own Obsidian vault workflow. Upstream updates arrive through scheduled, checked PRs that preserve this fork’s connector work; it does not contribute changes upstream — for the original project, issues, and releases, see the upstream repository.
+> **Personal fork.** This is [tparsons9](https://github.com/tparsons9)'s fork of [saberzero1/motions](https://github.com/saberzero1/motions), maintained by Tanner Parsons for their own Obsidian vault workflow, with original authorship credited to Emile Bangma. Stable upstream releases arrive through scheduled, checked PRs that preserve this fork’s connector work; it does not contribute changes upstream — for the original project, issues, and releases, see the upstream repository.
 
 A polished, Neovim-native experience inside [Obsidian](https://obsidian.md). Vim Motions adds what's missing from Obsidian's built-in Vim mode: Markdown-aware text objects, structural navigation, hard-wrap formatting, workspace keyboard control, EasyMotion, Lua configuration with `vim.keymap.set` / `vim.opt` / `vim.fn` / `vim.api` / `vim.tbl_*` / autocommands / timers / highlight groups, and a built-in `.obsidian.vimrc` loader.
 
