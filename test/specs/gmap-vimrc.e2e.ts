@@ -73,7 +73,7 @@ describe('gmap vimrc integration', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (plugin) {
                 plugin.vimrcLoaded = false;
                 plugin.vimrcLoading = false;
@@ -92,7 +92,7 @@ describe('gmap vimrc integration', function () {
                                 >;
                             };
                         }
-                    ).plugins.plugins['vim-motions'];
+                    ).plugins.plugins['vim-motions-tparsons9'];
                     return plugin?.vimrcLoaded === true;
                 })) as boolean,
             { timeout: 5000, interval: 100 },
@@ -108,7 +108,7 @@ describe('gmap vimrc integration', function () {
                         plugins: Record<string, Record<string, unknown>>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             const gmaps = (plugin?.vimrcGlobalMaps ?? []) as Array<{
                 lhs: string;
                 rhs: string;
@@ -254,7 +254,7 @@ describe('gmap vimrc integration', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (plugin) {
                 plugin.settings.whichKeyMode = 'all';
                 plugin.reloadFeatures();
@@ -288,7 +288,7 @@ describe('gmap vimrc integration', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (plugin) {
                 plugin.settings.whichKeyMode = 'off';
                 plugin.reloadFeatures();
@@ -304,7 +304,7 @@ describe('gmap vimrc integration', function () {
                         plugins: Record<string, Record<string, unknown>>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             const labels = (plugin?.vimrcGlobalWhichKeyLabels ?? []) as Array<{
                 key: string;
                 label: string;

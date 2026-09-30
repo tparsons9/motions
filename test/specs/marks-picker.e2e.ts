@@ -228,7 +228,7 @@ describe('Marks picker', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (!plugin) return;
                 plugin.settings.persistedMarks = [];
                 plugin.markStore?.load([]);

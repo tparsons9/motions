@@ -69,7 +69,7 @@ describe('Plugin coexistence', function () {
                 }
             ).plugins.plugins;
             return {
-                hasVimMotions: 'vim-motions' in plugins,
+                hasVimMotions: 'vim-motions-tparsons9' in plugins,
                 hasVimrcSupport: 'obsidian-vimrc-support' in plugins,
             };
         });

@@ -66,7 +66,7 @@ async function waitForSnippets(): Promise<void> {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const all = plugin?.snippetRegistry?.getAll();
                 return Array.isArray(all) && all.length > 0;
             })) as boolean,
@@ -170,7 +170,7 @@ describe('Snippet override and table trailing newline (issue #118)', function ()
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (!plugin?.snippetRegistry) return;
                 plugin.snippetRegistry.loadFile(
                     {
@@ -211,7 +211,7 @@ describe('Snippet override and table trailing newline (issue #118)', function ()
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const matches = plugin?.snippetRegistry?.lookupByPrefix('bold');
                 if (!matches) return null;
                 return matches.map((m) => ({
@@ -245,7 +245,7 @@ describe('Snippet override and table trailing newline (issue #118)', function ()
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const all = plugin?.snippetRegistry?.getAll();
                 if (!all) return null;
                 return all

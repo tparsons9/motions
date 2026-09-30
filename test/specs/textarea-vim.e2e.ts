@@ -16,7 +16,7 @@ async function enableFeature(enable: boolean): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.settings.enableVimTextareas = val;
         plugin.reloadFeatures();
@@ -476,7 +476,9 @@ describe('Textarea vim replacement', function () {
                         executeCommandById: (id: string) => boolean;
                     };
                 }
-            ).commands.executeCommandById('vim-motions:show-hint-labels');
+            ).commands.executeCommandById(
+                'vim-motions-tparsons9:show-hint-labels',
+            );
         });
         await browser.pause(500);
 

@@ -171,7 +171,7 @@ async function setRpcEnabled(enabled: boolean): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             Object.assign(plugin.settings, {
                 enableHarpoon: true,
@@ -198,7 +198,7 @@ async function getRpcState(): Promise<RpcState> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getNeovimConnectionState();
     })) as RpcState;
@@ -227,7 +227,7 @@ async function request(method: string, args: unknown[]): Promise<unknown> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             return plugin.requestNeovim(rpcMethod, rpcArgs);
         },
@@ -368,7 +368,7 @@ async function seedHarpoon(
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         plugin.harpoonStore.load(pins);
     }, items);
@@ -382,7 +382,7 @@ async function getHarpoonSlots(): Promise<
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.harpoonStore
             .getAll()
@@ -396,7 +396,7 @@ async function seedJumpList(entries: RpcLocation[]): Promise<void> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         plugin.jumpList.deserialize(nextEntries);
     }, entries);
@@ -472,7 +472,7 @@ async function setHostMark(name: string): Promise<void> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'] as RpcPlugin & {
+        ).plugins.plugins['vim-motions-tparsons9'] as RpcPlugin & {
             triggerMarkGutterRefresh(): void;
         };
         const Vim = window.CodeMirrorAdapter?.Vim;
@@ -525,7 +525,7 @@ async function bridgeInventory(): Promise<BridgeInventory> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return target?.leaderRegistry?.getLeaderKey() ?? '\\';
     })) as string;
     const commands = (await request('nvim_get_commands', [
@@ -798,7 +798,7 @@ describe('Neovim RPC Obsidian feature bridge', function () {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             plugin.harpoonStore.load([]);
             plugin.jumpList.clear();
@@ -1033,7 +1033,7 @@ describe('Neovim RPC Obsidian feature bridge', function () {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             plugin.harpoonStore.add('Welcome.md', 2, 2);
             const target = app.vault.getFileByPath('Target.md');
@@ -1070,7 +1070,7 @@ describe('Neovim RPC Obsidian feature bridge', function () {
                     app as unknown as {
                         plugins: { plugins: Record<string, RpcPlugin> };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return (
                     plugin?.harpoonStore as unknown as {
                         get(index: number): unknown;
@@ -1472,7 +1472,7 @@ return out`,
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return target?.leaderRegistry?.getLeaderKey() ?? '\\';
         })) as string;
         expect(groups.length).toBeGreaterThan(0);
@@ -1720,7 +1720,7 @@ return out`,
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             (
                 plugin as unknown as {

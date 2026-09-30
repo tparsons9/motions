@@ -56,17 +56,20 @@ if (prod || ciTest) {
 } else if (dev) {
     await context.rebuild();
     // copy the generated file to the plugin folder
+    fs.mkdirSync('./test-vault/.obsidian/plugins/vim-motions-tparsons9', {
+        recursive: true,
+    });
     fs.copyFileSync(
         'main.js',
-        './test-vault/.obsidian/plugins/vim-motions/main.js',
+        './test-vault/.obsidian/plugins/vim-motions-tparsons9/main.js',
     );
     fs.copyFileSync(
         'manifest.json',
-        './test-vault/.obsidian/plugins/vim-motions/manifest.json',
+        './test-vault/.obsidian/plugins/vim-motions-tparsons9/manifest.json',
     );
     fs.copyFileSync(
         'styles.css',
-        './test-vault/.obsidian/plugins/vim-motions/styles.css',
+        './test-vault/.obsidian/plugins/vim-motions-tparsons9/styles.css',
     );
     process.exit(0);
 } else {

@@ -14,7 +14,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                             plugins: Record<string, { vimrcLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.vimrcLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -33,7 +33,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await plugin?.loadLuaConfigForTest?.();
     });
     await browser.waitUntil(
@@ -45,7 +45,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                             plugins: Record<string, { luaLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.luaLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -79,7 +79,7 @@ async function waitForSnippet(trigger: string): Promise<void> {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const matches = plugin?.snippetRegistry?.lookupByPrefix(t);
                 return Array.isArray(matches) && matches.length > 0;
             }, trigger)) as boolean,
@@ -128,7 +128,7 @@ vim.snippet.add("dtest", s("DynamicTest", {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return {
                 luaCount: plugin?.luaSnippetDefs?.length ?? -1,
                 registryCount: plugin?.snippetRegistry?.getAll()?.length ?? -1,

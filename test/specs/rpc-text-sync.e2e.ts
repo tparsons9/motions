@@ -91,7 +91,7 @@ async function setRpcEnabled(enabled: boolean): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             plugin.settings.neovimBinaryPath = '';
             plugin.settings.neovimConfigPath = nextConfigPath;
@@ -115,7 +115,7 @@ async function ensureVimEnabled(): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.settings.vimEnabled ?? false;
     });
     if (enabled) return;
@@ -124,7 +124,9 @@ async function ensureVimEnabled(): Promise<void> {
             commands: { executeCommandById(commandId: string): boolean };
         };
         if (
-            !commands.commands.executeCommandById('vim-motions:enable-vim-mode')
+            !commands.commands.executeCommandById(
+                'vim-motions-tparsons9:enable-vim-mode',
+            )
         )
             throw new Error('Enable Vim command not found');
     });
@@ -140,7 +142,7 @@ async function ensureVimEnabled(): Promise<void> {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings.vimEnabled ?? false;
             }),
         { timeout: 5000, interval: 100 },
@@ -153,7 +155,7 @@ async function getRpcState(): Promise<RpcState> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getNeovimConnectionState();
     })) as RpcState;
@@ -183,7 +185,7 @@ async function request(method: string, args: unknown[]): Promise<unknown> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             return plugin.requestNeovim(rpcMethod, rpcArgs);
         },
@@ -202,7 +204,7 @@ async function compareBytes(): Promise<ByteComparison> {
                     activeEditor?: { editor?: { getValue(): string } };
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         const rawLines = (await plugin.requestNeovim('nvim_exec_lua', [
             'local out = {}; for _, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, true)) do out[#out + 1] = {string.byte(line, 1, -1)} end; return out',

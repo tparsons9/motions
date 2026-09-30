@@ -23,7 +23,7 @@ async function loadVimrc(content: string): Promise<void> {
                             plugins: Record<string, { vimrcLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.vimrcLoaded === true;
             })) as boolean,
         { timeout: 5000, interval: 100 },
@@ -39,7 +39,7 @@ async function loadVimrc(content: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await plugin?.reloadAllConfigs?.();
     });
 }
@@ -59,7 +59,7 @@ async function loadVimrcSoft(content: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await plugin?.reloadAllConfigs?.();
     });
 }
@@ -71,7 +71,7 @@ async function assertPluginLoaded(): Promise<void> {
                 plugins: { plugins: Record<string, unknown> };
             }
         ).plugins.plugins;
-        return { pluginLoaded: 'vim-motions' in plugins };
+        return { pluginLoaded: 'vim-motions-tparsons9' in plugins };
     });
     expect(result).toHaveProperty('pluginLoaded', true);
 }
@@ -95,7 +95,7 @@ async function getResolvedLeaderKey(): Promise<string | null> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.leaderRegistry?.getLeaderKey() ?? null;
     })) as string | null;
 }
@@ -652,7 +652,7 @@ describe('Vimrc compatibility (obsidian-vimrc-support README examples)', functio
                                     >;
                                 };
                             }
-                        ).plugins.plugins['vim-motions'];
+                        ).plugins.plugins['vim-motions-tparsons9'];
                         if (
                             !plugin?.leaderRegistry ||
                             !plugin.reregisterLeaderFeatures

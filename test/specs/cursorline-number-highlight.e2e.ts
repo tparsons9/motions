@@ -45,7 +45,7 @@ async function configure(patch: Record<string, unknown>): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, PluginHandle> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('configure: plugin not found');
             Object.assign(plugin.settings, p);
             await plugin.saveSettings();

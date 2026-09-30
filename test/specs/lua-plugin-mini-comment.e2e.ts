@@ -92,7 +92,7 @@ describe('mini.comment plugin integration', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return p?.settings?.scrolloffLines;
             });
             expect(scrolloff).toBe(1);
@@ -198,7 +198,7 @@ describe('mini.comment plugin integration', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return p?.settings?.scrolloffLines;
             });
             expect(scrolloff).toBe(88);
@@ -365,7 +365,7 @@ describe('mini.comment plugin integration', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return p?.settings?.scrolloffLines;
             });
             const value = await getEditorValue();
@@ -411,7 +411,7 @@ describe('mini.comment plugin integration', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return p?.settings?.scrolloffLines;
             });
             expect(scrolloff).toBe(99);

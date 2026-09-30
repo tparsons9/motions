@@ -23,7 +23,7 @@ async function applyVimrcOverrides(
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
 
             const settings = plugin.settings;
@@ -89,7 +89,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return {
                 value: plugin?.settings?.enableEasyMotion,
                 overridden:
@@ -111,7 +111,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.enableEasyMotion;
         });
 
@@ -132,7 +132,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return {
                 statusBar: plugin?.settings?.enableStatusBar,
                 powerline: plugin?.settings?.enablePowerline,
@@ -157,7 +157,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return {
                 value: plugin?.settings?.scrolloffLines,
                 overridden:
@@ -179,7 +179,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.easyMotionLabels;
         });
 
@@ -196,7 +196,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.tableWidgetMode;
         });
 
@@ -216,7 +216,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             const modePrompts = plugin?.settings?.modePrompts as
                 { normal?: string; insert?: string } | undefined;
             return {
@@ -240,7 +240,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.vimrcGroupLabels ?? [];
         });
 
@@ -264,7 +264,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.vimrcCommandLabels ?? [];
         });
 
@@ -289,7 +289,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.vimrcOverrides?.size ?? 0;
         });
 
@@ -311,7 +311,7 @@ describe('Vimrc settings parity', function () {
                         plugins: Record<string, VimrcTestPlugin>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return {
                 scrolloff: plugin?.settings?.scrolloffLines,
                 textwidth: plugin?.settings?.textwidth,

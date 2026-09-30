@@ -20,7 +20,7 @@ async function openOilAndWait(dirPath?: string): Promise<void> {
                     plugins?: Record<string, { oilManager?: unknown }>;
                 };
             }
-        ).plugins?.plugins?.['vim-motions'];
+        ).plugins?.plugins?.['vim-motions-tparsons9'];
         const activeDir =
             dir ??
             (() => {

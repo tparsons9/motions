@@ -12,7 +12,7 @@ async function waitForVimrcLoaded(): Promise<void> {
                             plugins: Record<string, { vimrcLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.vimrcLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -29,7 +29,7 @@ async function waitForLuaLoaded(): Promise<void> {
                             plugins: Record<string, { luaLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.luaLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -47,7 +47,7 @@ async function applySettings(settings: Record<string, unknown>): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (plugin) Object.assign(plugin.settings, s);
     }, settings);
 }
@@ -68,7 +68,7 @@ async function loadLuaViaTestHook(content: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await plugin?.loadLuaConfigForTest?.();
     });
     await waitForLuaLoaded();
@@ -203,7 +203,7 @@ describe('Config load notifications (showConfigNotifications)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings?.showConfigNotifications;
             });
             expect(value).toBe(true);

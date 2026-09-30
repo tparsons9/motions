@@ -333,7 +333,7 @@ describe('Picker', function () {
                                 >;
                             };
                         }
-                    ).plugins?.plugins?.['vim-motions'];
+                    ).plugins?.plugins?.['vim-motions-tparsons9'];
                     if (plugin) {
                         plugin.settings.pickerMatcherEngine = eng;
                         plugin.reloadFeatures?.();
@@ -363,7 +363,7 @@ describe('Picker', function () {
                             >;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (plugin) {
                     plugin.settings.pickerMatcherEngine = 'auto';
                     plugin.reloadFeatures?.();

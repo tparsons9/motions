@@ -143,7 +143,7 @@ export const config: WebdriverIO.Config = {
                     app as unknown as {
                         commands: { commands: Record<string, unknown> };
                     }
-                ).commands.commands['vim-motions:disable-vim-mode'];
+                ).commands.commands['vim-motions-tparsons9:disable-vim-mode'];
             });
             if (!hasToggle) return;
 
@@ -152,7 +152,9 @@ export const config: WebdriverIO.Config = {
                     app as unknown as {
                         commands: { executeCommandById(id: string): void };
                     }
-                ).commands.executeCommandById('vim-motions:disable-vim-mode');
+                ).commands.executeCommandById(
+                    'vim-motions-tparsons9:disable-vim-mode',
+                );
             });
             await browser.pause(800);
 
@@ -161,7 +163,9 @@ export const config: WebdriverIO.Config = {
                     app as unknown as {
                         commands: { executeCommandById(id: string): void };
                     }
-                ).commands.executeCommandById('vim-motions:enable-vim-mode');
+                ).commands.executeCommandById(
+                    'vim-motions-tparsons9:enable-vim-mode',
+                );
             });
             await browser.pause(800);
         } catch {

@@ -48,7 +48,7 @@ async function applySetting(
                 app as unknown as {
                     plugins: { plugins: Record<string, PluginHandle> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('applySetting: plugin not found');
             plugin.settings[k] = v;
             await plugin.saveSettings();

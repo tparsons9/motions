@@ -42,7 +42,7 @@ async function setRpc(enabled: boolean): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             Object.assign(plugin.settings, {
                 neovimBinaryPath: bin,
@@ -78,7 +78,7 @@ async function isConnected(): Promise<boolean> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.getNeovimConnectionState().connected === true;
     });
 }

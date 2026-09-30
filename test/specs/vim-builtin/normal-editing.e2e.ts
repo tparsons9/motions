@@ -28,7 +28,7 @@ describe('Normal mode — editing commands (Tier 1)', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (plugin && plugin.settings.flashJumpEnabled) {
                 plugin.settings.flashJumpEnabled = false;
                 plugin.reloadFeatures();

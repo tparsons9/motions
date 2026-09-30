@@ -10,7 +10,7 @@ describe('Vim Motions plugin', function () {
         const pluginIds = await browser.executeObsidian(({ app }) => {
             return Object.keys(app.plugins.plugins);
         });
-        expect(pluginIds).toContain('vim-motions');
+        expect(pluginIds).toContain('vim-motions-tparsons9');
     });
 
     it('should have Vim API available (built-in or bundled)', async function () {

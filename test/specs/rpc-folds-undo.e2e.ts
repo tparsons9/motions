@@ -68,7 +68,7 @@ async function pluginRequest(
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             return plugin.requestNeovim(rpcMethod, rpcArgs);
         },
@@ -84,7 +84,7 @@ async function setRpcEnabled(enabled: boolean): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             Object.assign(plugin.settings, {
                 enableUndoTree: true,
@@ -106,7 +106,7 @@ async function getRpcState(): Promise<RpcState> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getNeovimConnectionState();
     });
@@ -205,7 +205,7 @@ async function byteState(): Promise<ByteState> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         const value = (
             app as unknown as {
                 workspace: {
@@ -398,7 +398,7 @@ describe('Neovim RPC folds and undo tree', function () {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             for (let index = 0; index < count; index++)
                 plugin.undoTree.recordEdit(null);
@@ -459,7 +459,7 @@ return { undoCommands = undo, foldMappings = folds }`,
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             await plugin.refreshNeovimFeatureBridge();
             await plugin.refreshNeovimFeatureBridge();

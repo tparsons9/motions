@@ -43,7 +43,7 @@ async function openOilViaExCommand(): Promise<void> {
                     plugins?: Record<string, { oilManager?: unknown }>;
                 };
             }
-        ).plugins?.plugins?.['vim-motions'];
+        ).plugins?.plugins?.['vim-motions-tparsons9'];
         if (!plugin?.oilManager) return;
         await (
             plugin.oilManager as { openOil?: (path: string) => Promise<void> }

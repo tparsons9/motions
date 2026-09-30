@@ -64,7 +64,7 @@ async function runExCommand(command: string): Promise<void> {
 
 function getPluginJumpList(): string {
     return `
-        const plugin = (app.plugins?.plugins?.['vim-motions']);
+        const plugin = (app.plugins?.plugins?.['vim-motions-tparsons9']);
         const jl = plugin?.jumpList;
     `;
 }
@@ -131,7 +131,7 @@ describe('Jump list', function () {
                             >;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 return {
                     hasPlugin: !!plugin,
                     hasJumpList: !!plugin?.jumpList,
@@ -152,7 +152,7 @@ describe('Jump list', function () {
                             >;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 plugin?.jumpList?.clear?.();
             });
 
@@ -189,7 +189,7 @@ describe('Jump list', function () {
                             >;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 const entries = plugin?.jumpList?.getEntries?.() ?? [];
                 return {
                     activeFile: app.workspace.getActiveFile()?.path ?? '',
@@ -232,7 +232,7 @@ describe('Jump list', function () {
                             >;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 plugin?.jumpList?.clear?.();
             });
 
@@ -276,7 +276,7 @@ describe('Jump list', function () {
                             >;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 plugin?.jumpList?.clear?.();
             });
 
@@ -349,7 +349,7 @@ describe('Jump list', function () {
             const readState = () =>
                 browser.executeObsidian(({ app }) => {
                     const plugin = app.plugins.plugins[
-                        'vim-motions'
+                        'vim-motions-tparsons9'
                     ] as unknown as {
                         jumpList: JumpList;
                     };
@@ -388,7 +388,7 @@ describe('Jump list', function () {
             );
             await browser.executeObsidian(({ app, obsidian }) => {
                 const plugin = app.plugins.plugins[
-                    'vim-motions'
+                    'vim-motions-tparsons9'
                 ] as unknown as {
                     jumpList: JumpList;
                 };

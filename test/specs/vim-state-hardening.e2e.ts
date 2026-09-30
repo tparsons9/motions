@@ -85,7 +85,7 @@ describe('Vim state hardening (issue #18)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin) plugin.reloadFeatures();
             });
             await browser.pause(PAUSE.OBSIDIAN_LOAD);
@@ -108,7 +108,7 @@ describe('Vim state hardening (issue #18)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin) plugin.reloadFeatures();
             });
             await browser.pause(PAUSE.OBSIDIAN_LOAD);
@@ -254,7 +254,7 @@ describe('Vim state hardening (issue #18)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin) plugin.reloadFeatures();
             });
             await browser.pause(PAUSE.OBSIDIAN_LOAD);

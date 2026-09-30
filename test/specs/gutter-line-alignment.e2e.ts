@@ -85,7 +85,7 @@ async function setLineNumberGutter(enabled: boolean): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('setLineNumberGutter: plugin not found');
         plugin.settings.number = on;
         await plugin.saveSettings();

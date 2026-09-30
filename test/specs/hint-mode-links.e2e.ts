@@ -55,15 +55,15 @@ function executeCommand(commandId: string): Promise<void> {
 }
 
 function triggerHintModeViaCommand(): Promise<void> {
-    return executeCommand('vim-motions:show-hint-labels');
+    return executeCommand('vim-motions-tparsons9:show-hint-labels');
 }
 
 function triggerHintYankViaCommand(): Promise<void> {
-    return executeCommand('vim-motions:hint-yank');
+    return executeCommand('vim-motions-tparsons9:hint-yank');
 }
 
 function triggerHintOpenNewViaCommand(): Promise<void> {
-    return executeCommand('vim-motions:hint-open-new-pane');
+    return executeCommand('vim-motions-tparsons9:hint-open-new-pane');
 }
 
 function getActiveFilePath(): Promise<string> {

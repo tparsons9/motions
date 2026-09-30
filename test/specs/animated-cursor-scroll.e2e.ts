@@ -73,16 +73,16 @@ async function applySettingsAndReloadPlugin(
                 app as unknown as {
                     plugins: { plugins: Record<string, PluginRef> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             Object.assign(plugin.settings, s);
             await plugin.saveSettings();
         },
         settings,
     );
-    await obsidianPage.disablePlugin('vim-motions');
+    await obsidianPage.disablePlugin('vim-motions-tparsons9');
     await browser.pause(PAUSE.OBSIDIAN_LOAD);
-    await obsidianPage.enablePlugin('vim-motions');
+    await obsidianPage.enablePlugin('vim-motions-tparsons9');
     await browser.pause(PAUSE.OBSIDIAN_LOAD);
     await obsidianPage.openFile('Welcome.md');
     await browser.pause(PAUSE.OBSIDIAN_LOAD);

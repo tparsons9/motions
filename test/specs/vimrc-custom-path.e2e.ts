@@ -16,7 +16,7 @@ async function setVimrcPath(path: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.settings.vimrcPath = vimrcPath;
         await plugin.saveSettings();
@@ -33,7 +33,7 @@ async function waitForVimrcLoaded(): Promise<void> {
                             plugins: Record<string, { vimrcLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.vimrcLoaded === true;
             })) as boolean,
         { timeout: 5000, interval: 100 },
@@ -47,7 +47,7 @@ async function assertPluginLoaded(): Promise<void> {
                 plugins: { plugins: Record<string, unknown> };
             }
         ).plugins.plugins;
-        return { pluginLoaded: 'vim-motions' in plugins };
+        return { pluginLoaded: 'vim-motions-tparsons9' in plugins };
     });
     expect(result).toHaveProperty('pluginLoaded', true);
 }

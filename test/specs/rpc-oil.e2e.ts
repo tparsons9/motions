@@ -59,7 +59,7 @@ async function getPluginState(): Promise<RpcState> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getNeovimConnectionState();
     })) as RpcState;
@@ -72,7 +72,7 @@ async function setRpcEnabled(enabled: boolean): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             Object.assign(plugin.settings, {
                 neovimBinaryPath: '',
@@ -115,7 +115,7 @@ async function request(method: string, args: unknown[]): Promise<unknown> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             return plugin.requestNeovim(rpcMethod, rpcArgs);
         },
@@ -153,7 +153,7 @@ async function openOil(
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         await plugin.oilManager.openOil(dir);
     }, path);
@@ -225,7 +225,7 @@ async function getKeyDelegationState(): Promise<KeyDelegationState> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getNeovimKeyDelegationState();
     })) as KeyDelegationState;
@@ -301,7 +301,7 @@ describe('Neovim RPC Oil isolation', function () {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             plugin?.oilManager.closeOil();
         });
         await setRpcEnabled(false);

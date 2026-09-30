@@ -71,7 +71,7 @@ describe('Cursorline smoke', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (plugin) {
                 plugin.settings.cursorline = true;
                 plugin.settings.cursorlineopt = 'both';

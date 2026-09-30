@@ -1,5 +1,5 @@
 {
-    "name": "Vim Motions",
+    "name": "Vim Motions (Tanner’s fork)",
     "minAppVersion": "1.8.7",
     "description": "Enhances the built-in Vim mode with Markdown-aware text objects, structural navigation, workspace keyboard control, and a polished Neovim-native experience.",
     "fundingUrl": {
@@ -9,7 +9,7 @@
     },
     "isDesktopOnly": false,
     "version": "1.0.2",
-    "id": "vim-motions",
+    "id": "vim-motions-tparsons9",
     "author": "Emile Bangma; fork maintained by Tanner Parsons",
     "authorUrl": "https://github.com/tparsons9/motions"
 }

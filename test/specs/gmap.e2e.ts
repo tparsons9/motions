@@ -71,7 +71,7 @@ async function applyGlobalMapOverride(
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             plugin?.globalRegistry?.addMapping(
                 k,
                 { type: 'obcommand', commandId: cmd },
@@ -98,7 +98,7 @@ async function removeGlobalMap(key: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         plugin?.globalRegistry?.removeMapping(k);
     }, key);
 }
@@ -266,7 +266,7 @@ describe('gmap / gnoremap / gunmap', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin) {
                     plugin.settings.whichKeyMode = 'all';
                     plugin.reloadFeatures();
@@ -289,7 +289,7 @@ describe('gmap / gnoremap / gunmap', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin) {
                     plugin.settings.whichKeyMode = 'off';
                     plugin.reloadFeatures();

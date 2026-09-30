@@ -60,7 +60,7 @@ async function runExCommand(
                                 >;
                             };
                         }
-                    ).plugins?.plugins?.['vim-motions'];
+                    ).plugins?.plugins?.['vim-motions-tparsons9'];
                     if (!plugin?.oilManager) {
                         return { error: 'No oil manager' };
                     }
@@ -92,7 +92,7 @@ async function runOilCommit(): Promise<{ success?: boolean; error?: string }> {
                         plugins?: Record<string, { oilManager?: unknown }>;
                     };
                 }
-            ).plugins?.plugins?.['vim-motions'];
+            ).plugins?.plugins?.['vim-motions-tparsons9'];
             if (!plugin?.oilManager) return { error: 'No oil manager' };
             await (
                 plugin.oilManager as { commit?: () => Promise<void> }
@@ -156,7 +156,7 @@ async function openOilAndWait(dirPath?: string): Promise<void> {
                     plugins?: Record<string, { oilManager?: unknown }>;
                 };
             }
-        ).plugins?.plugins?.['vim-motions'];
+        ).plugins?.plugins?.['vim-motions-tparsons9'];
         const activeDir =
             dir ??
             (() => {
@@ -440,7 +440,7 @@ describe('Oil explorer', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin?.settings) {
                     plugin.settings.oilConfirmDeleteThreshold = 999;
                 }
@@ -472,7 +472,7 @@ describe('Oil explorer', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin?.settings) {
                     plugin.settings.oilConfirmDeleteThreshold = 1;
                 }
@@ -713,7 +713,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 (plugin.oilManager as { closeOil?: () => void }).closeOil?.();
             });
@@ -783,7 +783,7 @@ describe('Oil explorer', function () {
                                 >;
                             };
                         }
-                    ).plugins?.plugins?.['vim-motions'];
+                    ).plugins?.plugins?.['vim-motions-tparsons9'];
                     if (!plugin?.oilManager) return;
                     (
                         plugin.oilManager as { closeOil?: () => void }
@@ -892,7 +892,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 (plugin.oilManager as { closeOil?: () => void }).closeOil?.();
             });
@@ -920,7 +920,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 (plugin.oilManager as { closeOil?: () => void }).closeOil?.();
             });
@@ -946,7 +946,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 (plugin.oilManager as { closeOil?: () => void }).closeOil?.();
             });
@@ -989,7 +989,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 await (
                     plugin.oilManager as {
@@ -1034,7 +1034,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 (
                     plugin.oilManager as {
@@ -1084,7 +1084,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 await (
                     plugin.oilManager as {
@@ -1134,7 +1134,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 await (
                     plugin.oilManager as {
@@ -1174,7 +1174,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 const mgr = plugin.oilManager as {
                     toggleHidden?: () => void;
@@ -1200,7 +1200,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 const mgr = plugin.oilManager as {
                     toggleHidden?: () => void;
@@ -1226,7 +1226,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return { toggled: false };
                 const mgr = plugin.oilManager as {
                     toggleHidden?: () => boolean;
@@ -1275,7 +1275,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 (
                     plugin.oilManager as { togglePreview?: () => void }
@@ -1299,7 +1299,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 (
                     plugin.oilManager as { togglePreview?: () => void }
@@ -1367,7 +1367,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 (
                     plugin.oilManager as {
@@ -1426,7 +1426,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return false;
                 const mgr = plugin.oilManager as {
                     openEntryAtCursorInNewTab?: () => void;
@@ -1617,7 +1617,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return { error: 'no oil manager' };
                 (
                     plugin.oilManager as {
@@ -1764,7 +1764,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return false;
                 return (
                     typeof (
@@ -1835,7 +1835,7 @@ describe('Oil explorer', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin?.settings) {
                     plugin.settings.oilConfirmDeleteThreshold = 1;
                 }
@@ -1857,7 +1857,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 void (
                     plugin.oilManager as { commit?: () => Promise<void> }
@@ -1907,7 +1907,7 @@ describe('Oil explorer', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin?.settings) {
                     plugin.settings.oilConfirmDeleteThreshold = 1;
                 }
@@ -1929,7 +1929,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 void (
                     plugin.oilManager as { commit?: () => Promise<void> }
@@ -1980,7 +1980,7 @@ describe('Oil explorer', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin?.settings) {
                     plugin.settings.oilConfirmDeleteThreshold = 1;
                 }
@@ -2002,7 +2002,7 @@ describe('Oil explorer', function () {
                             plugins?: Record<string, { oilManager?: unknown }>;
                         };
                     }
-                ).plugins?.plugins?.['vim-motions'];
+                ).plugins?.plugins?.['vim-motions-tparsons9'];
                 if (!plugin?.oilManager) return;
                 void (
                     plugin.oilManager as { commit?: () => Promise<void> }

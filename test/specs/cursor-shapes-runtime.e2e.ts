@@ -43,7 +43,7 @@ async function setCursorShapeAndReload(
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('plugin not found');
             (plugin.settings.cursorShapes as Record<string, string>)[m] = s;
             await plugin.saveSettings();
@@ -131,7 +131,7 @@ async function pollPaintedHeight(): Promise<number> {
                           plugins: Record<string, { settings?: unknown }>;
                       };
                   }
-              ).plugins.plugins['vim-motions']?.settings
+              ).plugins.plugins['vim-motions-tparsons9']?.settings
             : undefined;
         const picked = settings as
             | {

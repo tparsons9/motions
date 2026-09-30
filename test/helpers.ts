@@ -642,7 +642,7 @@ type PluginRef = {
 function getPluginRef(): string {
     return `(app as unknown as {
         plugins: { plugins: Record<string, unknown> };
-    }).plugins.plugins['vim-motions']`;
+    }).plugins.plugins['vim-motions-tparsons9']`;
 }
 
 export async function loadLuaConfig(content: string): Promise<void> {
@@ -657,7 +657,7 @@ export async function loadLuaConfig(content: string): Promise<void> {
                             plugins: Record<string, PluginRef>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.vimrcLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -673,7 +673,7 @@ export async function loadLuaConfig(content: string): Promise<void> {
                     plugins: Record<string, PluginRef>;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await plugin?.loadLuaConfigForTest?.();
     });
     await browser.waitUntil(
@@ -685,7 +685,7 @@ export async function loadLuaConfig(content: string): Promise<void> {
                             plugins: Record<string, PluginRef>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.luaLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -721,7 +721,7 @@ export async function setWhichKeyMode(
                     plugins: Record<string, PluginRef>;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.settings.whichKeyMode = whichKeyMode;
         plugin.reloadFeatures();
@@ -800,7 +800,7 @@ export async function getLeaderBindings(): Promise<
                     plugins: Record<string, PluginRef>;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.leaderRegistry?.getBindings() ?? [];
     })) as Array<{ key: string; command: string; source: string }>;
 }
@@ -813,7 +813,7 @@ async function getLeaderKey(): Promise<string> {
                     plugins: Record<string, PluginRef>;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.leaderRegistry?.getLeaderKey() ?? '\\';
     })) as string;
 }
@@ -826,7 +826,7 @@ export async function getPluginSetting(key: string): Promise<unknown> {
                     plugins: Record<string, PluginRef>;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return (plugin?.settings as Record<string, unknown>)?.[settingKey];
     }, key);
 }
@@ -850,7 +850,7 @@ export async function setPluginSetting(
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('setPluginSetting: plugin not found');
             plugin.settings[k] = v;
             await plugin.saveSettings();
@@ -906,7 +906,7 @@ export async function setPluginSettingAndReload(
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin)
                 throw new Error('setPluginSettingAndReload: plugin not found');
             plugin.settings[k] = v;

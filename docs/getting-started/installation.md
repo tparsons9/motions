@@ -1,21 +1,19 @@
 ---
 title: Installation
-description: Install Vim Motions from the community directory or manually from GitHub releases.
+description: Install the personal Vim Motions fork with BRAT or manually from GitHub releases.
 tags:
     - getting-started
     - installation
 ---
 
-## From community directory
+## With BRAT
 
-1. Open **Settings → Community plugins**
-2. Select **Browse** and search for "Vim Motions"
-3. Select **Install**, then **Enable**
+Add `tparsons9/motions` in BRAT and install the published fork release. The community directory installs the original upstream plugin rather than this fork.
 
 ## Manual installation
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/saberzero1/motions/releases)
-2. Create a folder `vim-motions` in `<your-vault>/.obsidian/plugins/`
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/tparsons9/motions/releases)
+2. Create a folder `vim-motions-tparsons9` in `<your-vault>/.obsidian/plugins/`
 3. Copy the downloaded files into that folder
 4. Restart Obsidian and enable the plugin in **Settings → Community plugins**
 
@@ -37,3 +35,7 @@ After enabling the plugin (on desktop, or on mobile with the setting enabled):
 
 - See [[recommended-setup]] to configure Obsidian for the best experience, including whether to use the built-in vim engine or the enhanced bundled fork.
 - See [[quickstart]] for a 5-minute hands-on guide, including setting up `.obsidian.init.lua` for Lua configuration.
+
+## Personal fork installation
+
+This fork uses plugin ID `vim-motions-tparsons9` and is updated through BRAT using `tparsons9/motions`. The community directory entry belongs to upstream `vim-motions`. See the repository README for migrating the old fork installation, preserving `data.json`, and updating command prefixes. Keep only one Vim Motions implementation enabled.

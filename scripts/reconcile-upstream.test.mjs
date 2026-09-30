@@ -43,6 +43,7 @@ function fixture(t, kind) {
         minAppVersion: '1.8.7',
         ...(kind === 'attribution'
             ? {
+                  id: 'vim-motions',
                   author: 'Original author',
                   authorUrl: 'https://example.com/upstream',
               }
@@ -70,6 +71,7 @@ function fixture(t, kind) {
         minAppVersion: '1.8.7',
         ...(kind === 'attribution'
             ? {
+                  id: 'vim-motions-tparsons9',
                   author: 'Original author; fork maintainer',
                   authorUrl: 'https://example.com/fork',
               }
@@ -101,6 +103,7 @@ function fixture(t, kind) {
             description: 'upstream improvement',
             ...(kind === 'attribution'
                 ? {
+                      id: 'vim-motions-upstream',
                       author: 'Updated upstream author',
                       authorUrl: 'https://example.com/new-upstream',
                   }
@@ -323,12 +326,14 @@ test('retains fork maintainer attribution when upstream author fields change', (
     assert.deepEqual(
         {
             status: result.status,
+            id: manifest.id,
             author: manifest.author,
             authorUrl: manifest.authorUrl,
             minAppVersion: manifest.minAppVersion,
         },
         {
             status: 0,
+            id: 'vim-motions-tparsons9',
             author: 'Original author; fork maintainer',
             authorUrl: 'https://example.com/fork',
             minAppVersion: '1.9.0',

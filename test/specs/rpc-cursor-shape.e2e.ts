@@ -65,7 +65,7 @@ async function pluginRequest(
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             return plugin.requestNeovim(rpcMethod, rpcArgs);
         },
@@ -81,7 +81,7 @@ async function setRpcEnabled(enabled: boolean): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             plugin.settings.neovimBinaryPath = '';
             plugin.settings.neovimConfigPath = configPath;
@@ -101,7 +101,7 @@ async function getRpcState(): Promise<RpcState> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getNeovimConnectionState();
     });
@@ -113,7 +113,7 @@ async function externalMode(): Promise<string | null> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getExternalVimModeState();
     });

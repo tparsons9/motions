@@ -61,7 +61,7 @@ async function plugin<T>(
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!target) throw new Error('Vim Motions is not loaded');
         return await (
             new Function(`return (${body})`)() as (p: RpcPlugin) => unknown
@@ -76,7 +76,7 @@ async function setRpcEnabled(enabled: boolean): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!target) throw new Error('Vim Motions is not loaded');
             target.settings.neovimBinaryPath = '';
             target.settings.neovimConfigPath = nextConfigPath;
@@ -119,7 +119,7 @@ async function openVimEngineSettings(): Promise<void> {
             }
         ).setting;
         setting.open();
-        setting.openTabById('vim-motions');
+        setting.openTabById('vim-motions-tparsons9');
     });
     // Post-1.13 renders the seven setting pages as navigable rows; the export
     // controls live inside General and are not in the DOM until it is opened.

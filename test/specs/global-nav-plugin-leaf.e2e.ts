@@ -25,7 +25,7 @@ async function setWorkspaceNavViewTypes(value: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.settings.workspaceNavViewTypes = val;
         plugin.reloadFeatures();

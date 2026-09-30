@@ -46,7 +46,7 @@ this.registerEvent(
 );
 ```
 
-`window.VimMotions.editor` and `app.plugins.plugins['vim-motions'].editorApi` are the same object.
+`window.VimMotions.editor` and `app.plugins.plugins['vim-motions-tparsons9'].editorApi` are the same object.
 
 ## Events
 

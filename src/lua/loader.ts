@@ -505,7 +505,9 @@ export async function loadInitLua(
         getVaultName: () => app.vault.getName(),
         getAppVersion: () => apiVersion,
         getPluginVersion: () => {
-            return app.plugins?.manifests?.['vim-motions']?.version ?? '';
+            return (
+                app.plugins?.manifests?.['vim-motions-tparsons9']?.version ?? ''
+            );
         },
         openPicker: (source, opts) => {
             openPicker?.(source, opts);

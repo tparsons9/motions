@@ -81,14 +81,14 @@ describe('Animated cursor runtime toggle (#181)', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.animatedCursor = false;
             await plugin.saveSettings();
         });
-        await obsidianPage.disablePlugin('vim-motions');
+        await obsidianPage.disablePlugin('vim-motions-tparsons9');
         await browser.pause(PAUSE.OBSIDIAN_LOAD);
-        await obsidianPage.enablePlugin('vim-motions');
+        await obsidianPage.enablePlugin('vim-motions-tparsons9');
         await browser.pause(PAUSE.OBSIDIAN_LOAD);
         await obsidianPage.openFile('Welcome.md');
         await browser.pause(PAUSE.OBSIDIAN_LOAD);

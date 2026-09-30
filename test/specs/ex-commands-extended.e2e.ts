@@ -292,7 +292,9 @@ describe('Ex commands extended', function () {
     it(':violations! clears recorded invariant violations', async function () {
         const violationMessage = 'violations bang e2e control';
         await browser.executeObsidian(async ({ app }, message: string) => {
-            const plugin = app.plugins.plugins['vim-motions'] as unknown as {
+            const plugin = app.plugins.plugins[
+                'vim-motions-tparsons9'
+            ] as unknown as {
                 loadData(): Promise<Record<string, unknown> | null>;
                 loadSettings(): Promise<void>;
             };

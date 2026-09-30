@@ -296,7 +296,9 @@ describe('Editor provider API', function () {
                 app as unknown as {
                     commands: { executeCommandById(id: string): void };
                 }
-            ).commands.executeCommandById('vim-motions:reload-configuration');
+            ).commands.executeCommandById(
+                'vim-motions-tparsons9:reload-configuration',
+            );
         });
         await browser.pause(1000);
 
