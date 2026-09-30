@@ -1,6 +1,5 @@
 {
     "name": "obsidian-vim-motions",
-    "version": "1.0.1",
     "description": "Enhances Obsidian's Vim mode with Markdown-aware text objects, structural navigation, workspace keyboard control, and a polished Neovim-native experience.",
     "main": "main.js",
     "type": "module",
@@ -71,9 +70,9 @@
     "dependencies": {
         "@codemirror/autocomplete": "npm:@saberzero1/codemirror-autocomplete@^6.20.3",
         "@leeoniya/ufuzzy": "^1.0.19",
-        "@replit/codemirror-vim": "https://github.com/saberzero1/codemirror-vim.git",
         "fflate": "^0.8.3",
-        "web-tree-sitter": "^0.27.0"
+        "web-tree-sitter": "^0.27.0",
+        "@replit/codemirror-vim": "https://github.com/saberzero1/codemirror-vim.git"
     },
     "overrides": {
         "@codemirror/autocomplete": {
@@ -92,5 +91,6 @@
     "allowScripts": {
         "@ast-grep/cli@0.45.3": true,
         "esbuild@0.28.1": true
-    }
+    },
+    "version": "1.0.1"
 }
