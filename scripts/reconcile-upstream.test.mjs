@@ -17,7 +17,7 @@ const metadata = [
     'package-lock.json',
 ];
 
-/** @param {import('node:test').TestContext} t @param {'metadata' | 'source' | 'field' | 'clean' | 'docs'} kind */
+/** @param {import('node:test').TestContext} t @param {'metadata' | 'source' | 'field' | 'clean' | 'docs' | 'attribution'} kind */
 function fixture(t, kind) {
     const cwd = mkdtempSync(join(tmpdir(), 'motions-sync-'));
     t.after(() => rmSync(cwd, { recursive: true, force: true }));
@@ -38,7 +38,16 @@ function fixture(t, kind) {
         version: '0.1.0',
         dependencies: { '@replit/codemirror-vim': '^6', shared: '1' },
     });
-    write('manifest.json', { version: '0.1.0', minAppVersion: '1.8.7' });
+    write('manifest.json', {
+        version: '0.1.0',
+        minAppVersion: '1.8.7',
+        ...(kind === 'attribution'
+            ? {
+                  author: 'Original author',
+                  authorUrl: 'https://example.com/upstream',
+              }
+            : {}),
+    });
     write('versions.json', { '0.1.0': '1.8.7' });
     write('package-lock.json', { version: '0.1.0' });
     writeFileSync(join(cwd, 'connector.ts'), 'base\n');
@@ -56,7 +65,16 @@ function fixture(t, kind) {
             connector: '2',
         },
     });
-    write('manifest.json', { version: '1.0.0', minAppVersion: '1.8.7' });
+    write('manifest.json', {
+        version: '1.0.0',
+        minAppVersion: '1.8.7',
+        ...(kind === 'attribution'
+            ? {
+                  author: 'Original author; fork maintainer',
+                  authorUrl: 'https://example.com/fork',
+              }
+            : {}),
+    });
     write('versions.json', { '0.1.0': '1.8.7', '1.0.0': '1.8.7' });
     write('package-lock.json', { version: '1.0.0', fork: true });
     writeFileSync(join(cwd, 'connector.ts'), 'stable connector\n');
@@ -81,6 +99,12 @@ function fixture(t, kind) {
             version: '0.2.0',
             minAppVersion: '1.9.0',
             description: 'upstream improvement',
+            ...(kind === 'attribution'
+                ? {
+                      author: 'Updated upstream author',
+                      authorUrl: 'https://example.com/new-upstream',
+                  }
+                : {}),
         });
         write('versions.json', { '0.1.0': '1.9.0', '0.2.0': '1.9.0' });
         write('package-lock.json', { version: '0.2.0' });
@@ -285,6 +309,29 @@ test('takes upstream AGENTS.md and CHANGELOG.md while preserving fork connector 
             connector: 'stable connector\n',
             version: '1.0.0',
             unresolved: '',
+        },
+    );
+});
+
+test('retains fork maintainer attribution when upstream author fields change', (t) => {
+    const { cwd, git, result } = fixture(t, 'attribution');
+    const manifest = JSON.parse(
+        result.status === 0
+            ? readFileSync(join(cwd, 'manifest.json'), 'utf8')
+            : git('show', 'HEAD:manifest.json'),
+    );
+    assert.deepEqual(
+        {
+            status: result.status,
+            author: manifest.author,
+            authorUrl: manifest.authorUrl,
+            minAppVersion: manifest.minAppVersion,
+        },
+        {
+            status: 0,
+            author: 'Original author; fork maintainer',
+            authorUrl: 'https://example.com/fork',
+            minAppVersion: '1.9.0',
         },
     );
 });

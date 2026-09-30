@@ -21,6 +21,8 @@ export default defineConfig(
         'scripts/typecheck-tests.mjs',
         'scripts/reconcile-upstream.mjs',
         'scripts/reconcile-upstream.test.mjs',
+        'scripts/fork-release.mjs',
+        'scripts/fork-release.test.mjs',
         'versions.json',
         'main.js',
         'package.json',

@@ -8,6 +8,7 @@ const metadata = [
     'manifest.json',
     'versions.json',
 ];
+const forkIdentityFields = ['id', 'author', 'authorUrl'];
 const upstreamDocuments = ['AGENTS.md', 'CHANGELOG.md'];
 const vimDependency = 'https://github.com/saberzero1/codemirror-vim.git';
 
@@ -101,6 +102,8 @@ try {
         const theirs = read(upstream, file);
         for (const value of [ancestor, ours, theirs]) {
             delete value.version;
+            if (file === 'manifest.json')
+                for (const field of forkIdentityFields) delete value[field];
             if (file === 'package.json' && isObject(value.dependencies)) {
                 delete value.dependencies['@replit/codemirror-vim'];
             }
@@ -109,6 +112,11 @@ try {
         if (!isObject(result))
             throw new Error(`Expected merged object: ${file}`);
         result.version = oursPackage.version;
+        if (file === 'manifest.json')
+            for (const field of forkIdentityFields) {
+                if (oursManifest[field] !== undefined)
+                    result[field] = oursManifest[field];
+            }
         if (file === 'package.json') {
             const dependencies = isObject(result.dependencies)
                 ? result.dependencies

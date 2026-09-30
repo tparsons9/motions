@@ -47,43 +47,67 @@ jobs:
                   node-version: 24
                   cache: npm
 
-            - name: Fetch upstream
+            - name: Fetch latest stable upstream release
+              id: upstream
               if: steps.pending.outputs.number == ''
+              env:
+                  GH_TOKEN: ${{ github.token }}
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   git remote add upstream https://github.com/saberzero1/motions.git
-                  git fetch upstream master
+                  release_tag=$(gh api repos/saberzero1/motions/releases/latest --jq '.tag_name')
+                  # Keep upstream tags out of the fork's numeric release-tag namespace.
+                  git fetch --no-tags upstream "+refs/tags/$release_tag:refs/remotes/upstream/release"
+                  release_sha=$(git rev-parse 'refs/remotes/upstream/release^{commit}')
+                  echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+                  echo "sha=$release_sha" >> "$GITHUB_OUTPUT"
                   cp scripts/reconcile-upstream.mjs "$RUNNER_TEMP/reconcile-upstream.mjs"
+                  cp scripts/fork-release.mjs "$RUNNER_TEMP/fork-release.mjs"
 
-            - name: Check for new upstream commits
+            - name: Check for a new stable release
               id: check
               if: steps.pending.outputs.number == ''
+              env:
+                  UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+                  UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
               run: |
-                  count=$(git rev-list origin/master..upstream/master --count)
+                  count=$(git rev-list "origin/master..$UPSTREAM_SHA" --count)
+                  needed=$(node "$RUNNER_TEMP/fork-release.mjs" needs-sync "$UPSTREAM_TAG" "$UPSTREAM_SHA")
+                  if [ "$count" != '0' ]; then needed=true; fi
                   echo "count=$count" >> "$GITHUB_OUTPUT"
+                  echo "needed=$needed" >> "$GITHUB_OUTPUT"
 
             - name: Merge and reconcile release metadata
               id: merge
-              if: steps.pending.outputs.number == '' && steps.check.outputs.count != '0'
+              if: steps.check.outputs.needed == 'true'
+              env:
+                  UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+                  UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+                  UPSTREAM_COUNT: ${{ steps.check.outputs.count }}
               run: |
                   git switch -C sync/upstream origin/master
-                  # Exit 1 is expected for conflicts; other merge errors must fail the run.
-                  status=0
-                  git merge --no-commit --no-ff upstream/master || status=$?
-                  if [ "$status" -gt 1 ] || ! git rev-parse -q --verify MERGE_HEAD; then
-                      exit 1
+                  if [ "$UPSTREAM_COUNT" != '0' ]; then
+                      # Exit 1 is expected for conflicts; other merge errors must fail the run.
+                      status=0
+                      git merge --no-commit --no-ff "$UPSTREAM_SHA" || status=$?
+                      if [ "$status" -gt 1 ] || ! git rev-parse -q --verify MERGE_HEAD; then
+                          exit 1
+                      fi
+                      if ! node "$RUNNER_TEMP/reconcile-upstream.mjs" "$UPSTREAM_SHA" > "$RUNNER_TEMP/sync-conflicts.txt" 2>&1; then
+                          cat "$RUNNER_TEMP/sync-conflicts.txt"
+                          git merge --abort
+                          echo "conflict=true" >> "$GITHUB_OUTPUT"
+                          exit 0
+                      fi
                   fi
-                  if node "$RUNNER_TEMP/reconcile-upstream.mjs" upstream/master > "$RUNNER_TEMP/sync-conflicts.txt" 2>&1; then
-                      echo "conflict=false" >> "$GITHUB_OUTPUT"
-                  else
-                      cat "$RUNNER_TEMP/sync-conflicts.txt"
-                      git merge --abort
-                      echo "conflict=true" >> "$GITHUB_OUTPUT"
-                  fi
+                  node "$RUNNER_TEMP/fork-release.mjs" sync "$UPSTREAM_TAG" "$UPSTREAM_SHA"
+                  echo "conflict=false" >> "$GITHUB_OUTPUT"
 
             - name: Regenerate lockfile and complete merge
               if: steps.merge.outputs.conflict == 'false'
+              env:
+                  UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
               run: |
                   npm install --package-lock-only --ignore-scripts
                   # npm can normalize the public Git dependency back to SSH.
@@ -97,13 +121,13 @@ jobs:
                   EOF_NODE
                   npm ci
                   npx prettier --write package.json package-lock.json manifest.json versions.json
-                  git add package.json package-lock.json manifest.json versions.json
-                  git commit -m "Merge upstream/master, preserving fork release metadata"
+                  git add package.json package-lock.json manifest.json versions.json .github/upstream-release.json
+                  git commit -m "Sync upstream release $UPSTREAM_TAG, preserving fork metadata"
 
             - name: Check merged result
               if: steps.merge.outputs.conflict == 'false'
               run: |
-                  node --test scripts/reconcile-upstream.test.mjs
+                  node --test scripts/*.test.mjs
                   npm run build
                   npm run verify
                   npm run test:unit
@@ -112,16 +136,19 @@ jobs:
               if: steps.merge.outputs.conflict == 'false'
               env:
                   GH_TOKEN: ${{ github.token }}
+                  UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+                  UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
               run: |
                   # Lease protects against changes made after this run's checkout.
                   git push origin sync/upstream --force-with-lease
                   cat > "$RUNNER_TEMP/sync-pr.md" <<'EOF_BODY'
-                  Automated merge from saberzero1/motions. Review the connector and source diff before merging.
+                  Automated merge of a stable published release from saberzero1/motions. Review the connector and source diff before merging.
 
                   Preserves the fork version and HTTPS codemirror-vim override, merges independent metadata fields, combines release histories with fork precedence, takes upstream AGENTS.md and CHANGELOG.md verbatim, and regenerates package-lock.json. Dependency installation, build, static checks, and unit tests passed before this branch was pushed.
 
                   Scheduled syncs pause while this PR is open to preserve review fixes. After merge, post-sync CI dispatches a patch bump; RELEASE_TOKEN pushes the commit/tag and the tag workflow creates a draft release for review.
                   EOF_BODY
+                  printf '\nUpstream release: %s\nUpstream commit: %s\n' "$UPSTREAM_TAG" "$UPSTREAM_SHA" >> "$RUNNER_TEMP/sync-pr.md"
                   gh pr create --base master --head sync/upstream \
                       --title "Sync from upstream (saberzero1/motions)" \
                       --body-file "$RUNNER_TEMP/sync-pr.md"
@@ -130,14 +157,17 @@ jobs:
               if: steps.merge.outputs.conflict == 'true'
               env:
                   GH_TOKEN: ${{ github.token }}
+                  UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+                  UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
               run: |
                   cat > "$RUNNER_TEMP/sync-issue.md" <<'EOF_BODY'
                   Automated upstream sync needs manual review. The merge was aborted and no branch was pushed. Plugin source conflicts are never resolved by choosing an entire side. AGENTS.md and CHANGELOG.md are taken from upstream automatically.
 
-                  Fetch upstream and merge upstream/master on a review branch based on master. Resolve the listed conflicts, preserve the fork version and HTTPS codemirror-vim dependency, regenerate the lockfile, and run checks before opening a PR. Use sync/upstream as the PR branch to retain the post-merge draft release flow.
+                  Fetch the stable upstream release tag listed below and merge its commit on a review branch based on master. Resolve the listed conflicts, preserve the fork version and HTTPS codemirror-vim dependency, regenerate the lockfile, and run checks before opening a PR. Use sync/upstream as the PR branch to retain the post-merge draft release flow.
 
                   Conflicts:
                   EOF_BODY
+                  printf 'Upstream release: %s\nUpstream commit: %s\n' "$UPSTREAM_TAG" "$UPSTREAM_SHA" >> "$RUNNER_TEMP/sync-issue.md"
                   cat "$RUNNER_TEMP/sync-conflicts.txt" >> "$RUNNER_TEMP/sync-issue.md"
                   {
                       echo "## Upstream sync requires manual review"

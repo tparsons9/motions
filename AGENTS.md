@@ -8,7 +8,7 @@
 
 ## Environment & tooling
 
-- **Fork upstream sync:** `.github/workflows/sync-upstream.yml` runs every six hours for `tparsons9/motions`, pauses while `sync/upstream` has an open PR, and checks a normal merge before opening a reviewable PR. `scripts/reconcile-upstream.mjs` reconciles release JSON while preserving fork versions and the HTTPS Vim dependency; `AGENTS.md` and `CHANGELOG.md` are upstream-owned and taken verbatim on every sync; other source and overlapping non-release metadata conflicts require manual review. Pin `GH_REPO` to `${{ github.repository }}` so CLI issue/PR operations target this fork; conflict reports always go to the run summary and artifact, with issue API failures reported as warnings. `scripts/reconcile-upstream.test.mjs` exercises real Git merges (`node --test scripts/reconcile-upstream.test.mjs`). After merge, CI dispatches a patch bump; keep `npm ci` before `npm version`, `RELEASE_TOKEN` for commit/tag pushes, and the tag-triggered draft release action. See CONTRIBUTING.md for manual resolution.
+- **Fork upstream sync:** `.github/workflows/sync-upstream.yml` tracks stable published upstream release tags every six hours for `tparsons9/motions`, pauses while `sync/upstream` has an open PR, and checks a normal merge before opening a reviewable PR. `scripts/reconcile-upstream.mjs` reconciles release JSON while preserving numeric fork versions, plugin ID, maintainer attribution, and the HTTPS Vim dependency; `AGENTS.md` and `CHANGELOG.md` are upstream-owned and taken verbatim on every sync; other source and overlapping non-release metadata conflicts require manual review. Pin `GH_REPO` to `${{ github.repository }}` so CLI issue/PR operations target this fork; conflict reports always go to the run summary and artifact, with issue API failures reported as warnings. `scripts/reconcile-upstream.test.mjs` exercises real Git merges; `scripts/fork-release.mjs` tracks `.github/upstream-release.json`, resets compatibility revisions on a new baseline, increments revisions on fork releases, and generates draft titles/notes with the exact upstream tag/SHA (`node --test scripts/*.test.mjs`). Upstream tags are fetched into a separate remote-ref namespace. After merge, CI dispatches an independent numeric patch bump, committing provenance with the version; keep `npm ci` before `npm version`, `RELEASE_TOKEN` for commit/tag pushes, and the tag-triggered draft release action. See CONTRIBUTING.md for manual resolution.
 
 - Node.js: use current LTS (Node 18+ recommended).
 - **Package manager: npm** (required for this sample - `package.json` defines npm scripts and dependencies).
@@ -185,6 +185,9 @@ npm run build
     scripts/neovim-version.txt                 # Single cross-platform Neovim version pin
     scripts/reconcile-upstream.mjs             # Field-level fork release metadata merge
     scripts/reconcile-upstream.test.mjs        # Git merge and workflow conflict-reporting fixtures
+    scripts/fork-release.mjs                   # Stable upstream provenance, compatibility revisions, draft notes
+    scripts/fork-release.test.mjs              # Provenance and numeric release identity fixtures
+    .github/upstream-release.json              # Last adopted upstream release and exact commit
     test/specs/rpc-prerequisites.ts            # Shared Neovim/API-level/fixture skip guard for RPC specs
     ```
 - Keep the plugin small. Avoid large dependencies. Prefer browser-compatible packages.
