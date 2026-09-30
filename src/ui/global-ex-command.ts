@@ -161,7 +161,7 @@ export function buildGlobalExCommands(
     };
 
     const version: GlobalExFn = () => {
-        const plugin = app.plugins?.plugins?.['vim-motions'];
+        const plugin = app.plugins?.plugins?.['vim-motions-tparsons9'];
         const v = plugin?.manifest?.version ?? 'unknown';
         const name = plugin?.manifest?.name ?? 'Vim Motions';
         new Notice(`${name} v${v}`);

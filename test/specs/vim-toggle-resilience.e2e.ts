@@ -23,7 +23,7 @@ async function executeToggleCommand(
             app as unknown as {
                 commands: { executeCommandById(id: string): void };
             }
-        ).commands.executeCommandById(`vim-motions:${id}`);
+        ).commands.executeCommandById(`vim-motions-tparsons9:${id}`);
     }, commandId);
     await browser.pause(TOGGLE_SETTLE);
 }

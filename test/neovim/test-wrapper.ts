@@ -121,7 +121,7 @@ export function testWithNeovim(
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.executeLuaForTest?.(luaCode);
             }, config.luaSetup);
             await browser.pause(PAUSE.EDITOR_SETTLE);

@@ -50,7 +50,7 @@ async function reloadLuaConfigInPlace(): Promise<void> {
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await p?.loadLuaConfigForTest?.();
     });
 
@@ -61,7 +61,7 @@ async function reloadLuaConfigInPlace(): Promise<void> {
                     app as unknown as {
                         plugins: { plugins: Record<string, PluginRef> };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return p?.luaLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -81,7 +81,7 @@ async function loadLuaConfigWithModules(
                     app as unknown as {
                         plugins: { plugins: Record<string, PluginRef> };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return p?.vimrcLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -300,7 +300,7 @@ describe('Lua require() — modules beside a custom init.lua (#177)', function (
                         app as unknown as {
                             plugins: { plugins: Record<string, PluginRef> };
                         }
-                    ).plugins.plugins['vim-motions'];
+                    ).plugins.plugins['vim-motions-tparsons9'];
                     return p?.vimrcLoaded === true;
                 })) as boolean,
             { timeout: 10000, interval: 200 },

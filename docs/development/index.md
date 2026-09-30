@@ -14,7 +14,7 @@ npm install
 npm run dev    # watch mode — rebuilds on file changes
 ```
 
-Copy `main.js`, `manifest.json`, and `styles.css` to `<vault>/.obsidian/plugins/vim-motions/` and reload Obsidian.
+Copy `main.js`, `manifest.json`, and `styles.css` to `<vault>/.obsidian/plugins/vim-motions-tparsons9/` and reload Obsidian.
 
 ## Commands
 

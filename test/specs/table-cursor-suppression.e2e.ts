@@ -73,7 +73,7 @@ async function enableAnimatedCursor(): Promise<void> {
                     >;
                 };
             }
-        ).plugins?.plugins?.['vim-motions'];
+        ).plugins?.plugins?.['vim-motions-tparsons9'];
         if (plugin?.settings) {
             plugin.settings.animatedCursor = true;
         }
@@ -96,7 +96,7 @@ async function disableAnimatedCursor(): Promise<void> {
                     >;
                 };
             }
-        ).plugins?.plugins?.['vim-motions'];
+        ).plugins?.plugins?.['vim-motions-tparsons9'];
         if (plugin?.settings) {
             plugin.settings.animatedCursor = false;
         }
@@ -228,7 +228,7 @@ describe('Cursor suppression after table interaction (#127)', function () {
                         >;
                     };
                 }
-            ).plugins?.plugins?.['vim-motions'];
+            ).plugins?.plugins?.['vim-motions-tparsons9'];
             if (plugin?.settings) {
                 plugin.settings.enableVimTextareas = true;
             }
@@ -318,7 +318,7 @@ describe('Cursor suppression after table interaction (#127)', function () {
                         >;
                     };
                 }
-            ).plugins?.plugins?.['vim-motions'];
+            ).plugins?.plugins?.['vim-motions-tparsons9'];
             if (plugin?.settings) {
                 plugin.settings.enableVimTextareas = false;
             }
@@ -366,7 +366,7 @@ describe('Cursor stays suppressed during table-nav navigation (#135)', function 
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (p) {
                 p.settings.enableTableNav = true;
                 p.settings.tableWidgetMode = 'native';
@@ -393,7 +393,7 @@ describe('Cursor stays suppressed during table-nav navigation (#135)', function 
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (p) {
                 p.settings.enableTableNav = true;
                 await p.saveSettings();

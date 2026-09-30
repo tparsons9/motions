@@ -34,7 +34,7 @@ describe('Snippet context and settings', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.enableSnippets;
         });
         expect(enabled).toBe(true);
@@ -51,7 +51,7 @@ describe('Snippet context and settings', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.snippetBundled;
         });
         expect(bundled).toBe(true);
@@ -72,7 +72,7 @@ describe('Snippet context and settings', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.snippetRegistry?.getAll()?.length ?? 0;
         })) as number;
         expect(count).toBeGreaterThan(20);

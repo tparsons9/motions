@@ -26,7 +26,7 @@ function setFlashSettings(
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             Object.assign(plugin.settings, vals);
             if (doReload) plugin.reloadFeatures();

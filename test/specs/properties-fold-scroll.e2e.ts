@@ -93,7 +93,7 @@ describe('Properties fold observer scroll behavior (Issue #89)', function () {
         this.timeout(120000);
         await browser.reloadObsidian({
             vault: 'test-vault',
-            plugins: ['vim-motions', 'obsidian-meta-bind-plugin'],
+            plugins: ['vim-motions-tparsons9', 'obsidian-meta-bind-plugin'],
         });
         await browser.pause(5000);
         await obsidianPage.openFile('Welcome.md');

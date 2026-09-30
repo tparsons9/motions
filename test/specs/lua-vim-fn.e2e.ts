@@ -21,7 +21,7 @@ async function executeLua(code: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         plugin?.executeLuaForTest?.(luaCode);
     }, code);
 }

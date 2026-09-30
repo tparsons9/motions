@@ -67,7 +67,7 @@ async function hasPickerSource(name: string): Promise<boolean> {
             app as unknown as {
                 plugins?: { plugins?: Record<string, unknown> };
             }
-        ).plugins?.plugins?.['vim-motions'] as
+        ).plugins?.plugins?.['vim-motions-tparsons9'] as
             { pickerAPI?: { hasSource: (n: string) => boolean } } | undefined;
         return plugin?.pickerAPI?.hasSource(n) ?? false;
     }, name)) as boolean;
@@ -79,7 +79,7 @@ async function getPickerSourceNames(): Promise<string[]> {
             app as unknown as {
                 plugins?: { plugins?: Record<string, unknown> };
             }
-        ).plugins?.plugins?.['vim-motions'] as
+        ).plugins?.plugins?.['vim-motions-tparsons9'] as
             | { pickerAPI?: { getSources: () => Array<{ name: string }> } }
             | undefined;
         return (plugin?.pickerAPI?.getSources() ?? []).map((s) => s.name);
@@ -92,7 +92,7 @@ describe('Picker integrations', function () {
         await browser.reloadObsidian({
             vault: 'test-vault',
             plugins: [
-                'vim-motions',
+                'vim-motions-tparsons9',
                 'omnisearch',
                 'obsidian-tasks-plugin',
                 'dataview',
@@ -215,7 +215,7 @@ describe('Picker integrations', function () {
                     app as unknown as {
                         plugins?: { plugins?: Record<string, unknown> };
                     }
-                ).plugins?.plugins?.['vim-motions'] as
+                ).plugins?.plugins?.['vim-motions-tparsons9'] as
                     { registerBundledIntegrations?: () => void } | undefined;
                 plugin?.registerBundledIntegrations?.();
             });
@@ -234,7 +234,7 @@ describe('Picker integrations', function () {
                     app as unknown as {
                         plugins?: { plugins?: Record<string, unknown> };
                     }
-                ).plugins?.plugins?.['vim-motions'] as
+                ).plugins?.plugins?.['vim-motions-tparsons9'] as
                     { registerBundledIntegrations?: () => void } | undefined;
                 plugin?.registerBundledIntegrations?.();
             });

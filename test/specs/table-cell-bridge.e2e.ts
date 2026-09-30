@@ -86,7 +86,7 @@ async function setTableWidgetMode(mode: 'native' | 'raw'): Promise<void> {
                 };
             }
         ).plugins;
-        const vm = plugins.plugins['vim-motions'];
+        const vm = plugins.plugins['vim-motions-tparsons9'];
         if (!vm) return;
         vm.settings.tableWidgetMode = tableWidgetMode;
         vm.reloadFeatures();

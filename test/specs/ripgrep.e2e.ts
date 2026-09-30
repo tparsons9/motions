@@ -43,7 +43,7 @@ describe('Ripgrep integration', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             plugin?.reloadFeatures?.();
         });
         await browser.pause(500);
@@ -70,7 +70,7 @@ describe('Ripgrep integration', function () {
                         executeCommandById: (id: string) => boolean;
                     };
                 }
-            ).commands.executeCommandById('vim-motions:grep-picker');
+            ).commands.executeCommandById('vim-motions-tparsons9:grep-picker');
         });
         await browser.pause(1000);
 
@@ -95,7 +95,7 @@ describe('Ripgrep integration', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             plugin?.reloadFeatures?.();
         });
         await browser.pause(500);
@@ -107,7 +107,7 @@ describe('Ripgrep integration', function () {
                         executeCommandById: (id: string) => boolean;
                     };
                 }
-            ).commands.executeCommandById('vim-motions:grep-picker');
+            ).commands.executeCommandById('vim-motions-tparsons9:grep-picker');
         });
         await browser.pause(1000);
 
@@ -135,7 +135,7 @@ describe('Ripgrep integration', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             plugin?.reloadFeatures?.();
         });
         await browser.pause(500);
@@ -147,7 +147,7 @@ describe('Ripgrep integration', function () {
                         executeCommandById: (id: string) => boolean;
                     };
                 }
-            ).commands.executeCommandById('vim-motions:grep-picker');
+            ).commands.executeCommandById('vim-motions-tparsons9:grep-picker');
         });
         await browser.pause(1000);
 

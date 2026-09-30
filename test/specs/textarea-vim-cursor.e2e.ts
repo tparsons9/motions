@@ -13,7 +13,7 @@ async function enableTextareaVim(enable: boolean): Promise<void> {
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.settings.enableVimTextareas = val;
         plugin.reloadFeatures();
@@ -27,7 +27,7 @@ async function setAnimatedCursor(enabled: boolean): Promise<void> {
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.settings.animatedCursor = value;
         plugin.reloadFeatures();

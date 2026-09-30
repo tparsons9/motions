@@ -107,7 +107,7 @@ The directive must be the **last** comment line before the flagged code; ast-gre
 ## Testing locally in Obsidian
 
 1. Run `npm run build:dev` to produce `main.js` with `__DEV__` runtime assertions enabled (inline sourcemaps, auto-copies to `test-vault/`).
-2. If testing in a different vault, copy `main.js`, `manifest.json`, and `styles.css` to your vault's `.obsidian/plugins/vim-motions/` directory.
+2. If testing in a different vault, copy `main.js`, `manifest.json`, and `styles.css` to your vault's `.obsidian/plugins/vim-motions-tparsons9/` directory.
 3. Reload Obsidian and enable the plugin in **Settings → Community plugins**.
 4. Use `:violations` in the editor command line to inspect any runtime invariant violations caught during the session.
 
@@ -942,3 +942,7 @@ npm run test:unit
 - `editor.addHighlights()`/`removeHighlights()`/`hasHighlight()` are typed via obsidian-typings — these are unofficial APIs for managing `is-flashing` and `obsidian-search-match-highlight` decorations.
 - `prepareSimpleSearch()` is Obsidian's public fuzzy search utility (used by picker filter, not `:grep`). `:grep` uses `RegExp` matching with substring fallback.
 - There is no public navigation history API — the plugin provides its own cross-note jump list (`src/vim/jumplist.ts`) that intercepts the fork's `jumpListWalk` action via `defineActionOverride`. Use `navigateWithJump()`/`navigateWithJumpFile()`/`navigateWithJumpSetActive()` from `src/workspace/navigate.ts` for all user-initiated navigation to ensure jumps are recorded. Obsidian's native `app:go-back`/`app:go-forward` are still available via `:back`/`:forward` ex commands.
+
+## Personal fork identity
+
+The fork uses `vim-motions-tparsons9`, distinct from the registered upstream `vim-motions` ID. Keep the fork ID when syncing; the reconciler preserves it. Runtime plugin lookups, command IDs, and test registry fixtures must use the fork ID. CSS classes and public editor/picker API events retain their established names for connector compatibility. Follow the README migration steps for settings and hotkeys. After this PR merges, dispatch the release workflow for a new numeric patch release; do not reuse the old `1.0.2` tag or publish its old-ID draft as the migration release.

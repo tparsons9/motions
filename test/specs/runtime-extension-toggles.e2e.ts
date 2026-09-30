@@ -50,7 +50,7 @@ async function getUndoNodeCount(): Promise<number> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.undoTree?.getNodeCount() ?? -1;
     })) as number;
 }

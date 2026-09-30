@@ -39,7 +39,7 @@ async function getRpcState(): Promise<RpcState> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getNeovimConnectionState();
     })) as RpcState;
@@ -59,7 +59,7 @@ async function getExternalVimMode(): Promise<string | null> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return plugin.getExternalVimModeState();
     })) as string | null;
@@ -105,7 +105,7 @@ async function setRpcSettings(
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             plugin.settings.neovimBinaryPath = nextPath;
             plugin.settings.neovimConfigPath = nextConfigPath;
@@ -153,7 +153,9 @@ async function executeVimCommand(command: string): Promise<void> {
         const commands = app as unknown as {
             commands: { executeCommandById(commandId: string): boolean };
         };
-        if (!commands.commands.executeCommandById(`vim-motions:${id}`))
+        if (
+            !commands.commands.executeCommandById(`vim-motions-tparsons9:${id}`)
+        )
             throw new Error(`Command not found: ${id}`);
     }, command);
 }
@@ -215,7 +217,7 @@ describe('Neovim RPC connection lifecycle', function () {
                     app as unknown as {
                         plugins: { plugins: Record<string, unknown> };
                     }
-                ).plugins.plugins['vim-motions'],
+                ).plugins.plugins['vim-motions-tparsons9'],
             ),
         );
         if (!loaded) {
@@ -224,7 +226,7 @@ describe('Neovim RPC connection lifecycle', function () {
                     app as unknown as {
                         plugins: { loadPlugin(id: string): Promise<void> };
                     }
-                ).plugins.loadPlugin('vim-motions');
+                ).plugins.loadPlugin('vim-motions-tparsons9');
             });
         }
         const vimEnabled = await browser.executeObsidian(({ app }) => {
@@ -237,7 +239,7 @@ describe('Neovim RPC connection lifecycle', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings.vimEnabled ?? false;
         });
         if (!vimEnabled) {
@@ -255,7 +257,7 @@ describe('Neovim RPC connection lifecycle', function () {
                                     >;
                                 };
                             }
-                        ).plugins.plugins['vim-motions'];
+                        ).plugins.plugins['vim-motions-tparsons9'];
                         return plugin?.settings.vimEnabled ?? false;
                     }),
                 { timeout: 5000, interval: 100 },
@@ -281,7 +283,7 @@ describe('Neovim RPC connection lifecycle', function () {
                     app as unknown as {
                         plugins: { plugins: Record<string, unknown> };
                     }
-                ).plugins.plugins['vim-motions'],
+                ).plugins.plugins['vim-motions-tparsons9'],
             ),
         );
         if (loaded) await setRpcSettings(false);
@@ -499,7 +501,7 @@ describe('Neovim RPC connection lifecycle', function () {
                 app as unknown as {
                     plugins: { unloadPlugin(id: string): Promise<void> };
                 }
-            ).plugins.unloadPlugin('vim-motions');
+            ).plugins.unloadPlugin('vim-motions-tparsons9');
         });
         await waitForPidExit(pid);
         expect(pidIsAlive(pid)).toBe(false);

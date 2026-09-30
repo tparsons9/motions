@@ -19,7 +19,7 @@ describe('Exmap tracking and undefineEx API', function () {
                         plugins: Record<string, any>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return (
                 plugin != null &&
                 'vimrcExmapNames' in plugin &&

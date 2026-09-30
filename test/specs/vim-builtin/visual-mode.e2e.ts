@@ -28,7 +28,7 @@ describe('Visual mode (Tier 1)', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (plugin && plugin.settings.enableFlash) {
                 plugin.settings.enableFlash = false;
                 plugin.reloadFeatures();

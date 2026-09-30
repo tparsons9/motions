@@ -39,7 +39,7 @@ async function getUndoTreeState(): Promise<{
     headSeq: number;
 } | null> {
     return (await browser.executeObsidian(({ app }) => {
-        const plugin = (app as any).plugins?.plugins?.['vim-motions'];
+        const plugin = (app as any).plugins?.plugins?.['vim-motions-tparsons9'];
         if (!plugin?.undoTree) return null;
         const tree = plugin.undoTree;
         return {
@@ -52,7 +52,7 @@ async function getUndoTreeState(): Promise<{
 
 async function getUndoTreeBranches(seq: number): Promise<number> {
     return (await browser.executeObsidian(({ app }, targetSeq: number) => {
-        const plugin = (app as any).plugins?.plugins?.['vim-motions'];
+        const plugin = (app as any).plugins?.plugins?.['vim-motions-tparsons9'];
         if (!plugin?.undoTree) return 0;
         const node = plugin.undoTree.getNode(targetSeq);
         return node?.children?.length ?? 0;

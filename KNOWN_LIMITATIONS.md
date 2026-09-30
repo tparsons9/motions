@@ -1030,10 +1030,10 @@ Shift key normalization: `waitForHintKey()` lowercases `e.key` when Shift is hel
 
 Yank, close, and context menu are not mapped to editor key sequences (they conflict with vim's native operators). They are registered as Obsidian commands for custom hotkey assignment:
 
-- `vim-motions:hint-open-new-pane` — "Hint: open in new pane"
-- `vim-motions:hint-yank` — "Hint: yank link or text"
-- `vim-motions:hint-close` — "Hint: close tab or pane"
-- `vim-motions:hint-context-menu` — "Hint: open context menu"
+- `vim-motions-tparsons9:hint-open-new-pane` — "Hint: open in new pane"
+- `vim-motions-tparsons9:hint-yank` — "Hint: yank link or text"
+- `vim-motions-tparsons9:hint-close` — "Hint: close tab or pane"
+- `vim-motions-tparsons9:hint-context-menu` — "Hint: open context menu"
 
 ### Target classification
 

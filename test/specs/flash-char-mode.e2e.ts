@@ -14,7 +14,7 @@ function ensureFlashEnabled(enabled: boolean): Promise<void> {
         const plugin = (app as unknown as Record<string, unknown>).plugins as
             Record<string, unknown> | undefined;
         const internal = (plugin?.plugins as Record<string, unknown>)?.[
-            'vim-motions'
+            'vim-motions-tparsons9'
         ] as { settings: Record<string, unknown> } | undefined;
         if (internal?.settings) {
             internal.settings.enableFlash = val;
@@ -124,7 +124,7 @@ describe('Flash char-mode: enhanced f/F/t/T', function () {
                 const plugin = (app as unknown as Record<string, unknown>)
                     .plugins as Record<string, unknown> | undefined;
                 const internal = (plugin?.plugins as Record<string, unknown>)?.[
-                    'vim-motions'
+                    'vim-motions-tparsons9'
                 ] as { settings: Record<string, unknown> } | undefined;
                 if (internal?.settings) {
                     internal.settings.flashMultiLine = true;
@@ -147,7 +147,7 @@ describe('Flash char-mode: enhanced f/F/t/T', function () {
                 const plugin = (app as unknown as Record<string, unknown>)
                     .plugins as Record<string, unknown> | undefined;
                 const internal = (plugin?.plugins as Record<string, unknown>)?.[
-                    'vim-motions'
+                    'vim-motions-tparsons9'
                 ] as { settings: Record<string, unknown> } | undefined;
                 if (internal?.settings) {
                     internal.settings.flashMultiLine = true;

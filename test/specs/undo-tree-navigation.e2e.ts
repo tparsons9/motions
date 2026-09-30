@@ -35,7 +35,7 @@ async function handleEx(command: string): Promise<void> {
 
 async function getUndoTreeCurrentSeq(): Promise<number> {
     return (await browser.executeObsidian(({ app }) => {
-        const plugin = (app as any).plugins?.plugins?.['vim-motions'];
+        const plugin = (app as any).plugins?.plugins?.['vim-motions-tparsons9'];
         return plugin?.undoTree?.getCurrentSeq() ?? -1;
     })) as number;
 }

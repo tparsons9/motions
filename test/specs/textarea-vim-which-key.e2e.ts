@@ -24,7 +24,7 @@ async function enableTextareaVim(enable: boolean): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.settings.enableVimTextareas = val;
         plugin.reloadFeatures();

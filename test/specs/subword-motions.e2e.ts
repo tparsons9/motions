@@ -25,7 +25,7 @@ describe('Subword motions', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             plugin?.reloadFeatures?.();
         });
         await browser.pause(500);
@@ -202,7 +202,7 @@ describe('Subword motions', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.reloadFeatures?.();
             });
             await browser.pause(500);
@@ -223,7 +223,7 @@ describe('Subword motions', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.reloadFeatures?.();
             });
             await browser.pause(500);

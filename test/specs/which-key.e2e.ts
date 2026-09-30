@@ -347,7 +347,7 @@ describe('Which-key overlay', function () {
                             plugins: Record<string, PluginRef>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (!plugin?.leaderRegistry) return [];
                 return plugin.leaderRegistry.getBindings();
             })) as Array<{
@@ -382,7 +382,7 @@ describe('Which-key overlay', function () {
                             plugins: Record<string, PluginRef>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.leaderRegistry?.getLeaderKey() ?? '';
             })) as string;
 

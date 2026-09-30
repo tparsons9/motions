@@ -23,7 +23,7 @@ async function executeCommand(commandId: string): Promise<void> {
             app as unknown as {
                 commands: { executeCommandById(id: string): void };
             }
-        ).commands.executeCommandById(`vim-motions:${id}`);
+        ).commands.executeCommandById(`vim-motions-tparsons9:${id}`);
     }, commandId);
 }
 
@@ -33,7 +33,7 @@ async function getVimrcCommandCount(): Promise<number> {
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.vimrcCommandCount ?? -1;
     })) as number;
 }
@@ -44,7 +44,7 @@ async function getLuaCommandCount(): Promise<number> {
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.luaCommandCount ?? -1;
     })) as number;
 }
@@ -91,7 +91,7 @@ async function commandExists(commandId: string): Promise<boolean> {
                 commands: { commands: Record<string, unknown> };
             }
         ).commands.commands;
-        return `vim-motions:${id}` in cmds;
+        return `vim-motions-tparsons9:${id}` in cmds;
     }, commandId)) as boolean;
 }
 
@@ -102,7 +102,7 @@ async function commandName(commandId: string): Promise<string | null> {
                 commands: { commands: Record<string, { name?: string }> };
             }
         ).commands.commands;
-        return cmds[`vim-motions:${id}`]?.name ?? null;
+        return cmds[`vim-motions-tparsons9:${id}`]?.name ?? null;
     }, commandId)) as string | null;
 }
 
@@ -122,7 +122,7 @@ describe('Config management commands (#168)', function () {
                                     plugins: Record<string, PluginRef>;
                                 };
                             }
-                        ).plugins.plugins['vim-motions'];
+                        ).plugins.plugins['vim-motions-tparsons9'];
                         return plugin?.vimrcLoaded === true;
                     })) as boolean,
                 { timeout: 10000, interval: 200 },
@@ -379,7 +379,7 @@ describe('Config management commands (#168)', function () {
                             };
                         }
                     ).commands.executeCommandById(
-                        'vim-motions:open-configuration',
+                        'vim-motions-tparsons9:open-configuration',
                     );
                     return { executed, error: null as string | null };
                 } catch (e) {
@@ -441,7 +441,7 @@ describe('Config management commands (#168)', function () {
                             };
                         }
                     ).commands.executeCommandById(
-                        'vim-motions:open-configuration-directory',
+                        'vim-motions-tparsons9:open-configuration-directory',
                     );
                     return { executed, error: null as string | null };
                 } catch (e) {

@@ -220,7 +220,7 @@ async function setRpcEnabled(enabled: boolean): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             plugin.settings.neovimBinaryPath = '';
             plugin.settings.neovimConfigPath = configPath;
@@ -243,7 +243,7 @@ async function pluginSnapshot(): Promise<{
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('Vim Motions is not loaded');
         return {
             rpc: plugin.getNeovimConnectionState(),
@@ -267,7 +267,7 @@ async function requestNeovim(
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) throw new Error('Vim Motions is not loaded');
             return plugin.requestNeovim(rpcMethod, rpcArgs);
         },
@@ -653,7 +653,7 @@ async function proveRpcEngagementAndForkIsolation(): Promise<void> {
                 app as unknown as {
                     plugins: { plugins: Record<string, RpcPlugin> };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             const view = app.workspace.getActiveViewOfType(
                 obsidian.MarkdownView,
             );
@@ -690,7 +690,7 @@ async function proveRpcEngagementAndForkIsolation(): Promise<void> {
             app as unknown as {
                 plugins: { plugins: Record<string, RpcPlugin> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         const view = app.workspace.getActiveViewOfType(obsidian.MarkdownView);
         const lines = (await plugin!.requestNeovim('nvim_buf_get_lines', [
             0,

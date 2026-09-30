@@ -81,11 +81,11 @@ In Reading view and frontmatter properties, links render as standard HTML elemen
 
 The following commands are available in the Command Palette for custom hotkey assignment:
 
-- `vim-motions:show-hint-labels`: Trigger standard hint mode.
-- `vim-motions:hint-open-new-pane`: Trigger hint mode to open targets in a new pane.
-- `vim-motions:hint-yank`: Trigger hint mode to yank link URLs or text.
-- `vim-motions:hint-close`: Trigger hint mode to close tabs or panes.
-- `vim-motions:hint-context-menu`: Trigger hint mode to open the context menu on a target.
+- `vim-motions-tparsons9:show-hint-labels`: Trigger standard hint mode.
+- `vim-motions-tparsons9:hint-open-new-pane`: Trigger hint mode to open targets in a new pane.
+- `vim-motions-tparsons9:hint-yank`: Trigger hint mode to yank link URLs or text.
+- `vim-motions-tparsons9:hint-close`: Trigger hint mode to close tabs or panes.
+- `vim-motions-tparsons9:hint-context-menu`: Trigger hint mode to open the context menu on a target.
 
 ## Configuration
 

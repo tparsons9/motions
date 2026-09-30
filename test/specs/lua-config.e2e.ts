@@ -21,7 +21,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                             plugins: Record<string, { vimrcLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.vimrcLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -40,7 +40,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await plugin?.loadLuaConfigForTest?.();
     });
     await browser.waitUntil(
@@ -52,7 +52,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                             plugins: Record<string, { luaLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.luaLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -66,7 +66,7 @@ async function assertPluginLoaded(): Promise<void> {
                 plugins: { plugins: Record<string, unknown> };
             }
         ).plugins.plugins;
-        return { pluginLoaded: 'vim-motions' in plugins };
+        return { pluginLoaded: 'vim-motions-tparsons9' in plugins };
     });
     expect(result).toHaveProperty('pluginLoaded', true);
 }
@@ -89,7 +89,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(10);
@@ -161,7 +161,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(15);
@@ -179,7 +179,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(7);
@@ -203,7 +203,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (plugin) {
                 plugin.settings.configMode = 'settings';
                 await plugin.saveSettings();
@@ -228,7 +228,7 @@ describe('Lua config support', function () {
                                 >;
                             };
                         }
-                    ).plugins.plugins['vim-motions'];
+                    ).plugins.plugins['vim-motions-tparsons9'];
                     return typeof plugin?.settings?.scrolloffLines === 'number';
                 })) as boolean,
             { timeout: 5000, interval: 100 },
@@ -243,7 +243,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).not.toBe(99);
@@ -262,7 +262,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(12);
@@ -282,7 +282,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(21);
@@ -302,7 +302,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(22);
@@ -322,7 +322,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect([23, 99]).toContain(scrolloff);
@@ -342,7 +342,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(24);
@@ -363,7 +363,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(25);
@@ -383,7 +383,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(26);
@@ -403,7 +403,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(27);
@@ -423,7 +423,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.scrolloffLines;
         });
         expect(scrolloff).toBe(28);
@@ -472,7 +472,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.cursorShapes;
         });
         expect(shapes).toHaveProperty('normal', 'bar');
@@ -497,7 +497,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.modePrompts;
         });
         expect(prompts).toHaveProperty('normal', 'NOR');
@@ -685,7 +685,7 @@ describe('Lua config support', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings?.clipboard;
             });
             expect(clip).toBe('unnamed');
@@ -728,7 +728,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.textwidth;
         });
         expect(tw).toBe(120);
@@ -746,7 +746,7 @@ describe('Lua config support', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.textwidth;
         });
         expect(tw).toBe(100);
@@ -770,7 +770,7 @@ describe('Lua config support', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin) {
                     plugin.settings.configMode = 'lua-vimrc';
                     await plugin.saveSettings();
@@ -791,7 +791,7 @@ describe('Lua config support', function () {
                                     >;
                                 };
                             }
-                        ).plugins.plugins['vim-motions'];
+                        ).plugins.plugins['vim-motions-tparsons9'];
                         return plugin?.vimrcLoaded === true;
                     })) as boolean,
                 { timeout: 10000, interval: 200 },
@@ -812,7 +812,7 @@ describe('Lua config support', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 await plugin?.loadLuaConfigForTest?.();
             });
             await browser.waitUntil(
@@ -827,7 +827,7 @@ describe('Lua config support', function () {
                                     >;
                                 };
                             }
-                        ).plugins.plugins['vim-motions'];
+                        ).plugins.plugins['vim-motions-tparsons9'];
                         return plugin?.luaLoaded === true;
                     })) as boolean,
                 { timeout: 10000, interval: 200 },
@@ -849,7 +849,7 @@ describe('Lua config support', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings?.clipboard;
             });
             expect(clip).toBe('unnamedplus');
@@ -870,7 +870,7 @@ describe('Lua config support', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings?.textwidth;
             });
             expect(tw).toBe(72);
@@ -891,7 +891,7 @@ describe('Lua config support', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings?.scrolloffLines;
             });
             expect(so).toBe(15);
@@ -911,7 +911,7 @@ describe('Lua config support', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings?.clipboard;
             });
             expect(clip).toBe('unnamed');
@@ -931,7 +931,7 @@ describe('Lua config support', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings?.textwidth;
             });
             expect(tw).toBe(100);

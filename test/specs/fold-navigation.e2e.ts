@@ -115,7 +115,7 @@ describe('Fold-aware navigation (Phase 4)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.reloadFeatures();
             });
             await browser.pause(PAUSE.EDITOR_SETTLE);
@@ -133,7 +133,7 @@ describe('Fold-aware navigation (Phase 4)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.reloadFeatures();
             });
             await browser.pause(PAUSE.EDITOR_SETTLE);
@@ -178,7 +178,7 @@ describe('Fold-aware navigation (Phase 4)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.reloadFeatures();
             });
             await browser.pause(PAUSE.EDITOR_SETTLE);
@@ -209,7 +209,7 @@ describe('Fold-aware navigation (Phase 4)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.reloadFeatures();
             });
             await browser.pause(PAUSE.EDITOR_SETTLE);
@@ -248,7 +248,7 @@ describe('Fold-aware navigation (Phase 4)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.reloadFeatures();
             });
             await browser.pause(PAUSE.EDITOR_SETTLE);
@@ -291,7 +291,7 @@ describe('Fold-aware navigation (Phase 4)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 plugin?.reloadFeatures();
             });
             await browser.pause(PAUSE.EDITOR_SETTLE);

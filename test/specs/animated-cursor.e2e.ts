@@ -20,7 +20,7 @@ async function setAnimatedCursor(enabled: boolean): Promise<void> {
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.settings.animatedCursor = value;
         plugin.reloadFeatures();
@@ -151,7 +151,7 @@ async function getPluginSetting(key: string): Promise<unknown> {
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return (plugin?.settings as Record<string, unknown>)?.[k];
     }, key);
 }
@@ -164,7 +164,7 @@ async function setPluginSettings(
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         Object.assign(plugin.settings, s);
         plugin.reloadFeatures();
@@ -230,7 +230,7 @@ describe('Animated cursor', function () {
                         plugins: Record<string, PluginRef>;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return plugin?.settings?.animatedCursor ?? false;
         })) as boolean;
 

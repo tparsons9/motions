@@ -123,7 +123,7 @@ function executeCommand(commandId: string): Promise<void> {
 }
 
 function triggerHintOpenNewViaCommand(): Promise<void> {
-    return executeCommand('vim-motions:hint-open-new-pane');
+    return executeCommand('vim-motions-tparsons9:hint-open-new-pane');
 }
 
 async function findHintLabelForInternalLink(
@@ -567,7 +567,7 @@ describe('Hint mode', function () {
                         };
                     }
                 ).commands.commands;
-                return 'vim-motions:show-hint-labels' in commands;
+                return 'vim-motions-tparsons9:show-hint-labels' in commands;
             })) as boolean;
             expect(hasCommand).toBe(true);
         });
@@ -1285,7 +1285,7 @@ describe('Hint mode', function () {
                             plugins: Record<string, Record<string, unknown>>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const hintActions = plugin?.hintActions as
                     { openNew: (count?: number) => void } | undefined;
                 if (hintActions) {
@@ -1390,7 +1390,7 @@ describe('Hint mode', function () {
                         };
                     }
                 ).commands.commands;
-                return 'vim-motions:hint-open-new-pane' in commands;
+                return 'vim-motions-tparsons9:hint-open-new-pane' in commands;
             })) as boolean;
             expect(hasCommand).toBe(true);
         });
@@ -1404,7 +1404,7 @@ describe('Hint mode', function () {
                         };
                     }
                 ).commands.commands;
-                return 'vim-motions:hint-yank' in commands;
+                return 'vim-motions-tparsons9:hint-yank' in commands;
             })) as boolean;
             expect(hasCommand).toBe(true);
         });
@@ -1418,7 +1418,7 @@ describe('Hint mode', function () {
                         };
                     }
                 ).commands.commands;
-                return 'vim-motions:hint-close' in commands;
+                return 'vim-motions-tparsons9:hint-close' in commands;
             })) as boolean;
             expect(hasCommand).toBe(true);
         });
@@ -1432,7 +1432,7 @@ describe('Hint mode', function () {
                         };
                     }
                 ).commands.commands;
-                return 'vim-motions:hint-context-menu' in commands;
+                return 'vim-motions-tparsons9:hint-context-menu' in commands;
             })) as boolean;
             expect(hasCommand).toBe(true);
         });

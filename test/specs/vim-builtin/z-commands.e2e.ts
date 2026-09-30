@@ -195,7 +195,7 @@ describe('Normal mode — z-prefix commands (Tier 1)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const scrolloff = plugin?.settings.scrolloffLines ?? 0;
                 const lineHeight = cm.defaultLineHeight || 22;
                 const viewportRows = cm.scrollDOM.clientHeight / lineHeight;
@@ -525,7 +525,7 @@ describe('Normal mode — z-prefix commands (Tier 1)', function () {
                                     >;
                                 };
                             }
-                        ).plugins.plugins['vim-motions'];
+                        ).plugins.plugins['vim-motions-tparsons9'];
                         return plugin?.settings.scrolloffLines ?? 5;
                     },
                 )) as number;
@@ -669,7 +669,7 @@ describe('Normal mode — z-prefix commands (Tier 1)', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.settings.scrolloffLines ?? 5;
             })) as number;
         });

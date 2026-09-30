@@ -48,7 +48,7 @@ async function applyGlobalMapOverride(
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             plugin?.globalRegistry?.addMapping(
                 k,
                 { type: 'obcommand', commandId: cmd },
@@ -75,7 +75,7 @@ async function removeGlobalMap(key: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         plugin?.globalRegistry?.removeMapping(k);
     }, key);
 }
@@ -94,7 +94,7 @@ async function enableGlobalWhichKey(): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (plugin) {
             plugin.settings.whichKeyMode = 'all';
             plugin.reloadFeatures();
@@ -117,7 +117,7 @@ async function disableGlobalWhichKey(): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (plugin) {
             plugin.settings.whichKeyMode = 'off';
             plugin.reloadFeatures();

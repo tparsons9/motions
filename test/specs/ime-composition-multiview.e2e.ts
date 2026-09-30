@@ -10,7 +10,7 @@ type PluginRef = {
 function getPlugin(): string {
     return `(app as unknown as {
         plugins: { plugins: Record<string, unknown> };
-    }).plugins.plugins['vim-motions']`;
+    }).plugins.plugins['vim-motions-tparsons9']`;
 }
 
 async function loadSplitWorkspace(): Promise<void> {
@@ -68,7 +68,7 @@ async function isAnyViewComposing(): Promise<boolean> {
             app as unknown as {
                 plugins: { plugins: Record<string, PluginRef> };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.isAnyViewComposingForTest?.() ?? false;
     })) as boolean;
 }

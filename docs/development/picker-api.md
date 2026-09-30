@@ -50,7 +50,7 @@ this.registerEvent(
 
 ### `window.VimMotions.picker`
 
-The picker API is available at `window.VimMotions.picker` after Vim Motions loads. It is also accessible via `app.plugins.plugins['vim-motions'].pickerAPI`.
+The picker API is available at `window.VimMotions.picker` after Vim Motions loads. It is also accessible via `app.plugins.plugins['vim-motions-tparsons9'].pickerAPI`.
 
 #### `registerSource(source: PickerSource): () => void`
 

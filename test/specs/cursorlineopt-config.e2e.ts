@@ -28,7 +28,7 @@ async function readOpt(): Promise<string> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('readOpt: plugin not found');
         return String(plugin.settings.cursorlineopt);
     })) as string;
@@ -48,7 +48,7 @@ async function setOpt(value: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) throw new Error('setCursorlineopt: plugin not found');
         plugin.settings.cursorlineopt = v;
         await plugin.saveSettings();
@@ -62,7 +62,9 @@ async function loadVimrc(body: string): Promise<void> {
             app as unknown as {
                 commands: { executeCommandById: (id: string) => void };
             }
-        ).commands.executeCommandById('vim-motions:reload-configuration');
+        ).commands.executeCommandById(
+            'vim-motions-tparsons9:reload-configuration',
+        );
     });
     await browser.pause(PAUSE.EDITOR_SETTLE * 3);
 }
@@ -81,7 +83,7 @@ async function loadLua(body: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await plugin?.loadLuaConfigForTest?.();
     });
     await browser.pause(PAUSE.EDITOR_SETTLE * 3);
@@ -105,7 +107,7 @@ describe('cursorlineopt normalization through vimrc and Lua', function () {
                                 >;
                             };
                         }
-                    ).plugins.plugins['vim-motions'];
+                    ).plugins.plugins['vim-motions-tparsons9'];
                     return plugin?.vimrcLoaded === true;
                 })) as boolean,
             { timeout: 15000, interval: 200 },

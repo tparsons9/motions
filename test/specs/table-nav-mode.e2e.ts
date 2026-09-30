@@ -232,7 +232,7 @@ async function setPluginSettings(
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             for (const [k, v] of Object.entries(s)) {
                 plugin.settings[k] = v;

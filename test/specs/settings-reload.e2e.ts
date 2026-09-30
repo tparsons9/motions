@@ -29,7 +29,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return { error: 'no plugin' };
             plugin.settings.enableTextObjects = false;
             plugin.reloadFeatures();
@@ -65,7 +65,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableTextObjects = true;
             plugin.reloadFeatures();
@@ -87,7 +87,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableTextObjects = false;
             plugin.reloadFeatures();
@@ -107,7 +107,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableTextObjects = true;
             plugin.reloadFeatures();
@@ -143,7 +143,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableNavigation = false;
             plugin.reloadFeatures();
@@ -188,7 +188,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableNavigation = true;
             plugin.reloadFeatures();
@@ -210,7 +210,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableStatusBar = false;
             plugin.reloadFeatures();
@@ -235,7 +235,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableStatusBar = true;
             plugin.reloadFeatures();
@@ -257,7 +257,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableEasyMotion = false;
             plugin.reloadFeatures();
@@ -320,7 +320,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableEasyMotion = true;
             plugin.reloadFeatures();
@@ -342,7 +342,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableEasyMotion = false;
             plugin.reloadFeatures();
@@ -362,7 +362,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableEasyMotion = true;
             plugin.reloadFeatures();
@@ -462,7 +462,7 @@ describe('Settings hot-reload', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (!plugin) return;
                 plugin.settings.scrolloffLines = scrollLines;
                 plugin.reloadFeatures();
@@ -497,7 +497,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = false;
             plugin.reloadFeatures();
@@ -557,7 +557,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = true;
             plugin.reloadFeatures();
@@ -583,7 +583,7 @@ describe('Settings hot-reload', function () {
                                 >;
                             };
                         }
-                    ).plugins.plugins['vim-motions'];
+                    ).plugins.plugins['vim-motions-tparsons9'];
                     const all = plugin?.snippetRegistry?.getAll();
                     return Array.isArray(all) && all.length > 0;
                 })) as boolean,
@@ -604,7 +604,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.reloadFeatures();
         });
@@ -668,7 +668,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = false;
             plugin.settings.picker = false;
@@ -720,7 +720,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = true;
             plugin.settings.picker = true;
@@ -743,7 +743,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = false;
             plugin.reloadFeatures();
@@ -796,7 +796,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = true;
             plugin.reloadFeatures();
@@ -818,7 +818,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableHardWrap = false;
             plugin.reloadFeatures();
@@ -872,7 +872,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableHardWrap = true;
             plugin.reloadFeatures();
@@ -898,7 +898,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.picker = false;
             plugin.leaderRegistry.setLeaderKey(' ');
@@ -982,7 +982,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.picker = true;
             plugin.leaderRegistry.setLeaderKey('\\');
@@ -1018,7 +1018,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.picker = false;
             plugin.leaderRegistry.setLeaderKey(' ');
@@ -1099,7 +1099,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.picker = true;
             plugin.leaderRegistry.setLeaderKey('\\');
@@ -1122,7 +1122,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = false;
             plugin.reloadFeatures();
@@ -1153,7 +1153,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             return {
                 hasGlobalKeyHandler: !!plugin?.globalKeyHandler,
                 hasGlobalRegistry: !!plugin?.globalRegistry,
@@ -1186,7 +1186,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = true;
             plugin.reloadFeatures();
@@ -1208,7 +1208,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = false;
             plugin.reloadFeatures();
@@ -1234,7 +1234,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return { error: 'no plugin' };
             if (!plugin.globalRegistry) {
                 return { registryExists: false };
@@ -1274,7 +1274,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return;
             plugin.settings.enableWorkspaceNav = true;
             plugin.reloadFeatures();
@@ -1324,7 +1324,7 @@ describe('Settings hot-reload', function () {
                         >;
                     };
                 }
-            ).plugins.plugins['vim-motions'];
+            ).plugins.plugins['vim-motions-tparsons9'];
             if (!plugin) return { error: 'no plugin' };
 
             const leader = plugin.leaderRegistry.getLeaderKey();

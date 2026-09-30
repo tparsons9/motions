@@ -47,14 +47,23 @@ A polished, Neovim-native experience inside [Obsidian](https://obsidian.md). Vim
 
 ## Installation
 
-### From community directory
+### Install this fork with BRAT
 
-Search for "Vim Motions" in **Settings → Community plugins → Browse**.
+Add `tparsons9/motions` in BRAT and install a published release with plugin ID `vim-motions-tparsons9`. The community directory installs the original `saberzero1/motions` plugin, whose ID is `vim-motions`; use BRAT to update this fork.
+
+### Migrate an existing fork installation
+
+1. Back up `.obsidian/plugins/vim-motions/data.json` and any custom hotkeys. Disable the old Vim Motions installation.
+2. Install the new fork release through BRAT. With the fork disabled, copy the backed-up `data.json` into `.obsidian/plugins/vim-motions-tparsons9/`.
+3. Replace command prefixes `vim-motions:` with `vim-motions-tparsons9:` in your hotkeys, vimrc/Lua command mappings, and other command integrations. The editor and picker API event names remain unchanged.
+4. Reload Obsidian and enable **Vim Motions (Tanner’s fork)**. Keep the original plugin disabled, and remove its old installation after verifying your settings and connector.
+
+The existing `1.0.2` draft uses the old ID; this migration needs a new release containing the identity change.
 
 ### Manual installation
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/saberzero1/motions/releases).
-2. Create a folder `vim-motions` in `<your-vault>/.obsidian/plugins/`.
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/tparsons9/motions/releases).
+2. Create a folder `vim-motions-tparsons9` in `<your-vault>/.obsidian/plugins/`.
 3. Copy the downloaded files into that folder.
 4. Restart Obsidian and enable the plugin in **Settings → Community plugins**.
 

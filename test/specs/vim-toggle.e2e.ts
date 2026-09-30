@@ -21,7 +21,7 @@ async function executeToggleCommand(
             app as unknown as {
                 commands: { executeCommandById(id: string): void };
             }
-        ).commands.executeCommandById(`vim-motions:${id}`);
+        ).commands.executeCommandById(`vim-motions-tparsons9:${id}`);
     }, commandId);
     await browser.pause(TOGGLE_SETTLE);
 }
@@ -74,7 +74,7 @@ async function getVimEnabledSetting(): Promise<boolean> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         return plugin?.settings?.vimEnabled as boolean;
     })) as boolean;
 }
@@ -326,9 +326,11 @@ describe('Vim toggle command', function () {
                     commands: { executeCommandById(id: string): void };
                 };
                 cmds.commands.executeCommandById(
-                    'vim-motions:disable-vim-mode',
+                    'vim-motions-tparsons9:disable-vim-mode',
                 );
-                cmds.commands.executeCommandById('vim-motions:enable-vim-mode');
+                cmds.commands.executeCommandById(
+                    'vim-motions-tparsons9:enable-vim-mode',
+                );
             });
             await browser.pause(TOGGLE_SETTLE);
             await browser.waitUntil(
@@ -365,7 +367,7 @@ describe('Vim toggle command', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (!plugin) return { error: 'no plugin' };
                 await plugin.saveData(plugin.settings);
                 const data = await plugin.loadData();

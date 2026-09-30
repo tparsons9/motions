@@ -787,7 +787,7 @@ function createTabNewCommand(app: App): ExCommandFn {
 
 function createVersionCommand(app: App): ExCommandFn {
     return () => {
-        const plugin = app.plugins?.plugins?.['vim-motions'];
+        const plugin = app.plugins?.plugins?.['vim-motions-tparsons9'];
         const version = plugin?.manifest?.version ?? 'unknown';
         const name = plugin?.manifest?.name ?? 'Vim Motions';
         new Notice(`${name} v${version}`);
@@ -1354,7 +1354,7 @@ export function registerExCommands(
         if (!globalRegistry) return;
         const args = (params.argString ?? '').trim();
         if (!args) {
-            executeCommand(app, 'vim-motions:show-hint-labels');
+            executeCommand(app, 'vim-motions-tparsons9:show-hint-labels');
             return;
         }
         const parts = args.split(/\s+/);

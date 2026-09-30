@@ -80,7 +80,7 @@ async function clearHarpoonPins(): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin) return;
         plugin.harpoonStore?.load([]);
         plugin.settings.harpoonPins = [];
@@ -198,7 +198,7 @@ describe('Harpoon', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const file = app.workspace.getActiveFile();
                 if (plugin?.harpoonStore && file) {
                     plugin.harpoonStore.toggle(file.path, 0, 0);
@@ -229,7 +229,7 @@ describe('Harpoon', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const file = app.workspace.getActiveFile();
                 if (plugin?.harpoonStore && file) {
                     plugin.harpoonStore.toggle(file.path, 0, 0);
@@ -289,7 +289,7 @@ describe('Harpoon', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 if (plugin?.harpoonStore) {
                     plugin.settings.harpoonPins = plugin.harpoonStore.save();
                     await plugin.saveSettings();
@@ -317,7 +317,7 @@ describe('Harpoon', function () {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return {
                     count: plugin?.harpoonStore?.count() ?? -1,
                     settingsPins: plugin?.settings?.harpoonPins ?? 'undefined',

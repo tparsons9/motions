@@ -13,7 +13,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                             plugins: Record<string, { vimrcLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.vimrcLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -32,7 +32,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         await plugin?.loadLuaConfigForTest?.();
     });
     await browser.waitUntil(
@@ -44,7 +44,7 @@ async function loadLuaConfig(content: string): Promise<void> {
                             plugins: Record<string, { luaLoaded?: boolean }>;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 return plugin?.luaLoaded === true;
             })) as boolean,
         { timeout: 10000, interval: 200 },
@@ -101,7 +101,7 @@ async function getGutterState(): Promise<{
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         const s = plugin?.settings ?? {};
 
         return {

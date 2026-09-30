@@ -57,7 +57,7 @@ async function waitForSnippets(): Promise<void> {
                             >;
                         };
                     }
-                ).plugins.plugins['vim-motions'];
+                ).plugins.plugins['vim-motions-tparsons9'];
                 const all = plugin?.snippetRegistry?.getAll();
                 return Array.isArray(all) && all.length > 0;
             })) as boolean,
@@ -90,7 +90,7 @@ async function registerTestSnippets(): Promise<void> {
                     >;
                 };
             }
-        ).plugins.plugins['vim-motions'];
+        ).plugins.plugins['vim-motions-tparsons9'];
         if (!plugin?.snippetRegistry) return;
         plugin.snippetRegistry.loadFile(
             {
