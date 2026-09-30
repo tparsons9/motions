@@ -95,6 +95,20 @@ async function applyOptionSettings(settings: {
     );
 }
 
+async function setVaultIndent(useTab: boolean, tabSize: number): Promise<void> {
+    await browser.executeObsidian(
+        ({ app }, nextUseTab: boolean, nextTabSize: number) => {
+            const vault = app.vault as unknown as {
+                setConfig(key: string, value: unknown): void;
+            };
+            vault.setConfig('useTab', nextUseTab);
+            vault.setConfig('tabSize', nextTabSize);
+        },
+        useTab,
+        tabSize,
+    );
+}
+
 async function getRpcState(): Promise<RpcState> {
     return (await browser.executeObsidian(({ app }) => {
         const plugin = (
@@ -199,6 +213,7 @@ describe('Neovim RPC editor options', function () {
                 }
             ).setConfig('propertiesInDocument', 'source');
         });
+        await setVaultIndent(true, 4);
         await setRpcEnabled(false);
         await setRpcEnabled(true);
         await waitForConnected();
@@ -242,6 +257,64 @@ describe('Neovim RPC editor options', function () {
             { timeout: 5000, interval: 100 },
         );
         expect(await bufferLines()).toEqual(['- item one', 'hello']);
+    });
+
+    // Vim rebuilds a continued line's indent from its column count rather than
+    // copying the bytes, so `expandtab`/`tabstop` decide the style. Both
+    // directions are asserted because either one alone passes under a
+    // hardcoded setting -- measured: expandtab=false turns `    - ` into a tab.
+    it('keeps tab indentation on o when the vault indents with tabs', async () => {
+        await setVaultIndent(true, 4);
+        await applyOptionSettings({
+            listContinuation: true,
+            yankMode: 'off',
+            yankDuration: 200,
+        });
+        await request('nvim_buf_set_lines', [
+            0,
+            0,
+            -1,
+            true,
+            ['- Topic', '\t- Sub'],
+        ]);
+        await request('nvim_win_set_cursor', [0, [2, 0]]);
+        await dispatchKeys('oX\u001b');
+        await browser.waitUntil(
+            async () => (await bufferLines()).length === 3,
+            { timeout: 5000, interval: 100 },
+        );
+        expect(await bufferLines()).toEqual(['- Topic', '\t- Sub', '\t- X']);
+        await browser.waitUntil(
+            async () => (await getEditorValue()) === '- Topic\n\t- Sub\n\t- X',
+            { timeout: 5000, interval: 100 },
+        );
+    });
+
+    it('keeps space indentation on o when the vault indents with spaces', async () => {
+        await setVaultIndent(false, 4);
+        await applyOptionSettings({
+            listContinuation: true,
+            yankMode: 'off',
+            yankDuration: 200,
+        });
+        await request('nvim_buf_set_lines', [
+            0,
+            0,
+            -1,
+            true,
+            ['- Topic', '    - Sub'],
+        ]);
+        await request('nvim_win_set_cursor', [0, [2, 0]]);
+        await dispatchKeys('oX\u001b');
+        await browser.waitUntil(
+            async () => (await bufferLines()).length === 3,
+            { timeout: 5000, interval: 100 },
+        );
+        expect(await bufferLines()).toEqual([
+            '- Topic',
+            '    - Sub',
+            '    - X',
+        ]);
     });
 
     it('renders a yank highlight over the yanked text', async () => {

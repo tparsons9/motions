@@ -9,6 +9,7 @@ import {
     RangeSetBuilder,
     StateEffect,
     StateField,
+    type EditorState,
     type Extension,
 } from '@codemirror/state';
 import { EditorView, GutterMarker, gutter } from '@codemirror/view';
@@ -96,29 +97,64 @@ class SignSpacer extends GutterMarker {
 
 export const setSignsEffect = StateEffect.define<SignEntry[]>();
 
-export const signColumnField = StateField.define<RangeSet<GutterMarker>>({
+/**
+ * Signs owned by the Neovim backend, kept separate from mark signs because the
+ * two sources are recomputed independently: a single effect would mean whichever
+ * dispatched last erased the other.
+ */
+export const setRpcSignsEffect = StateEffect.define<SignEntry[]>();
+
+interface SignColumnState {
+    marks: SignEntry[];
+    rpc: SignEntry[];
+    markers: RangeSet<GutterMarker>;
+}
+
+function buildMarkers(
+    marks: SignEntry[],
+    rpc: SignEntry[],
+): RangeSet<GutterMarker> {
+    const byPos = new Map<number, string>();
+    for (const { pos, labels } of [...marks, ...rpc]) {
+        byPos.set(pos, (byPos.get(pos) ?? '') + labels);
+    }
+    const builder = new RangeSetBuilder<GutterMarker>();
+    for (const pos of [...byPos.keys()].sort((a, b) => a - b)) {
+        const labels = byPos.get(pos) ?? '';
+        const display =
+            labels.length > MAX_GUTTER_MARKS
+                ? labels.slice(0, MAX_GUTTER_MARKS) + '\u2026'
+                : labels;
+        builder.add(pos, pos, new SignMarker(display));
+    }
+    return builder.finish();
+}
+
+export const signColumnField = StateField.define<SignColumnState>({
     create() {
-        return RangeSet.empty;
+        return { marks: [], rpc: [], markers: buildMarkers([], []) };
     },
-    update(set, tr) {
-        set = set.map(tr.changes);
+    update(value, tr) {
+        let { marks, rpc } = value;
+        let changed = false;
         for (const e of tr.effects) {
             if (e.is(setSignsEffect)) {
-                const builder = new RangeSetBuilder<GutterMarker>();
-                const sorted = [...e.value].sort((a, b) => a.pos - b.pos);
-                for (const { pos, labels } of sorted) {
-                    const display =
-                        labels.length > MAX_GUTTER_MARKS
-                            ? labels.slice(0, MAX_GUTTER_MARKS) + '\u2026'
-                            : labels;
-                    builder.add(pos, pos, new SignMarker(display));
-                }
-                set = builder.finish();
+                marks = e.value;
+                changed = true;
+            } else if (e.is(setRpcSignsEffect)) {
+                rpc = e.value;
+                changed = true;
             }
         }
-        return set;
+        if (changed) return { marks, rpc, markers: buildMarkers(marks, rpc) };
+        return { marks, rpc, markers: value.markers.map(tr.changes) };
     },
 });
+
+/** Merged gutter markers; the field's own shape is an implementation detail. */
+export function signMarkers(state: EditorState): RangeSet<GutterMarker> {
+    return state.field(signColumnField).markers;
+}
 
 // ── Compartment ──────────────────────────────────────────
 
@@ -134,18 +170,16 @@ function createSignColumnGutter(width: number): Extension {
     const spacerText = 'a'.repeat(Math.min(width, MAX_SIGN_WIDTH));
     return gutter({
         class: 'vim-motions-sign-column',
-        markers: (v) => v.state.field(signColumnField),
+        markers: (v) => signMarkers(v.state),
         initialSpacer() {
             return new SignSpacer(spacerText);
         },
         domEventHandlers: {
             click(view, line) {
                 let hasMarker = false;
-                view.state
-                    .field(signColumnField)
-                    .between(line.from, line.from, () => {
-                        hasMarker = true;
-                    });
+                signMarkers(view.state).between(line.from, line.from, () => {
+                    hasMarker = true;
+                });
                 if (!hasMarker) return false;
                 view.dispatch({
                     selection: { anchor: line.from },

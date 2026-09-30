@@ -96,6 +96,7 @@ When the optional Neovim RPC backend is connected, picker leader actions and the
 | `:outline`      |          | Jump to heading in current file                 |
 | `:backlinks`    | `:backl` | Show files linking to current file              |
 | `:tags`         |          | Browse vault tags (opens sub-picker with files) |
+| `:quickfix`     |          | Browse Neovim's quickfix list (RPC backend)     |
 | `:recent`       |          | Recently opened files                           |
 | `:marks`        |          | Jump to vim marks (editor context only)         |
 | `:registers`    | `:reg`   | Browse vim registers (paste on select)          |

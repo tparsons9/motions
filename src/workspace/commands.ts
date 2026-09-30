@@ -1020,6 +1020,11 @@ export function registerExCommands(
     );
     reg.defineEx('tags', '', createPickerCommand('tags', picker?.openPicker));
     reg.defineEx(
+        'quickfix',
+        '',
+        createPickerCommand('quickfix', picker?.openPicker),
+    );
+    reg.defineEx(
         'recent',
         '',
         createPickerCommand('recent', picker?.openPicker),

@@ -116,7 +116,7 @@ Control Markdown folding with standard Vim fold commands:
 
 The uppercase fold commands (`zO`, `zC`, `zA`, `zD`) operate recursively on all folds within the cursor's fold region, while the lowercase variants (`zo`, `zc`, `za`, `zd`) operate on a single fold level.
 
-In addition to heading-level folds, the plugin provides dedicated fold providers for **frontmatter** (`---` blocks) and **callouts** (`> [!type]`), making them foldable via `zc`/`zo`/`za`. Folded regions show descriptive placeholder text including the heading title, code language, or callout type.
+In addition to heading-level folds, the plugin provides dedicated fold providers for **frontmatter** (`---` blocks) and **callouts** (`> [!type]`), making them foldable via `zc`/`zo`/`za`. Folded regions show descriptive placeholder text: the code language, callout type, or frontmatter field count, each with the folded line count. A folded heading shows only `— N lines`, because a heading fold starts at the end of its heading line, so the title is still on screen beside the placeholder.
 
 When the treesitter bridge is available, heading folds and heading/code placeholder labels use parsed Markdown metadata. Heading ranges include nested subsections but exclude trailing blank lines and the next same-level heading. ATX headings indented by up to three spaces are recognized; heading-like text inside fenced code blocks is not treated as a heading by the plugin's provider. Before the parser is ready, or if it is unavailable, the existing regex fallback remains in use. Frontmatter and callout folding keep their existing precedence and labels.
 
@@ -140,14 +140,29 @@ The global key handler extends Vim control to non-editor views like PDFs, the gr
 > [!info] Global Key Handler
 > When no editor is focused, the global key handler intercepts workspace-relevant keystrokes. If an editor is focused, events propagate to the Vim engine normally.
 
+### File Explorer navigation
+
+When Obsidian's native File Explorer is active, unmodified `h`/`j`/`k`/`l` reuse its arrow-key navigation:
+
+- `h`: Select the parent folder, or collapse the selected folder.
+- `j`: Select the next visible file or folder.
+- `k`: Select the previous visible file or folder.
+- `l`: Expand the selected folder, or enter its first child.
+
+Prefix a movement with a count to repeat it, for example `3j` moves three visible rows. Counts above 100 are capped at 100 movements so a large prefix cannot freeze the interface.
+
+These keys are enabled by **Settings → Vim Motions → Workspace navigation**, which registers them alongside the other global bindings. They operate after the File Explorer receives focus or a pointer interaction, even when Obsidian sends the keyboard event to the document body. Clicking outside the explorer clears that context. They do not run while renaming a file or folder, while another input or contenteditable control is focused, during composition, with a modifier key, or during a pending chord such as `<C-w>h`. The translated arrow event stays in the File Explorer's document, so the same native behavior works in Obsidian windows without reimplementing its tree logic.
+
 ### Scrolling
 
-You can scroll through any scrollable view using standard Vim keys:
+You can scroll a whitelisted view using standard Vim keys:
 
 - `j` and `k`: Scroll down or up by a few lines.
 - `gg` and `G`: Jump to the top or bottom of the view.
 - `Ctrl-u` and `Ctrl-d`: Scroll up or down by half a page.
 - `Ctrl-b` and `Ctrl-f`: Scroll up or down by a full page.
+
+These keys act on the view that currently has focus, and only when its type is whitelisted — see [[workspace-navigation#Customizing the view type whitelist|the view type whitelist]]. Focusing a sidebar pane that is not whitelisted, such as search, tag, outline or backlinks, leaves these keys to Obsidian rather than applying them to the note behind the pane. The File Explorer is the exception described above: it is not whitelisted, but `h`/`j`/`k`/`l` navigate its tree.
 
 > [!warning] Scrolling Hotkey Conflicts
 > Obsidian's default hotkeys for `Ctrl-d` (delete paragraph), `Ctrl-f` (search), and `Ctrl-b` (toggle bold/sidebar) intercept these keys before the plugin can see them. To use these for scrolling, you must unbind the conflicting hotkeys in **Settings → Hotkeys**.
@@ -160,7 +175,7 @@ Pressing `:` in a non-editor view opens a standalone command modal. This modal s
 
 ## Customizing global bindings
 
-All non-editor key bindings can be customized via `.obsidian.init.lua` or `.obsidian.vimrc`. These commands define, override, or remove key bindings that work outside the editor.
+Global mappings can be customized via `.obsidian.init.lua` or `.obsidian.vimrc`. These commands define, override, or remove key bindings that work outside the editor. The File Explorer `h`/`j`/`k`/`l` keys are ordinary entries in the same registry, so they can be remapped or removed like any other global binding — `gmap h :obcommand app:go-back` replaces the explorer `h`. Because `j` and `k` are the same entries that scroll elsewhere, remapping one replaces both meanings.
 
 ```lua
 -- Add a new binding in Lua
@@ -197,7 +212,7 @@ When a plugin view (such as Spaced Repetition flashcard review, Excalidraw, or a
 | `<C-o>`, `<C-i>`   | History back/forward          |
 | `:`                | Open command line             |
 
-Keys like `j`, `k`, `1`–`9`, `H`, `L`, and scroll commands pass through to the plugin view, allowing the plugin to handle them natively.
+Keys like `j`, `k`, `1`–`9`, `H`, `L`, and scroll commands pass through to plugin views, allowing each plugin to handle them natively. The native File Explorer is the deliberate exception: when workspace navigation is enabled, `h`/`j`/`k`/`l` translate to the view's own arrow-key behavior.
 
 ### Customizing the view type whitelist
 

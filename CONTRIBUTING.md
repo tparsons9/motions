@@ -173,7 +173,7 @@ src/
     cmdline.ts             # Level-keyed external command-line, prompt, caret, and special-character overlay
     config-export.ts       # Generated Neovim configuration, sentinel-guarded writes, plugin install/update, and module probing
     decorations.ts         # UI redraw clock, CM6 decoration/fold dispatch, and float notification consumer
-    document-sync.ts       # Named acwrite mirror, Obsidian save/read routing, line events, and byte/UTF-16 mapping
+    document-sync.ts       # Named acwrite mirror, Obsidian save/read routing, line events, byte/UTF-16 mapping, and projected editor options (textwidth, list continuation, indent style, yank highlight)
     floating-windows.ts    # CM6-metric float positioning, content/extmark overlays, stacking, and cleanup
     frontmatter-fold.ts    # Window-local Markdown foldexpr for headings, callouts, and frontmatter
     ime-input.ts           # Cursor-positioned native composition owner, nvim_input commit, and cancellation lifecycle
@@ -284,7 +284,9 @@ src/
     navigate.ts            # Cross-note navigation wrappers (navigateWithJump, navigateWithJumpFile, navigateWithJumpSetActive)
     commands.ts            # Ex commands (:w, :q, :ob, :reg, :marks, :grep, :backlinks, etc.)
     vault-search.ts        # :grep vault-wide search implementation
-    global-key-handler.ts  # Global key event handling (outside editor) — always installed on desktop, interception gates check focus/modal/leaf-type only (not enableWorkspaceNav); dispatch passes raw count to builtin handlers, sequence timeout restarts on partial match (which-key parity)
+    global-key-handler.ts  # Global key event handling (outside editor) — always installed on desktop; every global key is a GlobalMappingRegistry entry, no exceptions; gates check focus/modal/leaf-type plus an explorer gate; dispatch hands builtin actions a GlobalDispatchContext and preserves raw counts and partial-match timeouts
+    file-explorer-context.ts    # Tracks whether input belongs to the native File Explorer (pointer, focus, active-leaf)
+    core-view-tree.ts      # Allowlisted accessor for core-plugin view trees (changeFocusedItem/setCollapsed)
     global-mapping-registry.ts  # Registry for global key mappings
     external-mode.ts       # Backend-reported vim mode for per-mode host rendering and IM switching
     key-observer.ts        # Physical key observation feeding vim.on_key
@@ -428,6 +430,7 @@ src/
     context.ts             # Snippet context filtering (prose, code, frontmatter)
     provider.ts            # Snippet source provider (bundled + user)
     dynamic-bridge.ts      # Bridge for reactive Lua snippet nodes (f/d/r)
+    live-preview-guard.ts  # Transaction filter that drops Obsidian's Live Preview cursor snap so a tabstop inside `*`/`**`/backtick markers is not pushed outside them. Guards both exposures — the tabstop jump, and the first edit at a tabstop (a doc change leaving the selection inside the active field, which closes the jump's own window). A dropped snap does not close the window: against a multi-range selection from a repeated tabstop, Obsidian collapses and rebuilds the selection over several transactions, so the whole macrotask is held
     bundled/               # Bundled Obsidian-specific snippets
   editors/
     embeddable-editor.ts   # Reusable embeddable editor component (used by oil, table cell editor, textarea vim overlay) — ensureVimExtension() post-construction safety net adds vim via StateEffect.appendConfig if registerEditorExtension injection is absent; registerScopeKey() exposes the internal Obsidian Scope for registering key handlers that fire before Obsidian's default hotkeys (used by Oil for Ctrl-key combos); Escape handling via Scope.register with modal overlay guard (isHintModeActive, isEasyMotionActive, isFlashActive) + isVimIdle() sub-state detection (operator, surround, keyBuffer, expectLiteralNext); isolateKeyEvents option stops keydown/keyup propagation for modal isolation (used by textarea-vim); _destroying flag prevents blur handler from double-popping keymap scope during destroy(); setActiveLeaf override allows focus transfer when modal is open (checks .modal-container)
@@ -739,6 +742,8 @@ test/
     rpc-oil-negative-controls.md # Forced interception and isolated action sabotage evidence
     rpc-folds-undo.e2e.ts   # Fold mirror, native undo, sidebar data, and refresh coverage
     rpc-folds-undo-negative-controls.md # Fold/sidebar ownership sabotage evidence
+    rpc-fold-focus.e2e.ts   # Activation fold level and pane-focus coverage; sets no fold option
+    rpc-fold-focus-negative-controls.md # Fold-level, absent-fold, and pane-seeding sabotage evidence
     rpc-structural-nav.e2e.ts # Fork-oracle structural motion/operator and native hard-wrap parity
     rpc-structural-nav-negative-controls.md # Mapping/width/level/operator/count sabotage evidence
     rpc-text-objects.e2e.ts # Fork-oracle Markdown text-object operator/visual/register/count parity

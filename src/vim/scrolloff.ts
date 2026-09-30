@@ -85,6 +85,16 @@ export function createScrolloffExtension(): Extension {
     ];
 }
 
+/**
+ * Effective `scrolloff`, in display rows. The bundled fork reads this so
+ * `zz`/`zt`/`zb` honour the same value as the cursor-motion enforcer above:
+ * those commands scroll `scrollDOM` directly without dispatching a
+ * transaction, so the update listener never sees them.
+ */
+export function getScrolloffLines(): number {
+    return scrolloffLines;
+}
+
 export function getScrolloffMargin(view: EditorView): number {
     if (scrolloffLines <= 0) return 0;
     const lineHeight = view.defaultLineHeight || 22;

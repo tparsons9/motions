@@ -34,7 +34,11 @@ import { registerDial } from './actions/register-dial';
 import { registerTextObjects } from './text-objects/register';
 import { createAsymmetricPairTextObject } from './text-objects/pair-util';
 import { VimModeTracker } from './vim/mode-tracker';
-import { ScrolloffManager, createScrolloffExtension } from './vim/scrolloff';
+import {
+    ScrolloffManager,
+    createScrolloffExtension,
+    getScrolloffLines,
+} from './vim/scrolloff';
 import {
     loadVimrc,
     applyVimrcMaps,
@@ -118,6 +122,7 @@ import {
 import { extmarkExtension } from './lua/extmarks';
 import { decorationProviderExtension } from './lua/decoration-provider';
 import { neovimDecorationExtension } from './rpc/decorations';
+import { neovimVisualSelectionExtension } from './rpc/visual-selection';
 import {
     foldSyncExtension,
     setFoldAwareNavigation,
@@ -224,6 +229,7 @@ import {
     GlobalMarkProvider,
 } from './picker/sources/mark-providers';
 import { createRegistersSource } from './picker/sources/registers';
+import { createQuickfixSource } from './picker/sources/quickfix';
 import { createPickersSource } from './picker/sources/pickers';
 import { installPickerAPI, uninstallPickerAPI } from './picker/api';
 import type { PickerAPI } from './picker/api';
@@ -308,6 +314,7 @@ import {
     getActiveDynamicContext,
     setActiveDynamicContext,
 } from './snippets/dynamic-bridge';
+import { createSnippetLivePreviewGuard } from './snippets/live-preview-guard';
 import { snippetState } from './snippets/autocomplete-types';
 import { setJumpListInstance } from './workspace/navigate';
 
@@ -467,6 +474,7 @@ export default class VimMotionsPlugin extends Plugin {
     private pendingVimrcExCommands: string[] = [];
     private vimrcMapKeys: Set<string> = new Set();
     private vimrcExmapNames: Set<string> = new Set();
+    private vimrcSurroundTriggers: Set<string> = new Set();
     private vimrcWatchPath: string | null = null;
     private luaWatchPath: string | null = null;
     private luaLoading = false;
@@ -1367,6 +1375,9 @@ export default class VimMotionsPlugin extends Plugin {
                             this.vimrcExmapNames = new Set(
                                 vimrcResult.exmapNames ?? [],
                             );
+                            this.vimrcSurroundTriggers = new Set(
+                                vimrcResult.surroundTriggers ?? [],
+                            );
                             if (vimrcFound) {
                                 this.vimrcWatchPath = vimrcResult.path;
                             } else {
@@ -1597,6 +1608,14 @@ export default class VimMotionsPlugin extends Plugin {
             callback: () => {
                 if (!ensureVimEnabled()) return;
                 this.openPicker?.('recent');
+            },
+        });
+        this.addCommand({
+            id: 'picker-quickfix',
+            name: 'Picker: Quickfix list',
+            callback: () => {
+                if (!ensureVimEnabled()) return;
+                this.openPicker?.('quickfix');
             },
         });
         this.addCommand({
@@ -2187,6 +2206,7 @@ export default class VimMotionsPlugin extends Plugin {
                 () =>
                     getVaultConfig(this.app, 'propertiesInDocument') ===
                     'source',
+                getScrolloffLines,
             ),
         );
 
@@ -2336,6 +2356,13 @@ export default class VimMotionsPlugin extends Plugin {
             );
         }
         pickerRegistry.register(createRegistersSource(vim), true);
+        pickerRegistry.register(
+            createQuickfixSource(
+                (method, args) => this.neovimConnection.request(method, args),
+                () => this.neovimConnection.isConnected(),
+            ),
+            true,
+        );
         pickerRegistry.register(
             createLiveGrepSource(buildRipgrepConfig()),
             true,
@@ -2845,6 +2872,7 @@ export default class VimMotionsPlugin extends Plugin {
         this.pushVimExtension(extmarkExtension());
         this.pushVimExtension(decorationProviderExtension());
         this.pushVimExtension(neovimDecorationExtension());
+        this.vimExtensionSlot.push(neovimVisualSelectionExtension());
         this.vimExtensionSlot.push(createTableCellCursorGuard());
         this.vimExtensionSlot.push(
             createTableNavExtension(this.app, this.settings, getVimApi),
@@ -3008,9 +3036,17 @@ export default class VimMotionsPlugin extends Plugin {
                     /* intentional: skip missing command */
                 }
             }
+            for (const trigger of this.vimrcSurroundTriggers) {
+                try {
+                    vim.unregisterSurroundPair?.(trigger);
+                } catch {
+                    /* intentional: skip missing pair */
+                }
+            }
         }
         this.vimrcMapKeys.clear();
         this.vimrcExmapNames.clear();
+        this.vimrcSurroundTriggers.clear();
         this.luaExCommandNames = [];
         this.vimrcLoaded = false;
         this.luaLoaded = false;
@@ -3565,6 +3601,7 @@ export default class VimMotionsPlugin extends Plugin {
     private buildSnippetRuntimeExtension(): Extension {
         return [
             createDynamicSnippetPlugin(() => getActiveDynamicContext()),
+            createSnippetLivePreviewGuard(),
             EditorView.updateListener.of((update) => {
                 const prev = update.startState.field(snippetState, false);
                 const curr = update.state.field(snippetState, false);
@@ -4191,10 +4228,31 @@ export default class VimMotionsPlugin extends Plugin {
         return {
             textwidth: this.settings.textwidth,
             listContinuation: this.settings.listContinuationOnOpen,
+            indent: this.vaultIndentStyle(),
             yankHighlight: {
                 mode: this.settings.yankHighlightMode,
                 duration: this.settings.yankHighlightDuration,
             },
+        };
+    }
+
+    private vaultIndentStyle(): { useTab: boolean; tabSize: number } {
+        let useTab: unknown;
+        let tabSize: unknown;
+        try {
+            useTab = getVaultConfig(this.app, 'useTab');
+            tabSize = getVaultConfig(this.app, 'tabSize');
+        } catch {
+            return { useTab: true, tabSize: 4 };
+        }
+        return {
+            useTab: typeof useTab === 'boolean' ? useTab : true,
+            tabSize:
+                typeof tabSize === 'number' &&
+                Number.isInteger(tabSize) &&
+                tabSize > 0
+                    ? tabSize
+                    : 4,
         };
     }
 
@@ -4730,6 +4788,15 @@ export default class VimMotionsPlugin extends Plugin {
         }
         this.vimrcExmapNames.clear();
 
+        for (const trigger of this.vimrcSurroundTriggers) {
+            try {
+                vim.unregisterSurroundPair?.(trigger);
+            } catch {
+                /* intentional: skip missing pair */
+            }
+        }
+        this.vimrcSurroundTriggers.clear();
+
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         const cm = view ? getCmAdapter(view) : null;
         const leaderKey = this.leaderRegistry?.getLeaderKey() ?? '\\';
@@ -4746,6 +4813,7 @@ export default class VimMotionsPlugin extends Plugin {
         this.vimrcMaps = result.deferredMaps;
         this.vimrcMapKeys = new Set(result.deferredMaps.map((m) => m.lhs));
         this.vimrcExmapNames = new Set(result.exmapNames);
+        this.vimrcSurroundTriggers = new Set(result.surroundTriggers);
         this.vimrcCommandCount = result.commandCount;
         applyVimrcMaps(vim, this.vimrcMaps);
 
@@ -5605,13 +5673,11 @@ export default class VimMotionsPlugin extends Plugin {
         vim: import('./types/vim-api').VimApi,
         pairs: Array<{ trigger: string; open: string; close: string }>,
     ): void {
-        if (pairs.length === 0) return;
-        if (typeof vim.registerSurroundPair !== 'function') {
-            new Notice(
-                'Vim Motions: custom surround pairs require fork mode. Disable built-in Vim in settings \u2192 editor \u2192 Vim key bindings.',
-            );
-            return;
-        }
+        // The unregister pass has to run even when the new config declares no
+        // pairs at all, which is what removing the last one looks like. Leaving
+        // it behind the empty-list return kept a dropped trigger bound until
+        // Obsidian restarted — invisible for an added character, but it strands
+        // a rebound built-in in a state the config no longer describes.
         for (const trigger of this.registeredSurroundTriggers) {
             try {
                 vim.unregisterSurroundPair?.(trigger);
@@ -5620,6 +5686,13 @@ export default class VimMotionsPlugin extends Plugin {
             }
         }
         this.registeredSurroundTriggers = [];
+        if (pairs.length === 0) return;
+        if (typeof vim.registerSurroundPair !== 'function') {
+            new Notice(
+                'Vim Motions: custom surround pairs require fork mode. Disable built-in Vim in settings \u2192 editor \u2192 Vim key bindings.',
+            );
+            return;
+        }
         for (const pair of pairs) {
             try {
                 vim.registerSurroundPair(pair.trigger, pair.open, pair.close);

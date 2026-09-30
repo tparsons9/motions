@@ -36,6 +36,11 @@ interface PopupSnapshot {
 
 const TEST_CONFIG_PATH = resolve('test/fixtures/nvim/init.lua');
 const INSERT_FIXTURE = 'alpha alpine beta\nal';
+// A completion starting far along a proportional line: terminal-cell
+// arithmetic and the real glyph run diverge in proportion to the prefix, so a
+// short prefix cannot tell a correct anchor from a grid-cell one.
+const WIDE_FIXTURE =
+    'alpha alpine beta\nthe quick brown fox jumps over the lazy dog al';
 
 function pidIsAlive(pid: number): boolean {
     try {
@@ -224,47 +229,38 @@ async function popupSnapshot(): Promise<PopupSnapshot> {
     });
 }
 
-async function expectedGridAnchor(
-    column: number,
-    row: number,
-): Promise<{
+async function cursorAnchor(): Promise<{
     left: number;
-    top: number;
+    bottom: number;
+    lineHeight: number;
 }> {
-    return browser.executeObsidian(
-        ({ app, obsidian }, targetColumn: number, targetRow: number) => {
-            const markdown = app.workspace.getActiveViewOfType(
-                obsidian.MarkdownView,
-            );
-            const view = (
-                markdown?.editor as unknown as {
-                    cm?: {
-                        dom: HTMLElement;
-                        scrollDOM: HTMLElement;
-                        defaultCharacterWidth: number;
-                        defaultLineHeight: number;
-                    };
-                }
-            ).cm;
-            if (!view) throw new Error('No active CM6 view');
-            const viewRect = view.dom.getBoundingClientRect();
-            const scrollerRect = view.scrollDOM.getBoundingClientRect();
-            const style = getComputedStyle(view.scrollDOM);
-            const left =
-                scrollerRect.left -
-                viewRect.left +
-                (Number.parseFloat(style.paddingLeft) || 0) +
-                targetColumn * view.defaultCharacterWidth;
-            const top =
-                scrollerRect.top -
-                viewRect.top +
-                (Number.parseFloat(style.paddingTop) || 0) +
-                (targetRow + 1) * view.defaultLineHeight;
-            return { left, top };
-        },
-        column,
-        row,
-    );
+    return browser.executeObsidian(({ app, obsidian }) => {
+        const markdown = app.workspace.getActiveViewOfType(
+            obsidian.MarkdownView,
+        );
+        const view = (
+            markdown?.editor as unknown as {
+                cm?: {
+                    dom: HTMLElement;
+                    defaultLineHeight: number;
+                    state: { selection: { main: { head: number } } };
+                    coordsAtPos(pos: number): {
+                        left: number;
+                        bottom: number;
+                    } | null;
+                };
+            }
+        ).cm;
+        if (!view) throw new Error('No active CM6 view');
+        const coords = view.coordsAtPos(view.state.selection.main.head);
+        if (!coords) throw new Error('No cursor coordinates');
+        const viewRect = view.dom.getBoundingClientRect();
+        return {
+            left: coords.left - viewRect.left,
+            bottom: coords.bottom - viewRect.top,
+            lineHeight: view.defaultLineHeight,
+        };
+    });
 }
 
 describe('Neovim RPC popup menu', function () {
@@ -296,7 +292,7 @@ describe('Neovim RPC popup menu', function () {
         }
     });
 
-    it('renders insert completion at the measured grid anchor near the cursor', async () => {
+    it('renders insert completion anchored at the cursor', async () => {
         await dispatchKeys('i', '<C-n>');
         await browser.waitUntil(
             async () => {
@@ -313,7 +309,7 @@ describe('Neovim RPC popup menu', function () {
         const popup = await popupSnapshot();
         if (popup.column === null || popup.row === null)
             throw new Error('Popup menu has no Neovim grid coordinates');
-        const expected = await expectedGridAnchor(popup.column, popup.row);
+        const cursor = await cursorAnchor();
         await expect(popup.grid).toBe(1);
         await expect(popup.items).toContain('alpha');
         await expect(popup.items).toContain('alpine');
@@ -323,8 +319,45 @@ describe('Neovim RPC popup menu', function () {
         await expect(popup.selectedBackgroundColor).not.toBe(
             'rgba(0, 0, 0, 0)',
         );
-        await expect(popup.left).toBeCloseTo(expected.left, 4);
-        await expect(popup.top).toBeCloseTo(expected.top, 4);
+        await expect(Math.abs(popup.left! - cursor.left)).toBeLessThan(24);
+        await expect(Math.abs(popup.top! - cursor.bottom)).toBeLessThan(
+            cursor.lineHeight * 1.5,
+        );
+    });
+
+    it('anchors insert completion at the real cursor, not at a terminal grid cell', async () => {
+        await pluginRequest('nvim_buf_set_lines', [
+            0,
+            0,
+            -1,
+            true,
+            WIDE_FIXTURE.split('\n'),
+        ]);
+        await pluginRequest('nvim_win_set_cursor', [
+            0,
+            [2, WIDE_FIXTURE.split('\n')[1]!.length],
+        ]);
+        await dispatchKeys('a', '<C-n>');
+        await browser.waitUntil(
+            async () => (await popupSnapshot()).count === 1,
+            {
+                timeout: 5000,
+                interval: 25,
+                timeoutMsg: 'insert completion to render a popup menu',
+            },
+        );
+        const popup = await popupSnapshot();
+        const cursor = await cursorAnchor();
+        if (popup.left === null || popup.top === null)
+            throw new Error('Popup menu has no resolved position');
+
+        // The popup belongs to the completion the cursor is sitting in, so it
+        // has to track the cursor's measured position. Terminal-cell
+        // arithmetic drifts further the longer the preceding text is.
+        await expect(Math.abs(popup.left - cursor.left)).toBeLessThan(24);
+        await expect(Math.abs(popup.top - cursor.bottom)).toBeLessThan(
+            cursor.lineHeight * 1.5,
+        );
     });
 
     it('renders command-line wildmenu completion with its first item selected', async () => {

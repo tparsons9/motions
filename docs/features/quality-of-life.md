@@ -20,9 +20,15 @@ Pressing `o` or `O` on a list line automatically continues the list marker on th
 - Ordered lists (`1.`, `2.`)
 - Task lists (`- [ ]`, `- [x]`), including custom checkbox states (`[!]`, `[?]`, `[/]`)
 - Indented and nested lists
-- Blockquote lists (`> - `)
+- Blockquote lists (`> - `), including lists indented inside a quote (`>   - `)
+- Blockquotes and callouts with no list marker (`> `, `> > `), matching what Obsidian's own Enter does on the same line
 
-Works correctly on the first line after YAML frontmatter. Disable for plain Neovim behavior via **Settings → Vim Motions → Smart list continuation on o/O**, `vim.opt.listcontinuation = false` in Lua, or `set nolistcontinuation` in vimrc.
+Works correctly on the first line after YAML frontmatter. Lines inside a fenced code block are left alone, including fences written inside a blockquote. Disable for plain Neovim behavior via **Settings → Vim Motions → Smart list continuation on o/O**, `vim.opt.listcontinuation = false` in Lua, or `set nolistcontinuation` in vimrc.
+
+> [!info] Neovim backend
+> With the [[neovim-backend|Neovim backend]] connected, continuation is Neovim's own `comments`/`formatoptions` machinery rather than this implementation, and the two do not agree on every line. Neovim continues `> ` on a blockquote, but drops the list marker on `> - item` (giving `> `), drops the checkbox on `- [ ] todo` (giving `- `), does not continue ordered lists at all, and has no fenced-code-block exclusion. Indentation style is preserved either way — the mirrored buffer follows your **Settings → Editor → Indent using tabs** and **Tab indent size**.
+
+Pressing `o` on a parent item that has more-indented children inserts the new item at the **parent's** level, not the child's. This matches Obsidian's own Enter key and Neovim; outliner-style child-level insertion is available from Lua if you prefer it.
 
 ## Yank highlight
 
@@ -78,7 +84,7 @@ Saved states can be navigated by count with `:earlier Nf` / `:later Nf` (where `
 - `Q` replays the last recorded macro (`@@`) instead of entering Ex mode
 - `&` repeats last `:s` substitution on current line; `g&` repeats on all lines
 - `gM` goes to middle character of text line (distinct from `gm` — middle of screen line)
-- `K` triggers keyword lookup — hover page preview on wikilinks, opens external URLs, char info on plain text
+- `K` triggers keyword lookup — hover page preview on wikilinks, opens external URLs, char info on plain text. The preview opens whether or not the **Page preview** core plugin is set to require Ctrl/Cmd for that source, since pressing `K` is itself the explicit request, and stays open until you click or move the mouse off the editor
 - `]<Space>` / `[<Space>` adds blank lines below/above cursor (supports count)
 - `v_*` / `v_#` searches for selected text from visual mode
 - `g<C-A>` / `g<C-X>` increments/decrements numbers sequentially in visual selection

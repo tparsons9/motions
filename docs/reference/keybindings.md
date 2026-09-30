@@ -338,48 +338,49 @@ Add, change, or delete surrounding delimiters like brackets, quotes, and tags.
 
 Navigate Obsidian panes, tabs, and history following Neovim conventions.
 
-| Keybinding          | Description                                                   | Global |
-| ------------------- | ------------------------------------------------------------- | ------ |
-| `<C-w>h/j/k/l`      | Focus pane left/down/up/right                                 | Yes    |
-| `<C-w>v`            | Split vertical                                                | Yes    |
-| `<C-w>s`            | Split horizontal                                              | Yes    |
-| `<C-w>n`            | New horizontal split (alias for `<C-w>s`)                     | Yes    |
-| `<C-w>c` / `<C-w>q` | Close current tab                                             | Yes    |
-| `<C-w>o`            | Close all other tabs                                          | Yes    |
-| `gt` / `gT`         | Next/previous tab                                             | Yes    |
-| `Ngt`               | Go to Nth tab (e.g., `3gt` goes to tab 3)                     | Yes    |
-| `g<C-t>`            | Go to tab by number (e.g., `3g<C-t>` goes to tab 3)           | —      |
-| `H` / `L`           | Previous/next tab (non-editor views only)                     | Yes    |
-| `<C-w>w`            | Cycle to next pane                                            | Yes    |
-| `<C-w>W`            | Cycle to previous pane                                        | Yes    |
-| `<C-w>p`            | Focus previously accessed pane                                | Yes    |
-| `<C-w>T`            | Move current pane to a new tab                                | —      |
-| `<C-w>^`            | Split + open alternate file                                   | —      |
-| `g<Tab>`            | Go to last accessed tab (alias for `<C-w>p`)                  | —      |
-| `Ctrl-o` / `Ctrl-i` | Jump backward / forward through jump history (supports count) | Yes    |
-| `<C-^>` / `<C-6>`   | Switch to alternate (previously edited) file                  | Yes    |
-| `<C-]>`             | Follow link under cursor (alias for `gd`)                     | —      |
-| `<C-t>`             | Pop from link follow (jump list backward)                     | —      |
-| `gd`                | Go to definition — open the link under the cursor             | —      |
-| `gD`                | Open link under cursor in a new tab                           | —      |
-| `<C-w>gd`           | Open link under cursor in a horizontal split                  | —      |
-| `<C-w>gD`           | Open link under cursor in a vertical split                    | —      |
-| `gx`                | Open URL under cursor in browser                              | —      |
-| `K`                 | Keyword lookup — hover preview on links, char info on text    | —      |
-| `gf`                | Open file switcher (quick open)                               | —      |
-| `]f` / `[f`         | Alias for `gf` (go to file)                                   | —      |
-| `gO`                | Open document outline (searchable heading list)               | —      |
-| `g<C-g>`            | Show document statistics (words, lines, characters)           | —      |
-| `gp` / `gP`         | Paste and move cursor past pasted text                        | —      |
-| `ga`                | Show character info under cursor (codepoint, hex)             | —      |
-| `gm`                | Go to middle of screen line                                   | —      |
-| `go`                | Go to character offset (byte N in buffer, with count)         | —      |
-| `g8`                | Show UTF-8 byte sequence for character under cursor           | —      |
-| `gF`                | Go to file with optional line number (`file.md:42`)           | —      |
-| `<C-g>`             | Show file info (name, lines, position, percentage)            | —      |
-| `<leader>rn`        | Rename current note                                           | —      |
-| `<leader>rb`        | Show backlinks to current note                                | —      |
-| `<leader>ra`        | Show context actions for current note                         | —      |
+| Keybinding            | Description                                                   | Global |
+| --------------------- | ------------------------------------------------------------- | ------ |
+| `h` / `j` / `k` / `l` | Native File Explorer: parent/next/previous/child; counts work | Yes    |
+| `<C-w>h/j/k/l`        | Focus pane left/down/up/right                                 | Yes    |
+| `<C-w>v`              | Split vertical                                                | Yes    |
+| `<C-w>s`              | Split horizontal                                              | Yes    |
+| `<C-w>n`              | New horizontal split (alias for `<C-w>s`)                     | Yes    |
+| `<C-w>c` / `<C-w>q`   | Close current tab                                             | Yes    |
+| `<C-w>o`              | Close all other tabs                                          | Yes    |
+| `gt` / `gT`           | Next/previous tab                                             | Yes    |
+| `Ngt`                 | Go to Nth tab (e.g., `3gt` goes to tab 3)                     | Yes    |
+| `g<C-t>`              | Go to tab by number (e.g., `3g<C-t>` goes to tab 3)           | —      |
+| `H` / `L`             | Previous/next tab (non-editor views only)                     | Yes    |
+| `<C-w>w`              | Cycle to next pane                                            | Yes    |
+| `<C-w>W`              | Cycle to previous pane                                        | Yes    |
+| `<C-w>p`              | Focus previously accessed pane                                | Yes    |
+| `<C-w>T`              | Move current pane to a new tab                                | —      |
+| `<C-w>^`              | Split + open alternate file                                   | —      |
+| `g<Tab>`              | Go to last accessed tab (alias for `<C-w>p`)                  | —      |
+| `Ctrl-o` / `Ctrl-i`   | Jump backward / forward through jump history (supports count) | Yes    |
+| `<C-^>` / `<C-6>`     | Switch to alternate (previously edited) file                  | Yes    |
+| `<C-]>`               | Follow link under cursor (alias for `gd`)                     | —      |
+| `<C-t>`               | Pop from link follow (jump list backward)                     | —      |
+| `gd`                  | Go to definition — open the link under the cursor             | —      |
+| `gD`                  | Open link under cursor in a new tab                           | —      |
+| `<C-w>gd`             | Open link under cursor in a horizontal split                  | —      |
+| `<C-w>gD`             | Open link under cursor in a vertical split                    | —      |
+| `gx`                  | Open URL under cursor in browser                              | —      |
+| `K`                   | Keyword lookup — hover preview on links, char info on text    | —      |
+| `gf`                  | Open file switcher (quick open)                               | —      |
+| `]f` / `[f`           | Alias for `gf` (go to file)                                   | —      |
+| `gO`                  | Open document outline (searchable heading list)               | —      |
+| `g<C-g>`              | Show document statistics (words, lines, characters)           | —      |
+| `gp` / `gP`           | Paste and move cursor past pasted text                        | —      |
+| `ga`                  | Show character info under cursor (codepoint, hex)             | —      |
+| `gm`                  | Go to middle of screen line                                   | —      |
+| `go`                  | Go to character offset (byte N in buffer, with count)         | —      |
+| `g8`                  | Show UTF-8 byte sequence for character under cursor           | —      |
+| `gF`                  | Go to file with optional line number (`file.md:42`)           | —      |
+| `<C-g>`               | Show file info (name, lines, position, percentage)            | —      |
+| `<leader>rn`          | Rename current note                                           | —      |
+| `<leader>rb`          | Show backlinks to current note                                | —      |
+| `<leader>ra`          | Show context actions for current note                         | —      |
 
 ## Fold commands
 
@@ -410,6 +411,34 @@ Navigate Obsidian panes, tabs, and history following Neovim conventions.
 | `zk`         | Move to end of previous fold                |
 | `[z`         | Move to start of current fold               |
 | `]z`         | Move to end of current fold                 |
+
+## Vertical scroll
+
+| Keybinding | Description                                          |
+| ---------- | ---------------------------------------------------- |
+| `zz`       | Centre the cursor line in the viewport               |
+| `z.`       | Centre the cursor line, cursor to first non-blank    |
+| `zt`       | Scroll the cursor line to the top of the viewport    |
+| `z<CR>`    | Cursor line to the top, cursor to first non-blank    |
+| `zb`       | Scroll the cursor line to the bottom of the viewport |
+| `z-`       | Cursor line to the bottom, cursor to first non-blank |
+
+> [!info]
+> On a wrapped line these commands position the **whole logical line**, not
+> the cursor's display row — Vim's `scroll_cursor_halfway` works in whole-line
+> heights, so `zz` with the cursor at the start, middle, or end of one wrapped
+> line produces the same scroll position. When the line is taller than the
+> viewport, Vim scrolls inside the line (`skipcol`) by just enough to keep the
+> cursor visible, which puts a cursor at the end of the line on the last
+> visible row. Both behaviours match Neovim.
+
+> [!tip]
+> `zt` and `zb` leave [`scrolloff`](settings.md) rows of margin above and below
+> the cursor line, and stop at the centred position once that margin no longer
+> fits — so with `set scrolloff=999`, `zt`, `zb` and `zz` all centre the line.
+> `zz` itself is unaffected by `scrolloff` on a line that fits the viewport.
+> Inside a line taller than the viewport the margin applies to the cursor's own
+> display row instead, and is unreachable at the line's first and last rows.
 
 ## Horizontal scroll
 
@@ -541,6 +570,7 @@ Execute commands via the `:` command line, grouped by function.
 | `:outline`      |          | Jump to heading in current file              |
 | `:backlinks`    | `:backl` | Show files linking to current file           |
 | `:tags`         |          | Browse vault tags (opens sub-picker)         |
+| `:quickfix`     |          | Neovim quickfix list (RPC backend)           |
 | `:recent`       |          | Recently opened files                        |
 | `:marks`        |          | Jump to vim marks (grouped by buffer/global) |
 | `:grep {query}` | `:gre`   | Search vault content (pre-computed results)  |
@@ -647,26 +677,26 @@ Oil keybindings are only active when an oil buffer is focused. All keybindings a
 
 Enhanced Vim behavior and Obsidian-specific improvements.
 
-| Keybinding | Description                                            |
-| ---------- | ------------------------------------------------------ |
-| `o` / `O`  | Smart list continuation (bullets, numbers, checkboxes) |
-| `Y`        | Yank to end of line (`y$`)                             |
-| `Q`        | Replay last recorded macro (`@@`)                      |
-| `@:`       | Repeat last ex command                                 |
-| `&`        | Repeat last `:s` substitution on current line          |
-| `g&`       | Repeat last `:s` substitution on all lines             |
-| `gM`       | Go to middle character of text line                    |
-| `K`        | Keyword lookup (hover preview on links, char info)     |
-| `]<Space>` | Add N blank lines below cursor                         |
-| `[<Space>` | Add N blank lines above cursor                         |
-| `ZZ`       | Write current file and close tab (`:wq`)               |
-| `ZQ`       | Close tab without saving (`:q`)                        |
-| `g;`       | Older change                                           |
-| `g,`       | Newer change                                           |
-| `g-`       | Older undo state                                       |
-| `g+`       | Newer undo state                                       |
-| `<C-p>`    | Cycle paste previous register (or `k` if not cycling)  |
-| `<C-n>`    | Cycle paste next register (or `j` if not cycling)      |
+| Keybinding | Description                                                         |
+| ---------- | ------------------------------------------------------------------- |
+| `o` / `O`  | Smart list continuation (bullets, numbers, checkboxes, blockquotes) |
+| `Y`        | Yank to end of line (`y$`)                                          |
+| `Q`        | Replay last recorded macro (`@@`)                                   |
+| `@:`       | Repeat last ex command                                              |
+| `&`        | Repeat last `:s` substitution on current line                       |
+| `g&`       | Repeat last `:s` substitution on all lines                          |
+| `gM`       | Go to middle character of text line                                 |
+| `K`        | Keyword lookup (hover preview on links, char info)                  |
+| `]<Space>` | Add N blank lines below cursor                                      |
+| `[<Space>` | Add N blank lines above cursor                                      |
+| `ZZ`       | Write current file and close tab (`:wq`)                            |
+| `ZQ`       | Close tab without saving (`:q`)                                     |
+| `g;`       | Older change                                                        |
+| `g,`       | Newer change                                                        |
+| `g-`       | Older undo state                                                    |
+| `g+`       | Newer undo state                                                    |
+| `<C-p>`    | Cycle paste previous register (or `k` if not cycling)               |
+| `<C-n>`    | Cycle paste next register (or `j` if not cycling)                   |
 
 ## Insert mode
 

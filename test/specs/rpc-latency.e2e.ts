@@ -827,11 +827,22 @@ describe('M7 RPC key-to-paint latency certification', function () {
         expect(layoutRise).toBeGreaterThanOrEqual(30);
         expect(forcedLayout.layoutWorkMs).toBeGreaterThanOrEqual(1900);
 
-        const sanityPassed = fork.stats.p50 < rpc.stats.p50;
+        // Budget, not ordering. This gate used to require the fork to win at
+        // p50 on the theory that p50 isolates the round-trip cost while the
+        // tail is dominated by in-renderer vim work. That theory does not hold
+        // on this fixture: the fork runs a full vim implementation in the
+        // renderer over a 2,004-line note, which costs more than a pipe
+        // round-trip to a native process, so RPC now leads at p50 as well as in
+        // the tail. Asserting the direction made the suite fail for being too
+        // fast. What the gate is for — proving the RPC condition really is RPC
+        // and not a silent fall back to the fork — is covered twice over by
+        // proveRpcEngagementAndForkIsolation() above and by the delay control,
+        // which injects 40ms and requires it to show up in the measurement.
+        const p50Delta = rpc.stats.p50 - fork.stats.p50;
         console.log(
-            `RPC_LATENCY_SANITY ${JSON.stringify({ forkP50: fork.stats.p50, rpcP50: rpc.stats.p50, passed: sanityPassed, basis: 'p50 isolates round-trip cost; p95 is dominated by in-renderer vim work the RPC path does not perform' })}`,
+            `RPC_LATENCY_SANITY ${JSON.stringify({ forkP50: fork.stats.p50, rpcP50: rpc.stats.p50, p50Delta, basis: 'p50 delta is budgeted in both directions; engagement is proven structurally and by the delay control rather than by the sign of this number' })}`,
         );
-        expect(rpc.stats.p50).toBeGreaterThan(fork.stats.p50);
+        expect(p50Delta).toBeLessThanOrEqual(25);
 
         const p95Delta = rpc.stats.p95 - fork.stats.p95;
         const p99Delta = rpc.stats.p99 - fork.stats.p99;
