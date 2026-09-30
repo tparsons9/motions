@@ -30,6 +30,7 @@ test-vault/.obsidian/*.json
 
 # Built plugin files copied into test vault
 test-vault/.obsidian/plugins/vim-motions/
+test-vault/.obsidian/plugins/vim-motions-tparsons9/
 
 # WDIO / E2E testing
 .obsidian-cache/
