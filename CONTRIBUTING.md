@@ -4,6 +4,10 @@
 
 Thank you for considering contributing to Vim Motions. This guide covers the development workflow, codebase conventions, and how to add new features.
 
+## Personal fork releases
+
+The manual release workflow installs dependencies with `npm ci` before running `npm version`: the version hook uses the repository’s pinned Prettier. `RELEASE_TOKEN` must be a valid token with Contents read/write access to this fork so the version commit and tag can be pushed and the tag can trigger publication. After changing the workflow, start a new manual run on `master`; rerunning an older run uses its original workflow revision.
+
 ## Getting started
 
 ```bash

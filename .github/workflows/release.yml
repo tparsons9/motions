@@ -65,6 +65,11 @@ jobs:
                   node-version: 24
                   cache: npm
 
+            # The npm version hook formats release metadata with local Prettier.
+            - name: Install dependencies for the version hook
+              if: github.event_name == 'workflow_dispatch'
+              run: npm ci
+
             - name: Bump version and tag
               if: github.event_name == 'workflow_dispatch'
               run: |
