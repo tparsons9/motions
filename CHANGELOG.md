@@ -12,9 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Scheduled fork upstream sync** — reconcile release metadata field by field, preserve the fork version and HTTPS codemirror-vim dependency, regenerate the lockfile, and run checks before opening a PR. Open sync PRs pause automation to preserve review fixes; source and overlapping non-release metadata conflicts are flagged for manual review.
 - **Post-sync draft releases** — explicitly authorize workflow dispatch and retain dependency installation before the version bump, alongside `RELEASE_TOKEN` commit/tag pushes and tag-triggered draft release creation.
 
+### Fixed
+
+- **Upstream conflict reporting targeted the parent repository** — bind sync CLI issue and PR operations to this fork with `GH_REPO`. A fresh checkout with both remotes selected `saberzero1/motions`, causing the fork's Actions token to fail issue creation. Always retain conflict details in the run summary and an artifact; denied issue operations produce warnings while the merge remains aborted.
+    - Plugin: `.github/workflows/sync-upstream.yml`
+
 ### Tests
 
 - Real-Git sync fixtures cover metadata reconciliation, connector preservation, clean merges, and manual-review conflicts. Negative controls changed the preserved version from `1.0.0` to `9.9.9` and disabled conflict rejection (exit `0` instead of `1`); all four fixtures failed before restoration.
+
+- Three shell-step regression fixtures reproduce denied issue lookup, creation, and update. Before the fix each exited `1` without a summary or warning; after adding fallbacks, omitting `GH_REPO` still produced an empty repository instead of `tparsons9/motions`.
 
 ### Documentation
 

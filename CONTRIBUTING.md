@@ -8,13 +8,13 @@ Thank you for considering contributing to Vim Motions. This guide covers the dev
 
 The fork checks `saberzero1/motions` every six hours and on manual dispatch. It merges into `sync/upstream` and opens a PR only after `npm ci`, the production build, static gates, unit tests, and the sync reconciliation fixtures pass. An open sync PR pauses scheduled updates so review fixes remain intact. Review the connector diff before merging; the workflow never auto-merges a PR.
 
-`scripts/reconcile-upstream.mjs` merges independent fields in `package.json` and `manifest.json`, preserves the fork's version and `https://github.com/saberzero1/codemirror-vim.git` dependency, and combines `versions.json` with fork precedence on duplicate releases. The current fork version uses the merged manifest's minimum Obsidian version. The fork lockfile seeds `npm install --package-lock-only --ignore-scripts`, followed by `npm ci` and formatting with the installed, pinned Prettier. Source conflicts and overlapping non-release JSON fields abort the merge and update an **Upstream sync conflict** issue with the paths that need review.
+`scripts/reconcile-upstream.mjs` merges independent fields in `package.json` and `manifest.json`, preserves the fork's version and `https://github.com/saberzero1/codemirror-vim.git` dependency, and combines `versions.json` with fork precedence on duplicate releases. The current fork version uses the merged manifest's minimum Obsidian version. The fork lockfile seeds `npm install --package-lock-only --ignore-scripts`, followed by `npm ci` and formatting with the installed, pinned Prettier. Source conflicts and overlapping non-release JSON fields abort the merge and record the paths and resolution instructions in the run summary and an `upstream-sync-conflicts` artifact. The workflow also creates or updates an **Upstream sync conflict** issue in this fork. `GH_REPO` explicitly targets the fork even after adding the upstream remote; if an issue operation is denied, the workflow warns and leaves the summary and artifact available. A completed conflict-reporting run still requires manual review; it does not mean upstream was merged.
 
 For a manual resolution, create `sync/upstream` from current `master`, merge `upstream/master`, resolve source conflicts, then run `node scripts/reconcile-upstream.mjs upstream/master` while the merge is pending. Review overlapping metadata fields manually if the script rejects them. Regenerate and format the lockfile, run the same checks, complete the merge, and open a PR targeting `master`. Avoid replacing entire source files with either side.
 
 After the sync PR merges, `post-sync-release.yml` checks the merged result and dispatches a patch release on `master`. `release.yml` installs dependencies with `npm ci` before `npm version`, so the version lifecycle can run Prettier. It pushes the version commit and tag using `RELEASE_TOKEN`; the tag workflow creates a **draft release** for review. Configure this secret with repository contents write access. The default Actions token has explicit actions write permission for the dispatch; it cannot replace `RELEASE_TOKEN` for the tag push. Release publication remains a separate review step.
 
-Run the real-Git reconciliation fixtures locally with `node --test scripts/reconcile-upstream.test.mjs`. They cover release conflicts, independent upstream changes, connector preservation, clean merges, and rejection of source or non-release field conflicts.
+Run the real-Git reconciliation fixtures locally with `node --test scripts/reconcile-upstream.test.mjs`. They cover release conflicts, independent upstream changes, connector preservation, clean merges, rejection of source or non-release field conflicts, and fork-targeted reporting when issue lookup, creation, or update is denied.
 
 After changing a release workflow, start a new manual run on `master`; rerunning an older run uses its original workflow revision.
 
@@ -485,7 +485,7 @@ scripts/install-neovim.sh                  # Linux/macOS official-release instal
 scripts/install-neovim.ps1                 # Windows official-release installer and API-floor check
 scripts/neovim-version.txt                 # Single cross-platform Neovim version pin
 scripts/reconcile-upstream.mjs             # Field-level fork release metadata merge
-scripts/reconcile-upstream.test.mjs        # Real-Git sync conflict and preservation fixtures
+scripts/reconcile-upstream.test.mjs        # Git merge and workflow conflict-reporting fixtures
 test/specs/rpc-prerequisites.ts            # Shared Neovim/API-level/fixture skip guard for RPC specs
 ```
 

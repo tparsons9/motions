@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import YAML from 'yaml';
 
 const script = fileURLToPath(
     new URL('./reconcile-upstream.mjs', import.meta.url),
@@ -179,3 +180,77 @@ test('also preserves fork metadata when Git merges cleanly', (t) => {
         },
     );
 });
+
+for (const operation of ['list', 'create', 'edit']) {
+    test(`keeps conflict reporting actionable when GitHub denies issue ${operation}`, (t) => {
+        const cwd = mkdtempSync(join(tmpdir(), 'motions-sync-report-'));
+        t.after(() => rmSync(cwd, { recursive: true, force: true }));
+        const summary = join(cwd, 'summary.md');
+        writeFileSync(summary, '');
+        writeFileSync(
+            join(cwd, 'sync-conflicts.txt'),
+            'Manual review required for source conflicts:\nAGENTS.md\nCHANGELOG.md\n',
+        );
+        writeFileSync(
+            join(cwd, 'gh'),
+            `#!/bin/bash
+printf '%s\\n' "$GH_REPO" > "$RUNNER_TEMP/gh-repo.txt"
+if [ "$2" = "list" ] && [ "${operation}" != "list" ]; then
+    if [ "${operation}" = "edit" ]; then echo 7; fi
+    exit 0
+fi
+echo 'GraphQL: Resource not accessible by integration' >&2
+exit 1
+`,
+            { mode: 0o755 },
+        );
+        /** @type {{jobs: {sync: {env?: {GH_REPO?: string}, steps: Array<{name?: string, run?: string}>}}}} */
+        const workflow = YAML.parse(
+            readFileSync(
+                new URL(
+                    '../.github/workflows/sync-upstream.yml',
+                    import.meta.url,
+                ),
+                'utf8',
+            ),
+        );
+        const step = workflow.jobs.sync.steps.find(
+            (entry) => entry.name === 'Flag conflicts for manual review',
+        );
+        if (!step?.run) throw new Error('Conflict reporting step missing');
+        const result = spawnSync('bash', ['-e', '-c', step.run], {
+            cwd,
+            encoding: 'utf8',
+            env: {
+                ...process.env,
+                PATH: `${cwd}:${process.env.PATH}`,
+                RUNNER_TEMP: cwd,
+                GITHUB_STEP_SUMMARY: summary,
+                GH_REPO:
+                    workflow.jobs.sync.env?.GH_REPO?.replace(
+                        '${{ github.repository }}',
+                        'tparsons9/motions',
+                    ) ?? '',
+            },
+        });
+        assert.deepEqual(
+            {
+                status: result.status,
+                repository: readFileSync(
+                    join(cwd, 'gh-repo.txt'),
+                    'utf8',
+                ).trim(),
+                summaryHasConflicts: readFileSync(summary, 'utf8').includes(
+                    'AGENTS.md\nCHANGELOG.md',
+                ),
+                warned: result.stdout.includes('::warning::'),
+            },
+            {
+                status: 0,
+                repository: 'tparsons9/motions',
+                summaryHasConflicts: true,
+                warned: true,
+            },
+        );
+    });
+}

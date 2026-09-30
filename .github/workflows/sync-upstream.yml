@@ -20,6 +20,9 @@ jobs:
     sync:
         if: github.repository == 'tparsons9/motions'
         runs-on: ubuntu-latest
+        env:
+            # gh otherwise prefers the upstream repository in a fresh fork checkout.
+            GH_REPO: ${{ github.repository }}
         steps:
             - uses: actions/checkout@v7
               with:
@@ -135,9 +138,33 @@ jobs:
                   Conflicts:
                   EOF_BODY
                   cat "$RUNNER_TEMP/sync-conflicts.txt" >> "$RUNNER_TEMP/sync-issue.md"
-                  existing=$(gh issue list --search '"Upstream sync conflict" in:title' --state open --json number --jq '.[0].number')
-                  if [ -n "$existing" ]; then
-                      gh issue edit "$existing" --body-file "$RUNNER_TEMP/sync-issue.md"
-                  else
-                      gh issue create --title "Upstream sync conflict" --body-file "$RUNNER_TEMP/sync-issue.md"
+                  {
+                      echo "## Upstream sync requires manual review"
+                      echo
+                      cat "$RUNNER_TEMP/sync-issue.md"
+                  } >> "$GITHUB_STEP_SUMMARY"
+                  echo "::warning::Upstream sync requires manual review; see the run summary and upstream-sync-conflicts artifact."
+                  if ! existing=$(gh issue list --search '"Upstream sync conflict" in:title' --state open --json number --jq '.[0].number')
+                  then
+                      echo "::warning::Unable to search conflict issues; conflict details remain in the run summary and artifact."
+                      exit 0
                   fi
+                  if [ -n "$existing" ]; then
+                      if ! gh issue edit "$existing" --body-file "$RUNNER_TEMP/sync-issue.md"; then
+                          echo "::warning::Unable to update the conflict issue; conflict details remain in the run summary and artifact."
+                      fi
+                  else
+                      if ! gh issue create --title "Upstream sync conflict" --body-file "$RUNNER_TEMP/sync-issue.md"; then
+                          echo "::warning::Unable to create the conflict issue; conflict details remain in the run summary and artifact."
+                      fi
+                  fi
+
+            - name: Upload conflict details
+              if: always() && steps.merge.outputs.conflict == 'true'
+              uses: actions/upload-artifact@v7
+              with:
+                  name: upstream-sync-conflicts
+                  path: |
+                      ${{ runner.temp }}/sync-conflicts.txt
+                      ${{ runner.temp }}/sync-issue.md
+                  if-no-files-found: error
