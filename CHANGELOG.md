@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-30
+
 ### Changed
 
 - **Personal fork upstream sync** — merged upstream through `bb3f557`, preserving external editor extension sharing and the status bar fixes. Added upstream’s Neovim visual selection renderer to the Markdown editor slot. Kept the fork release version at 1.0.0 and retained the GitHub codemirror-vim dependency while adopting the npm autocomplete package.
