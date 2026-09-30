@@ -8,7 +8,7 @@ import { FRONTMATTER_DELIMITER } from '../fold/frontmatter';
 import { getVaultConfig } from '../util/vault';
 import { getEditorView } from '../util/editor';
 import type { MsgpackRpcClient } from './msgpack-rpc';
-import type { NeovimDocumentSync } from './document-sync';
+import type { NeovimDocumentSync, VisualKind } from './document-sync';
 import { NeovimImeInput } from './ime-input';
 
 const specialKeys: Record<string, string> = {
@@ -58,6 +58,14 @@ function keyNotation(event: KeyboardEvent): string | null {
 }
 
 type NeovimMode = { mode?: unknown };
+
+// Select modes share visual's selection shape, so they map alongside it.
+function visualKind(mode: string): VisualKind | null {
+    if (mode.startsWith('V') || mode.startsWith('S')) return 'line';
+    if (mode.startsWith('\x16') || mode.startsWith('\x13')) return 'block';
+    if (mode.startsWith('v') || mode.startsWith('s')) return 'char';
+    return null;
+}
 
 export class NeovimKeyDelegation {
     private editorContent: HTMLElement | null = null;
@@ -223,8 +231,44 @@ export class NeovimKeyDelegation {
                 cursorColumn,
             ]);
             if (!this.active || operation !== this.settleOperation) return;
+            const kind = visualKind(
+                typeof modeValue.mode === 'string' ? modeValue.mode : '',
+            );
+            if (
+                kind &&
+                (await this.syncVisual(operation, resolvedCursor, kind))
+            )
+                return;
             this.documentSync.syncCursor(resolvedCursor[0], resolvedCursor[1]);
         }
+    }
+
+    /**
+     * Only reached in a visual or select mode, so the extra round trip stays
+     * off the ordinary typing path the latency budget is measured against.
+     */
+    private async syncVisual(
+        operation: number,
+        head: [number, number],
+        kind: VisualKind,
+    ): Promise<boolean> {
+        const anchor = await this.rpc.request('nvim_call_function', [
+            'getpos',
+            ['v'],
+        ]);
+        if (!this.active || operation !== this.settleOperation) return true;
+        if (
+            !Array.isArray(anchor) ||
+            typeof anchor[1] !== 'number' ||
+            typeof anchor[2] !== 'number'
+        )
+            return false;
+        this.documentSync.syncSelection(
+            [anchor[1], Math.max(0, anchor[2] - 1)],
+            head,
+            kind,
+        );
+        return true;
     }
 
     private async resolveFoldCursor(

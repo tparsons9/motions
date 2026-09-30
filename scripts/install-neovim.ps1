@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $Version = (Get-Content (Join-Path $PSScriptRoot 'neovim-version.txt') -Raw).Trim()
-$MinApiLevel = 12
+$MinApiLevel = 14
 $InstallDir = if ($args.Count -gt 0) {
     $args[0]
 } else {
@@ -26,9 +26,15 @@ try {
 
     $NvimBin = Join-Path $InstallDir 'bin/nvim.exe'
     & $NvimBin --version
-    $ApiLevel = (& $NvimBin --clean --headless -u NONE -c 'lua io.write(vim.version().api_level)' -c 'qa' 2>&1 | Out-String).Trim()
+    # stdout only: headless Neovim writes every message to stderr, and the
+    # workflow's POSIX $NVIM_LOG_FILE is unusable on Windows, so VimEnter
+    # defers `log: "..." not accessible, logging to: "..."` by 100 ms. A probe
+    # slow enough to outlive that timer had the warning merged into the level
+    # by `2>&1` and threw on a perfectly good Neovim. Only io.write is stdout.
+    $ApiLevel = (& $NvimBin --clean --headless -u NONE -c 'lua io.write(vim.version().api_level)' -c 'qa' | Out-String).Trim()
     if ($ApiLevel -notmatch '^\d+$' -or [int]$ApiLevel -lt $MinApiLevel) {
-        throw "Neovim API level $ApiLevel is below required level $MinApiLevel"
+        $Reported = if ($ApiLevel) { $ApiLevel } else { 'unknown' }
+        throw "Neovim API level $Reported is below required level $MinApiLevel"
     }
     Write-Host "Neovim API level $ApiLevel satisfies required level $MinApiLevel"
 

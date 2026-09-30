@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 VERSION=$(tr -d '[:space:]' < "$SCRIPT_DIR/neovim-version.txt")
-MIN_API_LEVEL=12
+MIN_API_LEVEL=14
 INSTALL_DIR=${1:-"${HOME}/.local/neovim-${VERSION}"}
 
 case "$(uname -s)" in
@@ -45,9 +45,13 @@ mv "$extracted" "$INSTALL_DIR"
 
 NVIM_BIN="$INSTALL_DIR/bin/nvim"
 "$NVIM_BIN" --version
+# stdout only: headless Neovim writes every message to stderr, so any warning
+# -- VimEnter's deferred `log: "..." not accessible` when $NVIM_LOG_FILE is
+# unusable is the one that bit Windows -- used to be merged into the level by
+# `2>&1` and fail the digit check. Only io.write reaches stdout.
 api_level=$("$NVIM_BIN" --clean --headless -u NONE \
     -c 'lua io.write(vim.version().api_level)' \
-    -c 'qa' 2>&1)
+    -c 'qa')
 if ! [[ "$api_level" =~ ^[0-9]+$ ]] || [ "$api_level" -lt "$MIN_API_LEVEL" ]; then
     echo "Neovim API level ${api_level:-unknown} is below required level ${MIN_API_LEVEL}" >&2
     exit 1

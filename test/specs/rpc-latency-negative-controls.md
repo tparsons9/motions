@@ -66,3 +66,42 @@ RPC_LATENCY_SANITY {"forkP95":41,"rpcP95":35.799999952316284,"passed":false}
 Expected: > 41
 Received:   35.799999952316284
 ```
+
+## Re-certification after the p50 gate inverted
+
+The gate previously required `fork.p50 < rpc.p50`, on the theory that p50
+isolates the RPC round-trip cost while the tail is dominated by in-renderer vim
+work. That theory stopped holding: the fork runs a full vim implementation in
+the renderer over the 2,004-line fixture, which costs more than a pipe
+round-trip to a native process. Measured three times on the same machine, once
+with unrelated changes stashed and once with the backend disabled in the vault's
+persisted settings, to rule out both as causes:
+
+| Run                             | fork p50 | rpc p50 |
+| ------------------------------- | -------- | ------- |
+| working tree                    | 15.9     | 8.6     |
+| changes stashed                 | 15.9     | 9.0     |
+| backend disabled in `data.json` | 15.6     | 7.9     |
+
+The spec sets `neovimRpcEnabled`, `neovimBinaryPath` and `neovimConfigPath`
+itself, so the persisted settings never reached it; that run is recorded only
+because it was offered as an explanation and had to be excluded.
+
+Re-certified figures: fork p50/p95/p99 **16.2 / 43.4 / 54.0 ms**, RPC
+**8.2 / 23.5 / 28.9 ms**, deltas **−8.0 / −19.9 / −25.1 ms**. RPC leads in all
+four command classes — motions 11.1/7.1, operators 38.8/22.7, insert 16.0/8.0,
+undo 25.3/17.1.
+
+The ordering assertion is replaced by a two-directional p50 budget. Removing it
+does not weaken the suite: what it guarded against — the RPC condition silently
+measuring the fork — is proven by `proveRpcEngagementAndForkIsolation()` and,
+independently, by the delay control, which injected 40 ms and measured a 37.2 ms
+rise in RPC p95. The forced-layout control rose 68.4 ms against 2,412 ms of
+injected layout work.
+
+**Environment caveat.** With `neovimBinaryPath` empty the spec resolves `nvim`
+from `PATH`. On a machine where that is a wrapper which prepends a configuration
+directory to `runtimepath`/`packpath` — Nix `mnw`/`nvf`, home-manager's
+`programs.neovim` — the measured Neovim loads the user's full plugin set. That
+is pessimistic for RPC rather than flattering, so it does not explain the lead,
+but it does mean these figures are not directly comparable across machines.

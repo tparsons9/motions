@@ -16,15 +16,18 @@ function describeFoldRange(
     const endLine = state.doc.lineAt(range.to);
     const lineCount = endLine.number - startLine.number;
 
+    // A heading fold begins at the end of its heading line, so the title is
+    // still on screen beside the placeholder. Repeating it rendered every
+    // folded heading twice, once greyed out (issue #193).
     const metadata = getFoldMetadata(state);
     const heading = metadata?.headingsByLineStart.get(startLine.from);
-    if (heading) return `${heading.title} — ${lineCount} lines`;
+    if (heading) return `— ${lineCount} lines`;
     const fence = metadata?.fencedCodeByLineStart.get(startLine.from);
     if (fence) return `${fence.language} — ${lineCount} lines`;
 
     const headingMatch = HEADING_RE.exec(startLine.text);
     if (headingMatch?.[2]) {
-        return `${headingMatch[2].trim()} — ${lineCount} lines`;
+        return `— ${lineCount} lines`;
     }
 
     const codeMatch = FENCED_CODE_RE.exec(startLine.text);

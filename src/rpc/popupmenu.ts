@@ -61,6 +61,25 @@ export class NeovimPopupMenuOverlay {
         this.hide();
     }
 
+    /**
+     * Re-anchors after the mirror syncs.
+     *
+     * `popupmenu_show` and the buffer's line and cursor notifications arrive on
+     * the same RPC stream with no ordering guarantee, so the CM6 cursor read
+     * during the show can still predate the edit that produced the completion:
+     * measured 399.5px of horizontal lag on a 45-character line even once the
+     * anchor itself was correct. Waiting a frame does not fix it, because the
+     * notifications are not guaranteed to have arrived by then either. The
+     * document sync calls this after it applies them, which is the point at
+     * which the cursor is known to be current.
+     */
+    reanchor(): void {
+        if (!this.state || !this.element) return;
+        const markdown = this.app.workspace.getActiveViewOfType(MarkdownView);
+        const view = markdown ? getEditorView(markdown) : null;
+        if (view) this.position(view);
+    }
+
     private handleShow(value: unknown): void {
         if (!Array.isArray(value) || !Array.isArray(value[0])) return;
         const items = value[0].map(popupItem);
@@ -185,26 +204,35 @@ export class NeovimPopupMenuOverlay {
             }px`;
             return;
         }
+        // Insert completion belongs to the text the cursor sits in, so it is
+        // anchored to the cursor's measured position -- the same choice the
+        // float bridge makes for `relative = 'cursor'`. The reported row and
+        // column are cells on the fixed 120x40 grid, which bears no relation to
+        // proportional Markdown typography, wrapping, folds or the scroll
+        // offset: measured 806.9px of horizontal drift on a 45-character line.
+        // Grid cells remain the fallback for the case where CM6 cannot resolve
+        // a cursor rectangle, which is the only situation they are better than.
+        const cursor = view.coordsAtPos(view.state.selection.main.head);
+        if (cursor) {
+            element.style.left = `${cursor.left - viewRect.left}px`;
+            element.style.top = `${cursor.bottom - viewRect.top}px`;
+            return;
+        }
         const scrollerRect = view.scrollDOM.getBoundingClientRect();
         const scrollerStyle = view.dom.ownerDocument.win.getComputedStyle(
             view.scrollDOM,
         );
-        const left =
+        element.style.left = `${
             scrollerRect.left -
             viewRect.left +
             (Number.parseFloat(scrollerStyle.paddingLeft) || 0) +
-            state.column * view.defaultCharacterWidth;
-        const cursor = view.coordsAtPos(view.state.selection.main.head);
-        const gridTop =
+            state.column * view.defaultCharacterWidth
+        }px`;
+        element.style.top = `${
             scrollerRect.top -
             viewRect.top +
             (Number.parseFloat(scrollerStyle.paddingTop) || 0) +
-            (state.row + 1) * view.defaultLineHeight;
-        const top =
-            gridTop >= 0 && gridTop <= viewRect.height
-                ? gridTop
-                : (cursor?.bottom ?? viewRect.top) - viewRect.top;
-        element.style.left = `${left}px`;
-        element.style.top = `${top}px`;
+            (state.row + 1) * view.defaultLineHeight
+        }px`;
     }
 }

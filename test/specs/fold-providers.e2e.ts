@@ -679,7 +679,15 @@ describe('Fold providers and placeholders (Phase 3)', function () {
     });
 
     describe('Fold placeholder text', function () {
-        it('heading fold placeholder contains heading text', async function () {
+        // A heading fold starts at the END of the heading line, so the heading
+        // itself never disappears. Repeating its title in the placeholder
+        // rendered every folded heading twice on one line -- once as the real
+        // heading, once greyed out beside it (issue #193). The line count is
+        // the part that carries information the visible line does not.
+        // The previous assertion sat inside `if (placeholders.length > 0 &&
+        // placeholders[0] !== '…')`, so it checked nothing whenever no
+        // placeholder rendered; assert unconditionally instead.
+        it('heading fold placeholder omits the already-visible heading text (#193)', async function () {
             await setupEditor(HEADING_CODE_DOC, { line: 0, ch: 0 });
 
             await sendVimEscape();
@@ -688,10 +696,11 @@ describe('Fold providers and placeholders (Phase 3)', function () {
             await sendVimKeys('z', 'c');
             await browser.pause(PAUSE.EDITOR_SETTLE);
 
+            // `# Introduction` encloses the nested `## Conclusion` section, so
+            // the fold runs from the end of line 1 to the end of line 13.
             const placeholders = await getFoldPlaceholderText();
-            if (placeholders.length > 0 && placeholders[0] !== '…') {
-                expect(placeholders[0]).toContain('Introduction');
-            }
+            expect(placeholders.length).toBeGreaterThan(0);
+            expect(placeholders[0]).toBe('— 12 lines');
         });
 
         it('callout fold placeholder contains callout type', async function () {

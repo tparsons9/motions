@@ -9,8 +9,11 @@ import {
     findContainingBlock,
 } from '../text-objects/code-block';
 
+// indent, blockquote chain, padding between the quote and a marker, marker.
+// The marker is optional so a bare `> quote` continues the quote prefix on its
+// own, matching what Obsidian core's Enter does on the same line.
 const LIST_CONTINUATION_RE =
-    /^(\s*)((?:>\s?)*)([-*+]\s(?:\[.\]\s)?|\d+[.)]\s(?:\[.\]\s)?)/;
+    /^(\s*)((?:>\s?)*)(\s*)([-*+]\s(?:\[.\]\s)?|\d+[.)]\s(?:\[.\]\s)?)?/;
 
 /** First line after YAML frontmatter, or `cm.firstLine()` if none. */
 function firstEditableLine(cm: {
@@ -40,25 +43,36 @@ function detectListContinuation(line: string): ListContinuation | null {
 
     const indent = m[1] ?? '';
     const bq = m[2] ?? '';
-    const marker = m[3] ?? '';
+    const innerIndent = m[3] ?? '';
+    const marker = m[4] ?? '';
+
+    if (!marker) {
+        if (!bq) return null;
+        // Without a marker the padding is the quote's own text alignment
+        // rather than list structure, so only the quote prefix carries over.
+        const quotePrefix = indent + bq;
+        return { below: quotePrefix, above: quotePrefix };
+    }
 
     const hasCheckbox = /\[.\]\s$/.test(marker);
     const checkboxSuffix = hasCheckbox ? '[ ] ' : '';
+
+    const base = indent + bq + innerIndent;
 
     const orderedMatch = marker.match(/^(\d+)([.)]\s)/);
     if (orderedMatch && orderedMatch[1] && orderedMatch[2]) {
         const num = parseInt(orderedMatch[1], 10);
         const delim = orderedMatch[2];
         return {
-            below: indent + bq + String(num + 1) + delim + checkboxSuffix,
-            above: indent + bq + String(num) + delim + checkboxSuffix,
+            below: base + String(num + 1) + delim + checkboxSuffix,
+            above: base + String(num) + delim + checkboxSuffix,
         };
     }
 
     const bulletMatch = marker.match(/^([-*+]\s)/);
     if (bulletMatch && bulletMatch[1]) {
         const bullet = bulletMatch[1];
-        const prefix = indent + bq + bullet + checkboxSuffix;
+        const prefix = base + bullet + checkboxSuffix;
         return { below: prefix, above: prefix };
     }
 

@@ -16,6 +16,7 @@ import companionSource from './companion.lua';
 import type { NeovimDocumentSync } from './document-sync';
 import type { MsgpackRpcClient } from './msgpack-rpc';
 import { NeovimFloatingWindows } from './floating-windows';
+import { setRpcSignsEffect, type SignEntry } from '../vim/sign-column';
 
 type HighlightGroup = string | string[];
 
@@ -34,6 +35,11 @@ interface ForwardedExtmark {
     highlight: HighlightGroup | null;
     virtualText: VirtualTextChunk[];
     virtualTextPosition: 'overlay' | 'eol' | 'inline';
+    virtualLines: VirtualTextChunk[][];
+    virtualLinesAbove: boolean;
+    signText: string | null;
+    signHighlight: HighlightGroup | null;
+    lineHighlight: HighlightGroup | null;
     priority: number;
 }
 
@@ -133,6 +139,62 @@ class NeovimVirtualTextWidget extends WidgetType {
     }
 }
 
+class NeovimVirtualLinesWidget extends WidgetType {
+    constructor(private readonly mark: ForwardedExtmark) {
+        super();
+    }
+
+    eq(other: NeovimVirtualLinesWidget): boolean {
+        return (
+            this.mark.nsId === other.mark.nsId &&
+            this.mark.id === other.mark.id &&
+            this.mark.virtualLinesAbove === other.mark.virtualLinesAbove &&
+            JSON.stringify(this.mark.virtualLines) ===
+                JSON.stringify(other.mark.virtualLines)
+        );
+    }
+
+    toDOM(view: EditorView): HTMLElement {
+        const document = view.dom.ownerDocument;
+        const wrapper = document.win.createDiv();
+        wrapper.className = 'vim-motions-rpc-virt-lines';
+        wrapper.dataset.nsId = String(this.mark.nsId);
+        wrapper.dataset.extmarkId = String(this.mark.id);
+        for (const chunks of this.mark.virtualLines) {
+            const row = document.win.createDiv();
+            row.className = 'vim-motions-rpc-virt-lines-row';
+            for (const chunk of chunks) {
+                const span = document.win.createSpan();
+                for (const name of groupNames(chunk.groups))
+                    span.classList.add(`vim-hl-${name}`);
+                span.textContent = chunk.text;
+                row.appendChild(span);
+            }
+            wrapper.appendChild(row);
+        }
+        return wrapper;
+    }
+
+    ignoreEvent(): boolean {
+        return true;
+    }
+}
+
+/**
+ * Sign-column entries for the marks that carry `sign_text`. Neovim allows more
+ * than one sign on a line, so entries are merged per line rather than the last
+ * one winning; the sign column merges these with the mark gutter's own set.
+ */
+function signEntries(marks: ForwardedExtmark[], view: EditorView): SignEntry[] {
+    const byLine = new Map<number, string>();
+    for (const mark of marks) {
+        if (!mark.signText) continue;
+        const lineStart = view.state.doc.lineAt(mark.from).from;
+        byLine.set(lineStart, (byLine.get(lineStart) ?? '') + mark.signText);
+    }
+    return [...byLine].map(([pos, labels]) => ({ pos, labels }));
+}
+
 function overlayEnd(doc: Text, from: number): number {
     if (from >= doc.length) return from;
     const codePoint = doc.sliceString(from, from + 2).codePointAt(0);
@@ -146,6 +208,40 @@ function buildDecorations(marks: ForwardedExtmark[], doc: Text): DecorationSet {
     const ranges: DecorationRange[] = [];
     let index = 0;
     for (const mark of marks) {
+        const lineHighlightNames = groupNames(mark.lineHighlight);
+        if (lineHighlightNames.length > 0) {
+            const lineStart = doc.lineAt(mark.from).from;
+            ranges.push({
+                from: lineStart,
+                to: lineStart,
+                priority: mark.priority,
+                index: index++,
+                decoration: Decoration.line({
+                    class: groupClasses(mark.lineHighlight),
+                    attributes: {
+                        'data-ns-id': String(mark.nsId),
+                        'data-extmark-id': String(mark.id),
+                    },
+                }),
+            });
+        }
+        if (mark.virtualLines.length > 0) {
+            // Block widgets must sit on a line boundary, and `virt_lines_above`
+            // decides which one. side keeps them outside the line's own content.
+            const line = doc.lineAt(mark.from);
+            const at = mark.virtualLinesAbove ? line.from : line.to;
+            ranges.push({
+                from: at,
+                to: at,
+                priority: mark.priority,
+                index: index++,
+                decoration: Decoration.widget({
+                    widget: new NeovimVirtualLinesWidget(mark),
+                    block: true,
+                    side: mark.virtualLinesAbove ? -1 : 1,
+                }),
+            });
+        }
         const highlightNames = groupNames(mark.highlight);
         if (highlightNames.length > 0 && mark.from < mark.to) {
             ranges.push({
@@ -495,6 +591,7 @@ export class NeovimDecorationBridge {
             view.dispatch({
                 effects: [
                     replaceDecorations.of(marks),
+                    setRpcSignsEffect.of(signEntries(marks, view)),
                     ...this.foldEffects(view),
                 ],
             });
@@ -597,6 +694,14 @@ export class NeovimDecorationBridge {
             highlight: parseGroup(value.hl_group),
             virtualText: parseVirtualText(value.virt_text),
             virtualTextPosition,
+            virtualLines: Array.isArray(value.virt_lines)
+                ? value.virt_lines.map(parseVirtualText)
+                : [],
+            virtualLinesAbove: value.virt_lines_above === true,
+            signText:
+                typeof value.sign_text === 'string' ? value.sign_text : null,
+            signHighlight: parseGroup(value.sign_hl_group),
+            lineHighlight: parseGroup(value.line_hl_group),
             priority: numberValue(value.priority) ?? 0,
         };
     }
@@ -604,7 +709,10 @@ export class NeovimDecorationBridge {
     private clearView(view: EditorView | null): void {
         if (!view) return;
         try {
-            const effects: StateEffect<unknown>[] = [replaceDecorations.of([])];
+            const effects: StateEffect<unknown>[] = [
+                replaceDecorations.of([]),
+                setRpcSignsEffect.of([]),
+            ];
             const folds = foldedRanges(view.state).iter();
             while (folds.value) {
                 effects.push(

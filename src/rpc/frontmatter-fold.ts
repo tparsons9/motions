@@ -8,6 +8,17 @@ const luaFrontmatterPattern = FRONTMATTER_DELIMITER_PATTERN.replace(
     String.raw`\s`,
     '%s',
 );
+
+// Vim caps an expression fold at MAX_LEVEL, 20; `foldnestmax` does not move that
+// cap (measured at 5 and 10, both still 20). Writing the sentinel as the cap
+// keeps `bodyFoldLevel` one below a stated number rather than one below a silent
+// clamp, which is what made `foldlevel = 0` look like "close the frontmatter
+// only". It closed every heading fold as well, so a pane arrived as if `zM` had
+// run (#199). Markdown headings reach 6 and a callout one deeper, so 19 leaves
+// the whole body open while still closing the frontmatter.
+const frontmatterFoldLevel = 20;
+const bodyFoldLevel = frontmatterFoldLevel - 1;
+
 const foldExpressionSource = `local rendered = ...
 local delimiter = ${JSON.stringify(luaFrontmatterPattern)}
 local cached_tick = -1
@@ -44,11 +55,11 @@ _G.vim_motions_rpc_foldexpr = function()
     for index, line in ipairs(lines) do
         if closing and index <= closing then
             if index == 1 then
-                levels[index] = ">100"
+                levels[index] = ">${frontmatterFoldLevel}"
             elseif index == closing then
-                levels[index] = "<100"
+                levels[index] = "<${frontmatterFoldLevel}"
             else
-                levels[index] = 100
+                levels[index] = ${frontmatterFoldLevel}
             end
         else
             local level = heading_level(line)
@@ -79,19 +90,51 @@ export class NeovimFrontmatterFold {
         private readonly rpc: MsgpackRpcClient,
     ) {}
 
+    // Awaited before every delegated keystroke, so the cache is what keeps it
+    // free on that path. It must stay a no-op once the mode matches.
     async sync(): Promise<void> {
-        const enabled =
-            getVaultConfig(this.app, 'propertiesInDocument') !== 'source';
+        const enabled = this.resolveEnabled();
         if (enabled === this.enabled) return;
+        await this.install(enabled);
+    }
+
+    // `activateDocument()` runs `filetype detect`, which re-fires the user's own
+    // `FileType` handlers on every activation. Setting a window-local fold
+    // expression there is ordinary Neovim configuration -- `g:markdown_folding`
+    // does it in the stock Markdown ftplugin, and a treesitter `foldexpr` in a
+    // personal ftplugin is commoner still -- and it lands after the connect-time
+    // install, so the expression has to be restored per activation or the
+    // frontmatter fold silently stops existing from the second note onward.
+    // `foldlevel` and `foldenable` are deliberately left alone: no `FileType`
+    // handler writes them, and rewriting them here would undo a user's `zm`/`zM`
+    // on every pane switch.
+    async syncForActivation(): Promise<void> {
+        const enabled = this.resolveEnabled();
+        if (enabled !== this.enabled) {
+            await this.install(enabled);
+            return;
+        }
+        await this.applyFoldExpression();
+    }
+
+    private resolveEnabled(): boolean {
+        return getVaultConfig(this.app, 'propertiesInDocument') !== 'source';
+    }
+
+    private async install(enabled: boolean): Promise<void> {
         await this.rpc.request('nvim_exec_lua', [
             foldExpressionSource,
             [enabled],
         ]);
-        await this.setWindowOption('foldmethod', 'expr');
-        await this.setWindowOption('foldexpr', foldExpression);
-        await this.setWindowOption('foldlevel', enabled ? 0 : 99);
+        await this.applyFoldExpression();
+        await this.setWindowOption('foldlevel', bodyFoldLevel);
         await this.setWindowOption('foldenable', true);
         this.enabled = enabled;
+    }
+
+    private async applyFoldExpression(): Promise<void> {
+        await this.setWindowOption('foldmethod', 'expr');
+        await this.setWindowOption('foldexpr', foldExpression);
     }
 
     private async setWindowOption(name: string, value: unknown): Promise<void> {
