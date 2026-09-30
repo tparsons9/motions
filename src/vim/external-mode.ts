@@ -1,3 +1,5 @@
+import { setExternalCursorMode } from '@replit/codemirror-vim';
+
 export type ExternalVimMode =
     | 'normal'
     | 'insert'
@@ -37,6 +39,10 @@ export function neovimModeToVimMode(mode: string): ExternalVimMode {
 export function setExternalVimMode(mode: ExternalVimMode | null): void {
     if (mode === currentMode) return;
     currentMode = mode;
+    // Forwarded here rather than from a subscriber so the two cannot diverge.
+    // The fork owns the visible cursor and resolves its shape from its own vim
+    // state, which never leaves normal while a backend owns keys.
+    setExternalCursorMode(mode);
     for (const listener of [...listeners]) listener(mode);
 }
 
@@ -65,5 +71,6 @@ export function onExternalVimMode(
 /** @internal — exposed for unit tests only. */
 export function _resetExternalVimMode(): void {
     currentMode = null;
+    setExternalCursorMode(null);
     listeners.clear();
 }

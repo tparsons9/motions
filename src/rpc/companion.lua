@@ -906,6 +906,11 @@ vim.api.nvim_set_decoration_provider(provider_ns, {
                             hl_group = details.hl_group,
                             virt_text = details.virt_text,
                             virt_text_pos = details.virt_text_pos,
+                            virt_lines = details.virt_lines,
+                            virt_lines_above = details.virt_lines_above,
+                            sign_text = details.sign_text,
+                            sign_hl_group = details.sign_hl_group,
+                            line_hl_group = details.line_hl_group,
                             priority = details.priority,
                         }
                     end

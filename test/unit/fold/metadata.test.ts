@@ -170,7 +170,7 @@ describe('fold metadata', () => {
                 to: state.doc.line(2).to,
                 title: 'Title',
             });
-            expect(label(state, 1, 2)).toBe('Title — 1 lines');
+            expect(label(state, 1, 2)).toBe('— 1 lines');
         },
     );
 
@@ -198,13 +198,18 @@ describe('fold metadata', () => {
             to: state.doc.line(2).to,
             title: '',
         });
-        expect(label(state, 1, 2)).toBe(' — 1 lines');
+        expect(label(state, 1, 2)).toBe('— 1 lines');
     });
 
     it('keeps plain metadata usable after the extracted tree is deleted', () => {
         const { state, metadata } = prepare('# 😀 é\nBody');
         expect(getFoldMetadata(state)).toBe(metadata);
-        expect(label(state, 1, 2)).toBe('😀 é — 1 lines');
+        // The title is read after `extract` deleted the tree. The placeholder
+        // no longer carries it (issue #193), so read it where it lives --
+        // through the label it would be indistinguishable from the regex
+        // fallback, which never touches the tree at all.
+        expect(metadata.headingsByLineStart.get(0)?.title).toBe('😀 é');
+        expect(label(state, 1, 2)).toBe('— 1 lines');
     });
 
     it('keys metadata by exact EditorState identity, including selection-only states', () => {
@@ -228,7 +233,7 @@ describe('fold metadata', () => {
             from: state.doc.line(1).to,
             to: state.doc.line(2).to,
         });
-        expect(label(state, 1, 2)).toBe('Title — 1 lines');
+        expect(label(state, 1, 2)).toBe('— 1 lines');
         setFoldMetadata(state, {
             headingsByLineStart: new Map(),
             fencedCodeByLineStart: new Map(),

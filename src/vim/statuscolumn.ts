@@ -11,7 +11,7 @@ import {
     unfoldEffect,
 } from '@codemirror/language';
 import {
-    signColumnField,
+    signMarkers,
     SignMarker,
     parseSignColumnMode,
     type ParsedSignColumnMode,
@@ -263,12 +263,15 @@ function renderSegment(
             }
             let markText = '';
             try {
-                const field = state.field(signColumnField);
-                field.between(lineFrom, lineFrom, (_from, _to, value) => {
-                    if (value instanceof SignMarker) {
-                        markText = value.label;
-                    }
-                });
+                signMarkers(state).between(
+                    lineFrom,
+                    lineFrom,
+                    (_from, _to, value) => {
+                        if (value instanceof SignMarker) {
+                            markText = value.label;
+                        }
+                    },
+                );
             } catch {
                 // field not registered
             }

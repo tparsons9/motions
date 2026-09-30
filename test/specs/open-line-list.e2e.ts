@@ -199,6 +199,100 @@ describe('Smart list continuation (o/O)', function () {
         });
     });
 
+    // Expected values below are the measured Obsidian-core Enter results for
+    // the same lines, so `o`/`O` and Enter agree inside one editor (#195).
+    describe('blockquote continuation without a list marker (#195)', function () {
+        it('o on "> quote" should continue with "> "', async function () {
+            await setupEditor('> quote', { line: 0, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('> quote\n> ');
+            expect(await getCursorPos()).toEqual({ line: 1, ch: 1 });
+        });
+
+        it('O on "> quote" should insert "> " above', async function () {
+            await setupEditor('> quote', { line: 0, ch: 0 });
+            await vimRawKeys('O\x1b');
+            expect(await getEditorValue()).toBe('> \n> quote');
+            expect(await getCursorPos()).toEqual({ line: 0, ch: 1 });
+        });
+
+        it('o on ">quote" without a space keeps the bare ">"', async function () {
+            await setupEditor('>quote', { line: 0, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('>quote\n>');
+            expect(await getCursorPos()).toEqual({ line: 1, ch: 0 });
+        });
+
+        it('o on a callout title should continue with "> "', async function () {
+            await setupEditor('> [!NOTE] Title', { line: 0, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('> [!NOTE] Title\n> ');
+            expect(await getCursorPos()).toEqual({ line: 1, ch: 1 });
+        });
+
+        it('o on a callout body line should continue with "> "', async function () {
+            await setupEditor('> [!NOTE] Title\n> body', { line: 1, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('> [!NOTE] Title\n> body\n> ');
+            expect(await getCursorPos()).toEqual({ line: 2, ch: 1 });
+        });
+
+        it('o on "> > quote" should continue with "> > "', async function () {
+            await setupEditor('> > quote', { line: 0, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('> > quote\n> > ');
+            expect(await getCursorPos()).toEqual({ line: 1, ch: 3 });
+        });
+
+        it('o on an indented blockquote should keep the indent', async function () {
+            await setupEditor('  > quote', { line: 0, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('  > quote\n  > ');
+            expect(await getCursorPos()).toEqual({ line: 1, ch: 3 });
+        });
+
+        it('o on an empty "> " line should continue with "> "', async function () {
+            await setupEditor('> ', { line: 0, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('> \n> ');
+            expect(await getCursorPos()).toEqual({ line: 1, ch: 1 });
+        });
+
+        it('o then typing content should place text after "> "', async function () {
+            await setupEditor('> quote', { line: 0, ch: 0 });
+            await vimRawKeys('otext\x1b');
+            expect(await getEditorValue()).toBe('> quote\n> text');
+            expect(await getCursorPos()).toEqual({ line: 1, ch: 5 });
+        });
+
+        it('o on a list indented inside a blockquote keeps both', async function () {
+            await setupEditor('>   - indented', { line: 0, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('>   - indented\n>   - ');
+            expect(await getCursorPos()).toEqual({ line: 1, ch: 5 });
+        });
+
+        it('o on a blockquote inside a code fence should not continue', async function () {
+            await setupEditor('```\n> quote\n```', { line: 1, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('```\n> quote\n\n```');
+        });
+
+        it('o inside a blockquoted code fence should not continue', async function () {
+            await setupEditor('> ```\n> - item\n> ```', { line: 1, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('> ```\n> - item\n\n> ```');
+        });
+
+        it('u should undo the whole "> " continuation in one step', async function () {
+            await setupEditor('> quote', { line: 0, ch: 0 });
+            await vimRawKeys('o\x1b');
+            expect(await getEditorValue()).toBe('> quote\n> ');
+            await vimRawKeys('u');
+            expect(await getEditorValue()).toBe('> quote');
+        });
+    });
+
     describe('nested blockquote lists', function () {
         it('o on nested blockquote unordered "> > - "', async function () {
             await setupEditor('> > - item', { line: 0, ch: 0 });

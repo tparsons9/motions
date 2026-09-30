@@ -36,7 +36,15 @@ let bundledActive = false;
 export function createBundledVimExtension(
     cursorShapes?: CursorShapes,
     isPropertiesSource?: () => boolean,
+    scrolloffSource?: () => number,
 ): Extension {
+    // Registered ahead of the idempotence guard: when vim starts disabled an
+    // embedded editor can build the extension before the main setup does, and
+    // only the main call carries the source. The fork holds it globally, so
+    // installing it late is still correct — skipping it is not.
+    if (scrolloffSource) {
+        Vim.setScrolloffSource(scrolloffSource);
+    }
     if (bundledActive)
         return Prec.highest(
             vim({

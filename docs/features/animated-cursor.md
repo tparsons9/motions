@@ -111,7 +111,7 @@ When navigating between table cells via `h`/`j`/`k`/`l`, a token-based position 
 
 The animation loop uses a 3-gear frame governor to minimize GPU usage:
 
-- **Hot gear** (~60fps) — active during cursor movement and animation. Capped at ~62.5fps on 120Hz+ displays to avoid unnecessary work.
+- **Hot gear** (\~60fps) — active during cursor movement and animation. Capped at \~62.5fps on 120Hz+ displays to avoid unnecessary work.
 - **Warm gear** (~1.67fps) — active when the cursor is idle but focused. A `setTimeout(600ms)` schedules a single frame for each blink toggle. The loop is fully stopped between frames.
 - **Stopped** — no scheduling when the editor is unfocused or `prefers-reduced-motion` is active.
 
