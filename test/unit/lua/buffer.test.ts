@@ -15,6 +15,28 @@ const createKeymap = (
 });
 
 describe('BufferKeymapManager', () => {
+    it('restores the global mapping after adding and replacing an active local map', () => {
+        const manager = new BufferKeymapManager();
+        const stack = ['global'];
+        manager.setVimEngine({
+            map: (_mode, _lhs, rhs) => {
+                stack.unshift(rhs);
+            },
+            unmap: () => {
+                stack.shift();
+            },
+        });
+        manager.switchBuffer('code.py');
+        manager.register('code.py', createKeymap('j', 'local'));
+        expect(stack).toEqual(['local', 'global']);
+        manager.register('code.py', createKeymap('j', 'replacement'));
+        expect(stack).toEqual(['replacement', 'global']);
+        manager.unregister('code.py', 'normal', 'missing');
+        expect(stack).toEqual(['replacement', 'global']);
+        manager.switchBuffer('note.md');
+        expect(stack).toEqual(['global']);
+    });
+
     it('applies keymaps on switchBuffer', () => {
         const manager = new BufferKeymapManager();
         const map = vi.fn();

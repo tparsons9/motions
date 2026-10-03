@@ -192,6 +192,9 @@ import {
 } from '@replit/codemirror-vim';
 import { loadInitLua, resolveLuaConfigPath } from './lua/loader';
 import { BufferKeymapManager, VimMapUnmap } from './lua/buffer';
+import { LuaEditorContext } from './lua/editor-context';
+import { BufferHints } from './lua/buffer-hints';
+import { LocalOptions } from './lua/local-options';
 import type { LuaLoadResult } from './lua/loader';
 import { observeKeyEvent } from './workspace/key-observer';
 import { createSandboxedState, destroyState, evalLua } from './lua/engine';
@@ -422,6 +425,20 @@ export default class VimMotionsPlugin extends Plugin {
      * own: no Markdown structure, active-note state, or Obsidian `Editor`.
      */
     private externalExtensionSlot: Extension[] = [];
+    private readonly bufferHints = new BufferHints();
+    private readonly localOptions = new LocalOptions();
+    private readonly initializedLuaBuffers = new Map<string, string>();
+    private readonly luaEditorContext = new LuaEditorContext(
+        () => this.luaEditors(),
+        () => {
+            const leaf = this.app.workspace.getMostRecentLeaf();
+            return (
+                this.luaEditors().find((entry) =>
+                    leaf?.view.containerEl.contains(entry.view.dom),
+                ) ?? null
+            );
+        },
+    );
     private readonly externalEditors = new ExternalEditorRegistry({
         build: () => [...this.externalExtensionSlot],
         getAdapter: (view) => getCmAdapterFromEditorView(view),
@@ -429,17 +446,26 @@ export default class VimMotionsPlugin extends Plugin {
             const adapter = getCmAdapterFromEditorView(entry.view);
             if (!adapter) return;
             this.modeTracker?.followAdapter(adapter);
+            this.syncLuaEditor();
             this.attachExternalWhichKey(entry.view, adapter);
         },
         onAttach: (entry) => {
-            this.autocmdManager?.fire('FileType', {
-                file: entry.host.path,
-                match: entry.host.filetype,
-            });
+            this.initializeLuaEditor(entry);
         },
         onRelease: (entry, adapter) => {
             this.externalWhichKeys.get(entry.view)?.destroy();
             this.externalWhichKeys.delete(entry.view);
+            this.localOptions.detach(entry.view);
+            if (
+                !this.luaEditors().some(
+                    (other) =>
+                        other.view !== entry.view &&
+                        other.host.path === entry.host.path,
+                )
+            ) {
+                this.releaseLuaBuffer(entry.host.path);
+            }
+            queueMicrotask(() => this.syncLuaEditor());
             // The tracker would otherwise keep showing this editor's last mode.
             if (adapter) this.modeTracker?.releaseAdapter(adapter);
         },
@@ -777,29 +803,10 @@ export default class VimMotionsPlugin extends Plugin {
     async loadLuaConfigForTest(): Promise<void> {
         if (!this.vimRef || !this.onLuaSettingOverrideRef) return;
         this.settings.configMode = 'lua-vimrc';
-        this.luaLoaded = false;
-        this.luaLoading = false;
-        this.timerManager?.destroyAll();
-        this.timerManager = null;
-        this.autocmdManager?.clearUngrouped();
-        this.autocmdManager?.clearAll();
-        this.autocmdManager = null;
-        this.highlightManager?.destroy();
-        this.highlightManager = null;
-        if (this.luaState) {
-            // An open picker holds a Lua callback ref. Close it before the
-            // state dies, or a late selection invokes into a closed lua_State.
-            PickerModal.closeActive();
-            destroyState(this.luaState);
-            this.luaState = null;
-        }
-        this.luaActionNames.clear();
-        this.luaActionCounter = 0;
-        await this.loadLuaConfigInternal(
+        await this.softReloadLuaConfig(
             this.vimRef,
             this.onLuaSettingOverrideRef,
         );
-        this.captureConfigOverrides();
     }
 
     /**
@@ -836,6 +843,24 @@ export default class VimMotionsPlugin extends Plugin {
     }
 
     async onload() {
+        this.registerDomEvent(
+            this.app.workspace.containerEl.ownerDocument,
+            'focusin',
+            () => this.syncLuaEditor(),
+        );
+        this.registerEvent(
+            this.app.workspace.on('window-open', (_workspaceWindow, win) => {
+                this.registerDomEvent(win.document, 'focusin', () =>
+                    this.syncLuaEditor(),
+                );
+            }),
+        );
+        this.registerEvent(
+            this.app.workspace.on('layout-change', () => this.syncLuaEditor()),
+        );
+        this.registerEvent(
+            this.app.workspace.on('file-open', () => this.syncLuaEditor()),
+        );
         this.neovimConnection = new NeovimConnection(
             this.app,
             () => this.registration,
@@ -1041,11 +1066,10 @@ export default class VimMotionsPlugin extends Plugin {
                     : undefined;
                 this.autocmdManager?.onActiveLeafChange(adapter, leafInfo);
                 const activeFile = this.app.workspace.getActiveFile();
-                const filePath = activeFile?.path ?? null;
                 if (activeFile?.extension === 'md') {
                     trackRecentFile(activeFile.path);
                 }
-                this.bufferKeymapManager?.switchBuffer(filePath);
+                this.syncLuaEditor();
                 this.oilKeybindingManager?.onActiveLeafChange();
                 this.yankRingManager.cancel();
                 this.yankRingCommandDoneCleanup?.();
@@ -1065,9 +1089,6 @@ export default class VimMotionsPlugin extends Plugin {
                         );
                         adapter.off('vim-command-done', commandDoneHandler);
                     };
-                }
-                if (filePath) {
-                    this.autocmdManager?.fireFileType(filePath);
                 }
             }),
         );
@@ -3104,6 +3125,9 @@ export default class VimMotionsPlugin extends Plugin {
         this.luaDeactivateRuntimeEx = null;
         this.bufferKeymapManager?.destroy();
         this.bufferKeymapManager = null;
+        this.bufferHints.clear();
+        this.localOptions.clear();
+        this.initializedLuaBuffers.clear();
         this.flashSearchCleanup?.();
         this.flashSearchCleanup = null;
         this.textareaVimManager?.destroy();
@@ -3635,6 +3659,12 @@ export default class VimMotionsPlugin extends Plugin {
     }
 
     reloadFeatures(): void {
+        if (this.bufferKeymapManager?.getActiveBuffer()) {
+            this.bufferKeymapManager.withSharedMaps(() =>
+                this.reloadFeatures(),
+            );
+            return;
+        }
         this.reconcileNeovimConnection();
         this.maybeAutoExportNeovimConfig();
         if (!this.settings.vimEnabled) return;
@@ -4414,6 +4444,9 @@ export default class VimMotionsPlugin extends Plugin {
             sortOrder: this.settings.whichKeySortOrder,
         };
         this.embeddedWhichKeyConfig = embeddedWhichKeyConfig;
+        this.whichKeyOverlay.setContextProvider((adapter, mode) =>
+            this.contextualHints(adapter, mode),
+        );
         // The focused external editor loses its overlay above, and nothing
         // else rebuilds it until focus moves away and back.
         const focused = this.externalEditors.focused();
@@ -4429,8 +4462,76 @@ export default class VimMotionsPlugin extends Plugin {
         );
     }
 
+    private luaEditors(): ExternalEditorEntry[] {
+        const entries = this.externalEditors.views().flatMap((view) => {
+            const entry = this.externalEditors.get(view);
+            return entry ? [entry] : [];
+        });
+        for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+            const markdown = leaf.view;
+            if (!(markdown instanceof MarkdownView) || !markdown.file) continue;
+            const view = getEditorView(markdown);
+            if (view)
+                entries.push({
+                    view,
+                    host: { path: markdown.file.path, filetype: 'markdown' },
+                });
+        }
+        return entries;
+    }
+
+    private initializeLuaEditor(entry: ExternalEditorEntry): void {
+        if (!this.autocmdManager) return;
+        this.localOptions.attach(entry.view, entry.host.path);
+        if (
+            this.initializedLuaBuffers.get(entry.host.path) ===
+            entry.host.filetype
+        )
+            return;
+        this.releaseLuaBuffer(entry.host.path);
+        this.localOptions.attach(entry.view, entry.host.path);
+        this.initializedLuaBuffers.set(entry.host.path, entry.host.filetype);
+        this.luaEditorContext.withEntry(entry, () =>
+            this.autocmdManager?.fire('FileType', {
+                file: entry.host.path,
+                match: entry.host.filetype,
+            }),
+        );
+    }
+
+    private releaseLuaBuffer(path: string): void {
+        this.bufferKeymapManager?.release(path);
+        this.bufferHints.release(path);
+        this.localOptions.release(path);
+        this.initializedLuaBuffers.delete(path);
+    }
+
+    private syncLuaEditor(): void {
+        if (!this.bufferKeymapManager || !this.settings.vimEnabled) return;
+        const entries = this.luaEditors();
+        for (const path of this.initializedLuaBuffers.keys()) {
+            if (!entries.some((entry) => entry.host.path === path))
+                this.releaseLuaBuffer(path);
+        }
+        for (const entry of entries) this.initializeLuaEditor(entry);
+        const entry = this.luaEditorContext.current();
+        const path = entry?.host.path ?? null;
+        if (path === this.bufferKeymapManager.getActiveBuffer()) return;
+        this.bufferKeymapManager.switchBuffer(path);
+        this.cancelContextHints();
+    }
+
+    private cancelContextHints(): void {
+        this.whichKeyOverlay?.cancel();
+        for (const overlay of this.externalWhichKeys.values()) overlay.cancel();
+    }
+
     /** The external editor in the active leaf, if it is the one that last had focus. */
     private activeExternalEditor(): ExternalEditorEntry | null {
+        const focused = this.externalEditors
+            .views()
+            .find((view) => view.hasFocus);
+        if (focused) return this.externalEditors.get(focused);
         const entry = this.externalEditors.focused();
         const leaf = this.app.workspace.getMostRecentLeaf();
         if (!entry || !leaf?.view.containerEl.contains(entry.view.dom)) {
@@ -4466,6 +4567,24 @@ export default class VimMotionsPlugin extends Plugin {
         return entry ? getCmAdapterFromEditorView(entry.view) : null;
     }
 
+    private contextualHints(
+        adapter: CmAdapter,
+        mode: string,
+    ): WhichKeyConfig | null {
+        const base = this.embeddedWhichKeyConfig;
+        if (!base) return null;
+        const entry = this.luaEditors().find(
+            (entry) => entry.view === adapter.cm6,
+        );
+        const path = entry?.host.path ?? null;
+        return this.bufferHints.compose(
+            base,
+            path,
+            this.bufferKeymapManager?.getMaps(path) ?? [],
+            mode,
+        );
+    }
+
     private attachExternalWhichKey(view: EditorView, adapter: CmAdapter): void {
         const cfg = this.embeddedWhichKeyConfig;
         if (!cfg?.enabled || this.externalWhichKeys.has(view)) return;
@@ -4487,11 +4606,20 @@ export default class VimMotionsPlugin extends Plugin {
             cfg.showDelay,
             cfg.sortOrder,
         );
+        overlay.setContextProvider((adapter, mode) =>
+            this.contextualHints(adapter, mode),
+        );
         overlay.attach();
         this.externalWhichKeys.set(view, overlay);
     }
 
     private reregisterLeaderFeatures(): void {
+        if (this.bufferKeymapManager?.getActiveBuffer()) {
+            this.bufferKeymapManager.withSharedMaps(() =>
+                this.reregisterLeaderFeatures(),
+            );
+            return;
+        }
         if (!this.registration || !this.leaderRegistry) return;
         this.registration.unregisterLeaderBindings();
         this.leaderRegistry.clearBuiltinBindings();
@@ -4846,6 +4974,11 @@ export default class VimMotionsPlugin extends Plugin {
     ): Promise<void> {
         if (!this.luaConfigEnabled) return;
 
+        this.bufferKeymapManager?.destroy();
+        this.bufferKeymapManager = null;
+        this.bufferHints.clear();
+        this.localOptions.clear();
+        this.initializedLuaBuffers.clear();
         // Restore pre-lua overrides
         for (const key of this.luaOverrides.keys()) {
             if (key.startsWith('modePrompts.')) {
@@ -5406,6 +5539,7 @@ export default class VimMotionsPlugin extends Plugin {
                 vim.unmap(lhs, mode);
             },
         };
+        this.bufferKeymapManager.onChange = () => this.cancelContextHints();
         this.bufferKeymapManager.setVimEngine(vimEngine);
         this.bufferKeymapManager.setFnMapper((map) => {
             if (!map.callback) return false;
@@ -5422,15 +5556,9 @@ export default class VimMotionsPlugin extends Plugin {
             ).actionName = actionName;
             if (!this.luaActionNames.has(actionName)) {
                 this.registration?.defineAction(actionName, map.callback);
-                this.registration?.mapCommand(
-                    map.lhs,
-                    'action',
-                    actionName,
-                    undefined,
-                    map.mode ? { context: map.mode } : undefined,
-                );
                 this.luaActionNames.add(actionName);
-            } else {
+            }
+            {
                 vim.mapCommand(
                     map.lhs,
                     'action',
@@ -5472,6 +5600,10 @@ export default class VimMotionsPlugin extends Plugin {
             customPath: customLuaPath,
             globalConfigSearch: this.settings.globalConfigSearch,
             bufferKeymapManager: this.bufferKeymapManager,
+            bufferHints: this.bufferHints,
+            localOptions: this.localOptions,
+            editorContext: this.luaEditorContext,
+            onContextChange: () => this.cancelContextHints(),
             openPicker: this.openPicker ?? undefined,
             openSelect: (items, opts, onChoice) =>
                 this.openUiSelect(items, opts, onChoice),
@@ -5590,8 +5722,7 @@ export default class VimMotionsPlugin extends Plugin {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         const adapter = view ? getCmAdapter(view) : null;
         this.autocmdManager?.onActiveLeafChange(adapter);
-        const filePath = this.app.workspace.getActiveFile()?.path ?? null;
-        this.bufferKeymapManager?.switchBuffer(filePath);
+        this.syncLuaEditor();
 
         this.applyLuaSurroundPairs(vim, luaResult.surroundPairs);
         this.applyLuaPendingExCommands(vim);
@@ -5601,7 +5732,7 @@ export default class VimMotionsPlugin extends Plugin {
         // executes immediately instead of queuing.
         this.luaDeactivateRuntimeEx?.();
         luaResult.activateRuntimeExHandler?.((command: string) => {
-            const rtView = this.app.workspace.getActiveViewOfType(MarkdownView);
+            const rtView = this.luaEditorContext.current()?.view;
             if (!rtView) {
                 console.warn(
                     'Vim Motions: vim.cmd() called with no active editor — command skipped:',
@@ -5609,7 +5740,7 @@ export default class VimMotionsPlugin extends Plugin {
                 );
                 return;
             }
-            const rtCm = getCmAdapter(rtView);
+            const rtCm = getCmAdapterFromEditorView(rtView);
             if (!rtCm) return;
             try {
                 vim.handleEx(rtCm, command);
@@ -5736,6 +5867,12 @@ export default class VimMotionsPlugin extends Plugin {
     }
 
     private applyLuaMaps(vim: import('./types/vim-api').VimApi): void {
+        if (this.bufferKeymapManager?.getActiveBuffer()) {
+            this.bufferKeymapManager.withSharedMaps(() =>
+                this.applyLuaMaps(vim),
+            );
+            return;
+        }
         for (const op of this.luaMapOperations) {
             if (op.type === 'unmap') {
                 try {

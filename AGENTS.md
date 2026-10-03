@@ -583,3 +583,11 @@ this.registerInterval(
 - Developer policies: https://docs.obsidian.md/Developer+policies
 - Plugin guidelines: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines
 - Style guide: https://help.obsidian.md/style-guide
+
+### Contextual Lua editor configuration
+
+- `src/lua/editor-context.ts` resolves focused views and scopes event/keymap callbacks without moving focus.
+- `src/lua/buffer.ts` owns temporary mapping overlays; shared mapping writes must suspend that layer.
+- `src/lua/buffer-hints.ts` composes buffer descriptions and groups over shared hints.
+- `src/lua/local-options.ts` owns per-buffer option values and removable per-view indentation compartments.
+- External attachment, focus, reload, and release feed these mechanisms from the plugin lifecycle. Filetype identifies language independently of editor ownership.

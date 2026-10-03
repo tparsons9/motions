@@ -355,3 +355,21 @@ When the Oil file explorer is open and Obsidian's built-in vim mode is disabled 
 
 > [!tip] Instant overlay in Oil
 > In "All partial keys" mode, the which-key popup delay is automatically bypassed when an Oil view is active. The overlay appears immediately on partial keys, allowing multi-key bindings (`g?`, `g.`, `gs`, `gf`) to complete without interference. This matches the delay=0 behavior and preserves operator-pending hints (`d`, `c`, `y`) in Oil.
+
+## Buffer-local hints
+
+Use `buffer = true` or `buffer = 0` in `set_group`, `set_label`, or individual `add` entries. An optional `mode` selects `n`, `x`/`v`, `o`, or `i`. Omitting it labels all modes. Buffer-local hints require a current editor and cannot use `context = "global"`.
+
+```lua
+vim.api.nvim_create_autocmd("FileType", {
+    pattern = "python",
+    callback = function()
+        vim.keymap.set("n", "<leader>cf", vim.lsp.buf.format,
+            { buffer = true, desc = "Format" })
+        vim.ob.whichkey.set_group("<leader>c", "Code",
+            { buffer = true, mode = "n" })
+    end,
+})
+```
+
+Local mappings appear in both leader-only and general hint modes. Local explicit labels override local mapping descriptions, which override shared labels. A local mapping without a description does not inherit the shadowed action's description. Shared mappings retain their hints; Markdown-only mappings and labels should be declared inside a Markdown `FileType` callback with buffer scope.

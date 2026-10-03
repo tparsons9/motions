@@ -1,3 +1,5 @@
+import { readLocalOption } from '../lua/local-options';
+import type { EditorView } from '@codemirror/view';
 import type { VimApi } from '../types/vim-api';
 import type { CursorShape, CursorShapes } from '../settings';
 import { isValidSignColumnValue } from './sign-column';
@@ -8,8 +10,9 @@ let statuscolumnValue = '';
 let jumpListEnabled = true;
 let jumpListSize = 200;
 
-export function getTextwidth(): number {
-    return textwidthValue;
+export function getTextwidth(view?: EditorView): number {
+    const local = readLocalOption(view, 'textwidth');
+    return typeof local === 'number' ? local : textwidthValue;
 }
 
 export function setTextwidth(value: number): void {
@@ -66,14 +69,19 @@ export function registerVimOptions(
         notify('clipboard', str, `set clipboard=${str}`);
         return undefined;
     });
-    vim.defineOption('tabstop', 4, 'number', ['ts'], (value) => {
+    vim.defineOption('tabstop', 4, 'number', ['ts'], (value, cm) => {
+        const local = readLocalOption(cm?.cm6, 'tabstop');
+        if (value === undefined && local !== undefined) return local;
         if (value === undefined) return;
         const n = typeof value === 'number' ? value : Number(value);
         if (!isNaN(n)) {
             notify('tabstop', n, `set tabstop=${n}`);
         }
+        return undefined;
     });
-    vim.defineOption('textwidth', 80, 'number', ['tw'], (value) => {
+    vim.defineOption('textwidth', 80, 'number', ['tw'], (value, cm) => {
+        const local = readLocalOption(cm?.cm6, 'textwidth');
+        if (value === undefined && local !== undefined) return local;
         if (value === undefined) return textwidthValue;
         const n = typeof value === 'number' ? value : Number(value);
         if (!isNaN(n) && n > 0) {
@@ -82,17 +90,23 @@ export function registerVimOptions(
         }
         return undefined;
     });
-    vim.defineOption('shiftwidth', 4, 'number', ['sw'], (value) => {
+    vim.defineOption('shiftwidth', 4, 'number', ['sw'], (value, cm) => {
+        const local = readLocalOption(cm?.cm6, 'shiftwidth');
+        if (value === undefined && local !== undefined) return local;
         if (value === undefined) return;
         const n = typeof value === 'number' ? value : Number(value);
         if (!isNaN(n)) {
             notify('shiftwidth', n, `set shiftwidth=${n}`);
         }
+        return undefined;
     });
-    vim.defineOption('expandtab', true, 'boolean', ['et'], (value) => {
+    vim.defineOption('expandtab', true, 'boolean', ['et'], (value, cm) => {
+        const local = readLocalOption(cm?.cm6, 'expandtab');
+        if (value === undefined && local !== undefined) return local;
         if (value === undefined) return;
         const enabled = !!value;
         notify('expandtab', enabled, `set ${enabled ? '' : 'no'}expandtab`);
+        return undefined;
     });
     vim.defineOption('insertmodeescape', '', 'string', ['ime'], (value) => {
         if (value === undefined) return insertEscapeValue;

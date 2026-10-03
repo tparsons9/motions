@@ -400,6 +400,21 @@ export class WhichKeyOverlay {
     private lastStatus = '';
     private suppressNextKeypress = false;
     private awaitingLiteralArgument = false;
+    private contextProvider:
+        ((adapter: CmAdapter, mode: string) => WhichKeyConfig | null) | null =
+        null;
+
+    setContextProvider(
+        provider: (adapter: CmAdapter, mode: string) => WhichKeyConfig | null,
+    ): void {
+        this.contextProvider = provider;
+    }
+
+    cancel(): void {
+        this.suppressNextKeypress = false;
+        this.awaitingLiteralArgument = false;
+        this.dismiss();
+    }
 
     constructor(
         app: App,
@@ -551,6 +566,15 @@ export class WhichKeyOverlay {
             return;
         }
         if (!this.lastAdapter) return;
+        const context = this.contextProvider?.(
+            this.lastAdapter,
+            getVimContext(this.lastAdapter),
+        );
+        if (context) {
+            this.leaderBindings = context.leaderBindings;
+            this.groupLabels = context.groupLabels;
+            this.commandLabels = context.commandLabels;
+        }
         const vim = this.lastAdapter.state.vim;
         if (vim?.insertMode) {
             this.dismiss();

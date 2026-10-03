@@ -99,6 +99,7 @@ export function injectLspApi(L: lua_State, callbacks: LspApiCallbacks): void {
     const bufIndex = lua.lua_gettop(L);
 
     const actions: Array<[string, LanguageAction]> = [
+        ['signature_help', 'signatureHelp'],
         ['hover', 'hover'],
         ['definition', 'definition'],
         ['declaration', 'definition'],

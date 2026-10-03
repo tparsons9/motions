@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Contextual Lua configuration** — local mappings, options and which-key labels follow focused native and external editors; language providers may supply signature help.
+    - Plugin: `src/lua/editor-context.ts`, `src/lua/buffer-hints.ts`, `src/lua/local-options.ts`.
+
+### Fixed
+
+- **Local mapping restoration** — remove only owned overlays, preserving shared mappings; initialize background attachments in their own buffer context and clear local state on reload and final close.
+- **Registry Vim dependency** — restore the published npm alias at version 6.4.2 so clean installs use the shipped bundle and types without a Git dependency's prepare script.
+    - Plugin: `package.json`, `package-lock.json`.
+
+### Tests
+
+- Focus, background context, local/global restoration, option cleanup, contextual labels, signature dispatch, and external editor reload regressions.
+
+### Documentation
+
+- Updated `AGENTS.md`, `CONTRIBUTING.md`, `README.md`, `KNOWN_LIMITATIONS.md`, and the editor API, Lua configuration and which-key guides.
+
 ## [1.0.3] - 2026-09-30
 
 ## [1.0.2] - 2026-09-30

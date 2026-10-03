@@ -30,6 +30,11 @@ import {
     type VimApiCallbacks,
 } from './api';
 import type { BufferKeymapManager } from './buffer';
+import type { LuaEditorContext } from './editor-context';
+import type { LocalOptions } from './local-options';
+import type { BufferHints } from './buffer-hints';
+import { indentUnit, getIndentUnit } from '@codemirror/language';
+import { getTextwidth } from '../vim/options';
 import { AutocmdManager } from './autocmd';
 import { injectVimFn } from './fn';
 import { injectUiApi } from './ui-api';
@@ -141,14 +146,6 @@ const LUA_FALLBACK_PATHS: readonly string[] = [
     '.init.lua',
     'obsidian.init.lua',
 ];
-
-const ENGINE_BACKED_BUFFER_OPTIONS: ReadonlySet<string> = new Set([
-    'expandtab',
-    'shiftwidth',
-    'softtabstop',
-    'tabstop',
-    'textwidth',
-]);
 
 function getLuaFallbackPaths(app: App): readonly string[] {
     const dir = app.vault.configDir;
@@ -308,6 +305,10 @@ export interface LoadInitLuaOptions {
     ) => void;
     customPath?: string;
     bufferKeymapManager?: BufferKeymapManager;
+    editorContext?: LuaEditorContext;
+    localOptions?: LocalOptions;
+    bufferHints?: BufferHints;
+    onContextChange?: () => void;
     openPicker?: (source: string, opts?: { query?: string }) => void;
     openSelect?: import('./ui-api').UiCallbacks['openSelect'];
     oilCallbacks?: Pick<
@@ -371,8 +372,24 @@ export async function loadInitLua(
         globalRegistry,
         imSwitcher,
         getUndoTree,
-        getExternalEditor,
+        getExternalEditor: legacyExternalEditor,
     } = options;
+    const getExternalEditor = () =>
+        options.editorContext
+            ? options.editorContext.current()
+            : (legacyExternalEditor?.() ?? null);
+    const currentView = () =>
+        getExternalEditor()?.view ??
+        (options.editorContext
+            ? null
+            : (() => {
+                  const view = app.workspace.getActiveViewOfType(MarkdownView);
+                  return view ? (getCmAdapter(view)?.cm6 ?? null) : null;
+              })());
+    const sharedWrite = (callback: () => void) =>
+        bufferKeymapManager
+            ? bufferKeymapManager.withSharedMaps(callback)
+            : callback();
     const { path, found } = await resolveLuaConfigPath(
         app,
         customPath,
@@ -456,6 +473,10 @@ export async function loadInitLua(
     const L = createSandboxedState();
     const runner = new CoroutineRunner(L);
     const autocmdManager = new AutocmdManager(L);
+    if (options.editorContext)
+        autocmdManager.setContextRunner((path, callback) =>
+            options.editorContext!.withPath(path, callback),
+        );
     // Declared here rather than at its injection site below so `fetchPlugin`
     // can refresh it. Populated before user config runs; see the rebuild call.
     const moduleSnapshot = new LuaModuleSnapshot();
@@ -580,62 +601,65 @@ export async function loadInitLua(
             }
         },
         getActiveFilePath: () =>
-            getExternalEditor?.()?.host.path ??
-            app.workspace.getActiveFile()?.path ??
-            null,
+            getExternalEditor()?.host.path ??
+            (options.editorContext
+                ? null
+                : (app.workspace.getActiveFile()?.path ?? null)),
         showNotice: (msg) => {
             new Notice(msg);
         },
         ...oilCallbacks,
         onPickerKeymapChange,
-        onKeymap: (map) => {
-            commandCount++;
-            maps.push(map);
-            const taggedMap = map as LuaKeymap & { _applied?: boolean };
-            mapOperations.push({ type: 'map', map: taggedMap });
-
-            if (map.desc) {
-                commandLabels.push({ key: map.lhs, label: map.desc });
-            }
-            if (map.isFn && map.callback) {
-                const actionName = `lua-action-eager-${eagerActionCounter++}`;
-                if (!eagerActionNames.has(actionName)) {
-                    vim.defineAction(actionName, map.callback);
-                    eagerActionNames.add(actionName);
-                }
-                try {
-                    vim.unmap(map.lhs, undefined, {
-                        includeDefaults: true,
-                    });
-                } catch {
-                    /* no built-in mapping to remove */
-                }
-                try {
-                    vim.unmap(map.lhs, map.mode, {
-                        includeDefaults: true,
-                    });
-                } catch {
-                    /* no existing mapping to remove */
-                }
-                vim.mapCommand(
-                    map.lhs,
-                    'action',
-                    actionName,
-                    undefined,
-                    map.mode ? { context: map.mode } : undefined,
-                );
-            } else if (map.rhs) {
-                try {
-                    if (map.noremap) {
-                        vim.noremap(map.lhs, map.rhs, map.mode);
-                    } else {
-                        vim.map(map.lhs, map.rhs, map.mode);
-                    }
-                } catch {
-                    /* skip malformed mapping */
-                }
-            }
+        managesBufferOptions: !!options.localOptions,
+        onBufferRelease: (listener) => bufferKeymapManager?.onRelease(listener),
+        withEditorContext: (cm, callback) => {
+            const view = (
+                cm as
+                    { cm6?: import('@codemirror/view').EditorView } | undefined
+            )?.cm6;
+            if (view && options.editorContext)
+                options.editorContext.withView(view, callback);
+            else callback();
         },
+        onBufferWhichKeyLabel: (path, group, label) => {
+            options.bufferHints?.set(path, group, label);
+            options.onContextChange?.();
+        },
+        onKeymap: (map) =>
+            sharedWrite(() => {
+                commandCount++;
+                maps.push(map);
+                const taggedMap = map as LuaKeymap & { _applied?: boolean };
+                mapOperations.push({ type: 'map', map: taggedMap });
+
+                if (map.desc) {
+                    commandLabels.push({ key: map.lhs, label: map.desc });
+                }
+                if (map.isFn && map.callback) {
+                    const actionName = `lua-action-eager-${eagerActionCounter++}`;
+                    if (!eagerActionNames.has(actionName)) {
+                        vim.defineAction(actionName, map.callback);
+                        eagerActionNames.add(actionName);
+                    }
+                    vim.mapCommand(
+                        map.lhs,
+                        'action',
+                        actionName,
+                        undefined,
+                        map.mode ? { context: map.mode } : undefined,
+                    );
+                } else if (map.rhs) {
+                    try {
+                        if (map.noremap) {
+                            vim.noremap(map.lhs, map.rhs, map.mode);
+                        } else {
+                            vim.map(map.lhs, map.rhs, map.mode);
+                        }
+                    } catch {
+                        /* skip malformed mapping */
+                    }
+                }
+            }),
         onBufferKeymap: (filePath, map) => {
             commandCount++;
             if (!bufferKeymapManager) {
@@ -645,15 +669,14 @@ export async function loadInitLua(
                 return;
             }
             bufferKeymapManager.register(filePath, map);
-            if (map.desc) {
-                commandLabels.push({ key: map.lhs, label: map.desc });
-            }
         },
-        onKeymapDel: (map) => {
-            commandCount++;
-            unmaps.push(map);
-            mapOperations.push({ type: 'unmap', map });
-        },
+        onKeymapDel: (map) =>
+            sharedWrite(() => {
+                commandCount++;
+                unmaps.push(map);
+                mapOperations.push({ type: 'unmap', map });
+                vim.unmap(map.lhs, map.mode);
+            }),
         onBufferKeymapDel: (filePath, mode, lhs) => {
             commandCount++;
             if (!bufferKeymapManager) {
@@ -692,46 +715,30 @@ export async function loadInitLua(
                 return;
             }
         },
-        getLineCount: () => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
-            if (!view) return 0;
-            return view.editor.lineCount();
-        },
+        getLineCount: () => currentView()?.state.doc.lines ?? 0,
         getLines: (start, end) => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
-            if (!view) return [];
-            const editor = view.editor;
-            const lineCount = editor.lineCount();
-            const actualEnd = end === -1 ? lineCount : Math.min(end, lineCount);
-            const result: string[] = [];
-            for (let i = start; i < actualEnd; i++) {
-                result.push(editor.getLine(i));
-            }
-            return result;
+            const doc = currentView()?.state.doc;
+            if (!doc) return [];
+            const stop = end === -1 ? doc.lines : Math.min(end, doc.lines);
+            return Array.from(
+                { length: Math.max(0, stop - start) },
+                (_, index) => doc.line(start + index + 1).text,
+            );
         },
         setLines: (start, end, lines) => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
+            const view = currentView();
             if (!view) return;
-            const editor = view.editor;
-            const lineCount = editor.lineCount();
-            const actualEnd = end === -1 ? lineCount : Math.min(end, lineCount);
-            if (lineCount === 0 && actualEnd === 0) {
-                editor.replaceRange(lines.join('\n'), { line: 0, ch: 0 });
-                return;
-            }
-            const from = { line: start, ch: 0 };
-            const to =
-                actualEnd >= lineCount
-                    ? {
-                          line: lineCount - 1,
-                          ch: editor.getLine(lineCount - 1).length,
-                      }
-                    : { line: actualEnd, ch: 0 };
-            const text =
-                lines.length === 0
-                    ? ''
-                    : lines.join('\n') + (actualEnd < lineCount ? '\n' : '');
-            editor.replaceRange(text, from, to);
+            const doc = view.state.doc;
+            const stop = end === -1 ? doc.lines : Math.min(end, doc.lines);
+            const from =
+                start >= doc.lines ? doc.length : doc.line(start + 1).from;
+            const to = stop >= doc.lines ? doc.length : doc.line(stop + 1).from;
+            const insert = lines.length
+                ? (start >= doc.lines ? '\n' : '') +
+                  lines.join('\n') +
+                  (stop < doc.lines ? '\n' : '')
+                : '';
+            view.dispatch({ changes: { from, to, insert } });
         },
         autocmdManager,
         getVimApi: () => vim,
@@ -760,24 +767,10 @@ export async function loadInitLua(
             return searchState?.getOverlay() ? 1 : 0;
         },
         getCmAdapter: () => {
-            const external = getExternalEditor?.();
-            if (external) return getCmAdapterFromEditorView(external.view);
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
-            if (!view) return null;
-            return getCmAdapter(view);
+            const view = currentView();
+            return view ? getCmAdapterFromEditorView(view) : null;
         },
-        getEditorView: () => {
-            const external = getExternalEditor?.();
-            if (external) return external.view;
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
-            if (!view) return null;
-            const cm = getCmAdapter(view);
-            if (!cm) return null;
-            return (
-                (cm as { cm6?: import('@codemirror/view').EditorView }).cm6 ??
-                null
-            );
-        },
+        getEditorView: currentView,
         getLastVisualMode: () => {
             const view = app.workspace.getActiveViewOfType(MarkdownView);
             if (!view) return '';
@@ -866,46 +859,52 @@ export async function loadInitLua(
             delete vimState.marks[name];
             return true;
         },
-        getLine: (line) => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
-            if (!view) return null;
-            if (line < 0 || line >= view.editor.lineCount()) return null;
-            return view.editor.getLine(line);
-        },
+        getLine: (line) => currentView()?.state.doc.line(line + 1).text ?? '',
         setLine: (line, text) => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
+            const view = currentView();
             if (!view) return;
-            const editor = view.editor;
-            if (line < 0 || line >= editor.lineCount()) return;
-            const lineLen = editor.getLine(line).length;
-            editor.replaceRange(text, { line, ch: 0 }, { line, ch: lineLen });
+            const target = view.state.doc.line(line + 1);
+            view.dispatch({
+                changes: { from: target.from, to: target.to, insert: text },
+            });
         },
         replaceRange: (text, fromLine, fromCol, toLine, toCol) => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
+            const view = currentView();
             if (!view) return;
-            view.editor.replaceRange(
-                text,
-                { line: fromLine, ch: fromCol },
-                { line: toLine, ch: toCol },
-            );
+            view.dispatch({
+                changes: {
+                    from: view.state.doc.line(fromLine + 1).from + fromCol,
+                    to: view.state.doc.line(toLine + 1).from + toCol,
+                    insert: text,
+                },
+            });
         },
         getBufferOption: (name) => {
-            const external = getExternalEditor?.();
+            const external = getExternalEditor();
+            const local =
+                external && options.localOptions?.get(external.host.path, name);
+            if (local !== undefined && local !== null) return local;
             const view = app.workspace.getActiveViewOfType(MarkdownView);
             switch (name) {
                 case 'commentstring':
                     return commentstringFor(external?.host.filetype);
                 case 'filetype': {
                     if (external) return external.host.filetype;
-                    if (!view) return '';
+                    if (options.editorContext || !view) return '';
                     const file = view.file;
-                    return file?.extension ?? 'markdown';
+                    return file?.extension === 'md'
+                        ? 'markdown'
+                        : (file?.extension ?? 'markdown');
                 }
                 case 'expandtab':
-                    return true;
+                    return currentView()?.state.facet(indentUnit) !== '\t';
                 case 'shiftwidth':
+                    if (currentView())
+                        return getIndentUnit(currentView()!.state);
+                    return 4;
                 case 'tabstop':
                 case 'softtabstop':
+                    if (currentView()) return currentView()!.state.tabSize;
                     try {
                         return (
                             (
@@ -922,7 +921,7 @@ export async function loadInitLua(
                 case 'buftype':
                     return '';
                 case 'textwidth':
-                    return 0;
+                    return getTextwidth(currentView() ?? undefined);
                 case 'iminsert':
                     return 0;
                 case 'fileformat':
@@ -932,21 +931,13 @@ export async function loadInitLua(
             }
         },
         setBufferOption: (name, value) => {
-            if (!ENGINE_BACKED_BUFFER_OPTIONS.has(name)) return;
-            try {
-                vim.setOption(name, value);
-            } catch {
-                return;
-            }
+            const entry = getExternalEditor();
+            if (!entry)
+                throw new Error('A local option requires a current editor');
+            options.localOptions?.set(entry.host.path, name, value);
         },
-        getWindowOption: (name) => {
-            if (name !== 'wrap') return undefined;
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
-            if (!view) return undefined;
-            const cm = getCmAdapter(view);
-            if (!cm?.cm6) return undefined;
-            return cm.cm6.contentDOM.classList.contains('cm-lineWrapping');
-        },
+        getWindowOption: (name) =>
+            name === 'wrap' ? currentView()?.lineWrapping : undefined,
         pluginExists: (name) => {
             const stripped = name.replace(/\.nvim$/, '');
             const asPath = stripped.replace(/\./g, '/');
@@ -1319,26 +1310,37 @@ export async function loadInitLua(
             }));
         },
         getSelection: () => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
+            const view = currentView();
             if (!view) return null;
-            const sel = view.editor.getSelection();
-            return sel || null;
+            const range = view.state.selection.main;
+            return view.state.sliceDoc(range.from, range.to) || null;
         },
         getCursorPosition: () => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
+            const view = currentView();
             if (!view) return null;
-            const cursor = view.editor.getCursor();
-            return { line: cursor.line + 1, col: cursor.ch + 1 };
+            const head = view.state.selection.main.head;
+            const line = view.state.doc.lineAt(head);
+            return { line: line.number, col: head - line.from + 1 };
         },
         setCursorPosition: (line: number, col: number) => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
+            const view = currentView();
             if (!view) return;
-            view.editor.setCursor(line - 1, col - 1);
+            const target = view.state.doc.line(
+                Math.max(1, Math.min(line, view.state.doc.lines)),
+            );
+            view.dispatch({
+                selection: {
+                    anchor: Math.min(
+                        target.to,
+                        target.from + Math.max(0, col - 1),
+                    ),
+                },
+            });
         },
         getMode: () => {
-            const view = app.workspace.getActiveViewOfType(MarkdownView);
+            const view = currentView();
             if (!view) return 'n';
-            const cm = getCmAdapter(view);
+            const cm = getCmAdapterFromEditorView(view);
             if (!cm) return 'n';
             const cmState = (
                 cm as {

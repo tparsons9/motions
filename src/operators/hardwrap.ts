@@ -176,7 +176,7 @@ function hardWrapCore(
     operatorArgs: OperatorArgs,
     ranges: OperatorRange[],
 ): { endRow: number; fromLine: number } | null {
-    const tw = getTextwidth();
+    const tw = getTextwidth(cm.cm6);
 
     for (const range of ranges) {
         let from = range.anchor.line;

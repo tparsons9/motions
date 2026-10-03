@@ -21,6 +21,33 @@ export class BufferKeymapManager {
     private appliedMaps: LuaKeymap[] = [];
     private vimEngine: VimMapUnmap | null = null;
     private fnMapper: BufferFnMapper | null = null;
+    onChange: (() => void) | null = null;
+    private releaseListeners = new Set<(path: string) => void>();
+    onRelease(listener: (path: string) => void): void {
+        this.releaseListeners.add(listener);
+    }
+
+    getMaps(path: string | null): readonly LuaKeymap[] {
+        return path ? (this.bufferMaps.get(path) ?? []) : [];
+    }
+
+    release(path: string): void {
+        if (path === this.activeBuffer) this.switchBuffer(null);
+        this.bufferMaps.delete(path);
+        for (const listener of this.releaseListeners) listener(path);
+        this.onChange?.();
+    }
+
+    /** Shared writes must happen underneath the temporary local layer. */
+    withSharedMaps<T>(callback: () => T): T {
+        const path = this.activeBuffer;
+        this.switchBuffer(null);
+        try {
+            return callback();
+        } finally {
+            this.switchBuffer(path);
+        }
+    }
 
     register(filePath: string, keymap: LuaKeymap): void {
         let maps = this.bufferMaps.get(filePath);
@@ -37,6 +64,7 @@ export class BufferKeymapManager {
             this.unapplyKeymap(keymap.mode, keymap.lhs);
             this.applyKeymap(keymap);
         }
+        this.onChange?.();
     }
 
     unregister(filePath: string, mode: LuaKeymap['mode'], lhs: string): void {
@@ -47,6 +75,7 @@ export class BufferKeymapManager {
         if (filePath === this.activeBuffer) {
             this.unapplyKeymap(mode, lhs);
         }
+        this.onChange?.();
     }
 
     switchBuffer(newPath: string | null, vimEngine?: VimMapUnmap): void {
@@ -86,10 +115,15 @@ export class BufferKeymapManager {
             }
         }
         this.appliedMaps = [];
+        for (const path of this.bufferMaps.keys()) {
+            for (const listener of this.releaseListeners) listener(path);
+        }
+        this.releaseListeners.clear();
         this.bufferMaps.clear();
         this.activeBuffer = null;
         this.vimEngine = null;
         this.fnMapper = null;
+        this.onChange = null;
     }
 
     setVimEngine(engine: VimMapUnmap): void {
@@ -105,7 +139,10 @@ export class BufferKeymapManager {
     }
 
     private unapplyKeymap(mode: LuaKeymap['mode'], lhs: string): void {
-        if (this.vimEngine) {
+        if (
+            this.vimEngine &&
+            this.appliedMaps.some((m) => m.mode === mode && m.lhs === lhs)
+        ) {
             try {
                 this.vimEngine.unmap(lhs, mode);
             } catch {

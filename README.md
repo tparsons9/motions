@@ -108,3 +108,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide, testing s
 ## License
 
 [MIT](LICENSE) — Emile Bangma
+
+Attached editors support context-aware Lua buffer mappings, local indentation options, and which-key hints. See [Editor provider API](docs/development/editor-api.md) and [buffer-local hints](docs/configuration/which-key.md#buffer-local-hints). Language providers can also back `vim.lsp.buf.signature_help()`.

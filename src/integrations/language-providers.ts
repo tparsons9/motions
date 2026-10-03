@@ -2,7 +2,8 @@ import { Notice } from 'obsidian';
 import type { EditorView } from '@codemirror/view';
 import type { ActionFn, CmAdapter, MotionFn, VimPos } from '../types/vim-api';
 
-export type LanguageAction = 'hover' | 'definition' | 'codeAction' | 'format';
+export type LanguageAction =
+    'hover' | 'definition' | 'codeAction' | 'format' | 'signatureHelp';
 
 export interface LanguageDiagnostic {
     from: number;
@@ -22,6 +23,7 @@ export interface LanguageProvider {
     id: string;
     /** Whether this provider handles the code at `pos`. */
     matches(view: EditorView, pos: number): boolean;
+    signatureHelp?(view: EditorView, pos: number): void | Promise<void>;
     hover?(view: EditorView, pos: number): void | Promise<void>;
     definition?(view: EditorView, pos: number): void | Promise<void>;
     codeAction?(view: EditorView, pos: number): void | Promise<void>;
@@ -31,6 +33,7 @@ export interface LanguageProvider {
 }
 
 const ACTIONS: readonly LanguageAction[] = [
+    'signatureHelp',
     'hover',
     'definition',
     'codeAction',

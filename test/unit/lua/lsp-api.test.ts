@@ -33,6 +33,7 @@ function setup(options: { withProvider?: boolean; head?: number } = {}) {
         registry.register({
             id: 'host',
             matches: () => true,
+            signatureHelp: () => void calls.push('signatureHelp'),
             hover: () => void calls.push('hover'),
             definition: () => void calls.push('definition'),
             codeAction: () => void calls.push('codeAction'),
@@ -69,6 +70,12 @@ function evalLua(L: LuaState, source: string): unknown {
 }
 
 describe('vim.lsp and vim.diagnostic', () => {
+    it('routes signature help through the optional provider method', () => {
+        const { L, calls } = setup();
+        expect(evalLua(L, 'vim.lsp.buf.signature_help()')).toBe(true);
+        expect(calls).toEqual(['signatureHelp']);
+        destroyState(L);
+    });
     it('routes vim.lsp.buf calls to the provider', () => {
         const { L, calls } = setup();
 
