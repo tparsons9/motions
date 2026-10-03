@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Local mapping restoration** — remove only owned overlays, preserving shared mappings; initialize background attachments in their own buffer context and clear local state on reload and final close.
+- **Registry Vim dependency** — restore the published npm alias at version 6.4.2 so clean installs use the shipped bundle and types without a Git dependency's prepare script.
+    - Plugin: `package.json`, `package-lock.json`.
 
 ### Tests
 
