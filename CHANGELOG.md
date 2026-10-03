@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-10-03
+
 ### Added
 
 - **Contextual Lua configuration** — local mappings, options and which-key labels follow focused native and external editors; language providers may supply signature help.
