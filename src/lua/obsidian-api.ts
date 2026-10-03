@@ -201,6 +201,83 @@ export function injectObsidianApi(
     lua.lua_setfield(L, obsKeymapIndex, to_luastring('del'));
     lua.lua_setfield(L, obsidianIndex, to_luastring('keymap'));
 
+    const whichKeyLabel = (
+        state: lua_State,
+        index: number,
+        group: boolean,
+        key: string,
+        label: string,
+        context: 'editor' | 'global',
+        icon?: string,
+        color?: string,
+    ): void => {
+        let local = false;
+        if (lua.lua_istable(state, index)) {
+            lua.lua_getfield(state, index, to_luastring('buffer'));
+            if (
+                !lua.lua_isnil(state, -1) &&
+                !(lua.lua_isboolean(state, -1) && !lua.lua_toboolean(state, -1))
+            ) {
+                if (
+                    !(
+                        lua.lua_isboolean(state, -1) &&
+                        lua.lua_toboolean(state, -1)
+                    ) &&
+                    !(
+                        lua.lua_isnumber(state, -1) &&
+                        lua.lua_tonumber(state, -1) === 0
+                    )
+                ) {
+                    lauxlib.luaL_error(
+                        state,
+                        to_luastring('whichkey buffer must be true or 0'),
+                    );
+                }
+                local = true;
+            }
+            lua.lua_pop(state, 1);
+        }
+        if (local) {
+            const path = callbacks.getActiveFilePath?.();
+            if (!path || context === 'global') {
+                lauxlib.luaL_error(
+                    state,
+                    to_luastring(
+                        'Local which-key labels require a current editor and editor context',
+                    ),
+                );
+                return;
+            }
+            const modeRaw = readStringField(state, index, 'mode');
+            const mode = modeRaw
+                ? ((
+                      {
+                          n: 'normal',
+                          v: 'visual',
+                          x: 'visual',
+                          o: 'operatorPending',
+                          i: 'insert',
+                      } as Record<string, string>
+                  )[modeRaw] ?? modeRaw)
+                : undefined;
+            callbacks.onBufferWhichKeyLabel?.(path, group, {
+                key,
+                label,
+                icon,
+                color,
+                mode,
+            });
+        } else if (group)
+            callbacks.onWhichKeyGroupLabel?.(key, label, context, icon, color);
+        else
+            callbacks.onWhichKeyCommandLabel?.(
+                key,
+                label,
+                context,
+                icon,
+                color,
+            );
+    };
     // vim.obsidian.whichkey sub-table
     lua.lua_newtable(L);
     const obsWhichkeyIndex = lua.lua_gettop(L);
@@ -235,7 +312,7 @@ export function injectObsidianApi(
         }
         const leaderKey = getLeaderKey();
         const key = replaceLeaderKey(keyRaw, leaderKey);
-        callbacks.onWhichKeyGroupLabel?.(key, label, context, icon, color);
+        whichKeyLabel(state, 3, true, key, label, context, icon, color);
         return 0;
     });
     lua.lua_setfield(L, obsWhichkeyIndex, to_luastring('set_group'));
@@ -270,7 +347,7 @@ export function injectObsidianApi(
         }
         const leaderKey = getLeaderKey();
         const key = replaceLeaderKey(keyRaw, leaderKey);
-        callbacks.onWhichKeyCommandLabel?.(key, label, context, icon, color);
+        whichKeyLabel(state, 3, false, key, label, context, icon, color);
         return 0;
     });
     lua.lua_setfield(L, obsWhichkeyIndex, to_luastring('set_label'));
@@ -309,7 +386,10 @@ export function injectObsidianApi(
             const icon = readStringField(state, entryIndex, 'icon');
             const color = readStringField(state, entryIndex, 'color');
             if (group) {
-                callbacks.onWhichKeyGroupLabel?.(
+                whichKeyLabel(
+                    state,
+                    entryIndex,
+                    true,
                     key,
                     group,
                     context,
@@ -317,7 +397,10 @@ export function injectObsidianApi(
                     color,
                 );
             } else if (desc) {
-                callbacks.onWhichKeyCommandLabel?.(
+                whichKeyLabel(
+                    state,
+                    entryIndex,
+                    false,
                     key,
                     desc,
                     context,

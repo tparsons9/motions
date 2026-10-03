@@ -276,6 +276,15 @@ export class AutocmdManager {
         this.augroups.clear();
     }
 
+    private contextRunner:
+        ((path: string, callback: () => void) => void) | null = null;
+
+    setContextRunner(
+        runner: (path: string, callback: () => void) => void,
+    ): void {
+        this.contextRunner = runner;
+    }
+
     fire(event: string, data?: AutocmdFireOptions): void {
         if (this.firingDepth > 0) return;
         this.firingDepth++;
@@ -303,7 +312,9 @@ export class AutocmdManager {
                 data: payload,
             };
             try {
-                entry.callback(eventData);
+                if (this.contextRunner)
+                    this.contextRunner(file, () => entry.callback(eventData));
+                else entry.callback(eventData);
             } catch (error) {
                 console.error('Vim Motions: autocmd callback error', error);
             }

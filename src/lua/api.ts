@@ -150,6 +150,20 @@ export interface LuaGlobalKeymap {
 }
 
 export interface VimApiCallbacks {
+    managesBufferOptions?: boolean;
+    onBufferRelease?: (listener: (path: string) => void) => void;
+    withEditorContext?: (cm: unknown, callback: () => void) => void;
+    onBufferWhichKeyLabel?: (
+        path: string,
+        group: boolean,
+        label: {
+            key: string;
+            label: string;
+            icon?: string;
+            color?: string;
+            mode?: string;
+        },
+    ) => void;
     observeKeys?: (handler: (key: string) => void) => () => void;
     onSettingOverride: (
         key: string,
@@ -1299,6 +1313,7 @@ export function commentstringFor(filetype: string | null | undefined): string {
 const bufferOptionShadow = new Map<string, Map<string, unknown>>();
 
 function readBufferOption(callbacks: VimApiCallbacks, key: string): unknown {
+    if (callbacks.managesBufferOptions) return callbacks.getBufferOption?.(key);
     const filePath = callbacks.getActiveFilePath?.() ?? '';
     const shadow = bufferOptionShadow.get(filePath);
     if (shadow?.has(key)) return shadow.get(key);
@@ -1310,6 +1325,10 @@ function writeBufferOption(
     key: string,
     value: unknown,
 ): void {
+    if (callbacks.managesBufferOptions) {
+        callbacks.setBufferOption?.(key, value);
+        return;
+    }
     const filePath = callbacks.getActiveFilePath?.() ?? '';
     let shadow = bufferOptionShadow.get(filePath);
     if (!shadow) {
@@ -1346,6 +1365,11 @@ export function injectVimApi(
     const globals = new Map<string, unknown>();
     const bufferVars = new Map<string, Map<string, unknown>>();
     const bufferKeymaps = new Map<string, LuaKeymap[]>();
+    callbacks.onBufferRelease?.((path) => {
+        bufferVars.delete(path);
+        bufferKeymaps.delete(path);
+        bufferOptionShadow.delete(path);
+    });
     const namespacesByName = new Map<string, number>();
     let nextNamespaceId = 1;
     const allocateNamespace = (requested: number): number => {
@@ -2206,8 +2230,11 @@ export function injectVimApi(
                     }
                     bufferFilePath = callbacks.getActiveFilePath?.() ?? null;
                     if (!bufferFilePath) {
-                        console.warn(
-                            'Vim Motions: vim.keymap.set buffer option requires an active file',
+                        return lauxlib.luaL_error(
+                            state,
+                            to_luastring(
+                                'vim.keymap.set buffer option requires a current editor',
+                            ),
                         );
                     } else {
                         useBufferKeymap = true;
@@ -2253,11 +2280,17 @@ export function injectVimApi(
                         });
                     }
                     lua.lua_rawgeti(L, lua.LUA_REGISTRYINDEX, ref);
-                    const status = withInstructionGuard(
-                        L,
-                        EXPR_INSTRUCTION_LIMIT,
-                        () => lua.lua_pcall(L, 0, 1, 0),
-                    );
+                    let status: number = lua.LUA_OK;
+                    const invoke = () => {
+                        status = withInstructionGuard(
+                            L,
+                            EXPR_INSTRUCTION_LIMIT,
+                            () => lua.lua_pcall(L, 0, 1, 0),
+                        );
+                    };
+                    if (callbacks.withEditorContext)
+                        callbacks.withEditorContext(cm, invoke);
+                    else invoke();
                     if (savedVimV) restoreVimVContext(savedVimV);
                     if (status !== lua.LUA_OK) {
                         const message = lua.lua_tolstring(L, -1);
@@ -2299,11 +2332,17 @@ export function injectVimApi(
                         });
                     }
                     lua.lua_rawgeti(L, lua.LUA_REGISTRYINDEX, ref);
-                    const status = withInstructionGuard(
-                        L,
-                        CALLBACK_INSTRUCTION_LIMIT,
-                        () => lua.lua_pcall(L, 0, 0, 0),
-                    );
+                    let status: number = lua.LUA_OK;
+                    const invoke = () => {
+                        status = withInstructionGuard(
+                            L,
+                            CALLBACK_INSTRUCTION_LIMIT,
+                            () => lua.lua_pcall(L, 0, 0, 0),
+                        );
+                    };
+                    if (callbacks.withEditorContext)
+                        callbacks.withEditorContext(cm, invoke);
+                    else invoke();
                     if (savedVimV) restoreVimVContext(savedVimV);
                     if (status !== lua.LUA_OK) {
                         const message = lua.lua_tolstring(L, -1);
@@ -2388,8 +2427,11 @@ export function injectVimApi(
                     }
                     bufferFilePath = callbacks.getActiveFilePath?.() ?? null;
                     if (!bufferFilePath) {
-                        console.warn(
-                            'Vim Motions: vim.keymap.del buffer option requires an active file',
+                        return lauxlib.luaL_error(
+                            state,
+                            to_luastring(
+                                'vim.keymap.del buffer option requires a current editor',
+                            ),
                         );
                     } else {
                         useBufferKeymap = true;

@@ -946,3 +946,11 @@ npm run test:unit
 ## Personal fork identity
 
 The fork uses `vim-motions-tparsons9`, distinct from the registered upstream `vim-motions` ID. Keep the fork ID when syncing; the reconciler preserves it. Runtime plugin lookups, command IDs, and test registry fixtures must use the fork ID. CSS classes and public editor/picker API events retain their established names for connector compatibility. Follow the README migration steps for settings and hotkeys. After this PR merges, dispatch the release workflow for a new numeric patch release; do not reuse the old `1.0.2` tag or publish its old-ID draft as the migration release.
+
+### Contextual Lua editor configuration
+
+- `src/lua/editor-context.ts` resolves focused views and scopes event/keymap callbacks without moving focus.
+- `src/lua/buffer.ts` owns temporary mapping overlays; shared mapping writes must suspend that layer.
+- `src/lua/buffer-hints.ts` composes buffer descriptions and groups over shared hints.
+- `src/lua/local-options.ts` owns per-buffer option values and removable per-view indentation compartments.
+- External attachment, focus, reload, and release feed these mechanisms from the plugin lifecycle. Filetype identifies language independently of editor ownership.

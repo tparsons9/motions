@@ -2410,3 +2410,13 @@ The Lua runtime runs in a sandboxed Lua 5.3 environment (a browser-only version 
 ## Error handling
 
 Syntax errors and runtime errors show an Obsidian Notice with the error message. The plugin continues to load normally. Check the developer console for details.
+
+## Configuring external code editors
+
+The bundled engine supports the same current-buffer `vim.b`, `vim.bo`, `vim.keymap`, and buffer-content APIs in attached CodeMirror editors. `FileType` callbacks target their event buffer, including background attachment; keymap callbacks target their invoking editor. Native Markdown buffers report `markdown`. Buffer-local operations without a current editor fail rather than becoming global mappings.
+
+Use buffer-local `expandtab`, `tabstop`, `shiftwidth`, and `textwidth` for behavioral overrides. Other compatibility values can round-trip without implementing the corresponding editor behavior; in particular, independent `softtabstop` editing and window-local `wrap` writes are not implemented. Configuration reload removes the old buffer state and reinitializes open buffers.
+
+`vim.lsp.buf.signature_help()` dispatches to the optional `signatureHelp` language-provider method. Like format and quick fix, this function uses the registered provider; Motions does not start a language server.
+
+See [[editor-api]] and [[which-key#Buffer-local hints]]. CCC supplies a complete `examples/lua/coding.lua` module for code navigation, language options, project actions, and contextual hints. Copy it into `lua/` next to `init.lua`, set the shared leader first, then call `require("coding").setup()`.

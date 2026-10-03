@@ -96,6 +96,7 @@ Markdown-specific features stay out: table navigation, Markdown folding, the Mar
 const dispose = api.registerLanguageProvider({
     id: 'my-plugin',
     matches: (view, pos) => isCode(view, pos),
+    signatureHelp: (view, pos) => showSignature(view, pos),
     hover: (view, pos) => showHover(view, pos),
     definition: (view, pos) => goToDefinition(view, pos),
     codeAction: (view, pos) => quickFix(view, pos),
@@ -108,7 +109,7 @@ Every method is optional. `matches` decides where the provider applies, so a pro
 
 Unimplemented `vim.lsp`/`vim.diagnostic` functions keep Neovim-compatible warn-once behaviour: calling one logs a line and returns a no-op instead of failing, so an existing configuration keeps running.
 
-This drives `gd`, `<C-]>` and `K`, which fall back to Markdown link navigation where no provider matches; `]d`/`[d`, which wrap around the document; and the Lua functions `vim.lsp.buf.hover`, `.definition`, `.declaration`, `.type_definition`, `.code_action` and `.format`, plus `vim.diagnostic.get`, `.count`, `.goto_next`, `.goto_prev`, `.jump` and `.severity`. There is no `vim.lsp.get_clients`: nothing here is an LSP client.
+This drives `gd`, `<C-]>` and `K`, which fall back to Markdown link navigation where no provider matches; `]d`/`[d`, which wrap around the document; and the Lua functions `vim.lsp.buf.hover`, `.definition`, `.declaration`, `.type_definition`, `.code_action`, `.format` and `.signature_help`, plus `vim.diagnostic.get`, `.count`, `.goto_next`, `.goto_prev`, `.jump` and `.severity`. There is no `vim.lsp.get_clients`: nothing here is an LSP client.
 
 The newest provider whose `matches` returns true and which implements the method wins. Registering the same `id` again replaces the earlier provider. Exceptions and rejected promises are caught, logged and shown in a notice.
 
@@ -121,5 +122,15 @@ The newest provider whose `matches` returns true and which implements the method
 ## Limits
 
 - Bundled fork mode only.
-- `path` is informational: marks, harpoon and the jump list still key on vault paths, so `file:` editors do not take part.
+- `path` identifies Lua buffer state; marks, harpoon and the jump list still key on vault paths, so `file:` editors do not take part.
 - One host per view. Attaching again replaces the previous handle.
+
+## Focus and Lua configuration
+
+Lua current-buffer operations resolve the focused editor, including external files. `FileType` runs in the attached editor's context even when it is attached in the background. Configuration reload replays `FileType` for open buffers; it does not require refocusing them. Use `vim.bo.filetype`, rather than editor ownership, to distinguish Markdown from code: a host should report `markdown` for a README.
+
+`vim.keymap.set(..., { buffer = true })` and `buffer = 0` create local overlays. Removing or leaving an overlay reveals the shared mapping, including Lua callbacks and nonrecursive mappings. Buffer-local descriptions and `vim.ob.whichkey` labels follow the active editor. Buffer numbers other than zero remain unsupported.
+
+The supported behavioral local options are `expandtab`, `tabstop`, `shiftwidth`, and `textwidth`. Indentation overrides reconfigure only the relevant CodeMirror views; they never persist changes to plugin settings. Multiple views of one path share buffer configuration. Detach restores host facets; closing the last view releases buffer maps, labels, variables, and options. `softtabstop` remains a compatibility value, not independent insert-mode soft-tab behavior.
+
+When a view starts editing a different path or language, call `attach(view, newHost)` again. Do not mutate an attached host object in place. Markdown-specific rendering extensions remain limited to native Markdown editors; retaining Markdown Lua configuration does not turn an external editor into an Obsidian MarkdownView.

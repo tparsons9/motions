@@ -4,6 +4,10 @@ This document tracks known limitations, architectural constraints, and intention
 
 For previously fixed issues, see [Resolved Issues](#resolved-issues) at the bottom of this document.
 
+## Local configuration in attached editors
+
+Attached editors support focused-buffer Lua maps, metadata, labels, and local `expandtab`, `tabstop`, `shiftwidth`, and `textwidth` overrides. They use buffer zero/current-buffer APIs; arbitrary numbered buffers remain unsupported. `softtabstop` has no independent editing implementation, and window-local `wrap` writes remain compatibility values. External Markdown editors keep Markdown Lua configuration but do not acquire native Obsidian Markdown rendering, tables, or vault-only navigation. The Neovim backend is outside this integration.
+
 ## Editors provided by other plugins (editor API)
 
 **Status**: Implemented for bundled fork mode. See [`docs/development/editor-api.md`](docs/development/editor-api.md).
