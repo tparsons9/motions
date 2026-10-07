@@ -1,5 +1,7 @@
 import { mappingSource } from '../configuration/source';
 import type { MappingSource } from '../configuration/types';
+// fork: Lua configuration for non-editor scopes.
+import { injectViewLuaApi } from '../integrations/view-lua-api';
 import { lua, lauxlib, to_jsstring, to_luastring } from '../lib/fengari';
 import type { lua_State } from '../lib/fengari';
 import type {
@@ -2189,6 +2191,7 @@ export function injectVimApi(
         getLeaderKey,
         callbacks.runner,
     );
+    injectViewLuaApi(L, vimTableIndex, callbacks); // fork: view namespace.
 
     lua.lua_newtable(L);
     const keymapIndex = lua.lua_gettop(L);

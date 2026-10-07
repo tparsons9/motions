@@ -2424,3 +2424,24 @@ See [[editor-api]] and [[which-key#Buffer-local hints]]. CCC supplies a complete
 ## Configuration tooling
 
 Compatible Copilot Codeblocks releases can consume Motions' optional [[configuration-api|configuration API]] for LuaLS definitions and loaded keymap inspection. Definitions target the bundled Lua 5.3 runtime and mark unsupported compatibility stubs. Inspection is read-only and reports mapping sources, observed replacements, buffer shadowing, prefix overlaps, and potential Obsidian shortcut conflicts. It does not inspect native Neovim or execute unsaved configuration.
+
+## Fork view scopes
+
+Non-editor hosts can expose named scopes through [[view-api]]. Configure them even
+before the host plugin loads; mappings wait until the scope registers.
+
+```lua
+vim.ob.view.keymap.set("zotflow.reader", "reading", "J", "zotflow.reader.scroll", {args={dir="down", speed=2}, desc="Scroll faster"})
+vim.ob.view.keymap.set("zotflow.reader", {"reading", "caret"}, "Q", function(args, ctx)
+    vim.ob.run_command("zotflow:study-capture-question")
+end, {desc="Ask a question"})
+vim.ob.view.whichkey.add("zotflow.reader", {{"m", group="Marks", mode="reading", color="#cba6f7", detail="Remember a location"}})
+vim.ob.view.keymap.del("zotflow.reader", "reading", "J")
+local paper = vim.ob.context("zotflow") -- nil outside a source note
+local actions = vim.ob.actions.list("zotflow.")
+-- vim.ob.actions.run("zotflow.study.panel", {})
+```
+
+Function callbacks receive args and count/mode/scope context. Config reload releases
+function references, queued mappings, groups and owned actions. `del` hides lower
+layers for that mode/lhs. `?` expands which-key descriptions for a pending sequence.

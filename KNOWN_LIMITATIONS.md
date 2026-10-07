@@ -1988,7 +1988,7 @@ The Escape key follows a symmetric context stack: modal → vim overlay → moda
 
 - **`<input>` elements not supported** — only `<textarea>` elements are replaced. Inputs have too many conflicts with host plugin keyboard handling (Enter to submit, Tab to navigate, picker keybindings).
 - **No `contenteditable` support** — contenteditable divs conflict with CM6 internals (which uses contenteditable itself).
-- **No `<iframe>` support** — cross-origin iframe textareas are inaccessible; same-origin iframes would need per-document observer installation.
+- **Iframe textarea observation remains unsupported** — cross-origin iframe textareas are inaccessible; same-origin iframes would need per-document observer installation.
 - **Framework re-render conflicts** — plugins using React, Svelte, or other frameworks may re-render the textarea, removing the CM6 overlay. The manager detects removal but does not retry replacement.
 - **Programmatic value changes not detected** — if a host plugin sets `textarea.value` programmatically while the CM6 overlay is active, the overlay does not pick up the change. The synced value on blur will overwrite the programmatic change.
 - **Popout windows not supported** — the `focusin` listener is installed on the main document only. Textareas in popout windows are not detected.
@@ -2525,3 +2525,15 @@ Block visual operations that were already working: delete (`d`), yank (`y`), pas
 ## ~~`CTRL-V $ d` cursor overshoot~~ (Fixed)
 
 **Status**: Fixed. After a block visual delete to end-of-line (`CTRL-V jj $ d`), the cursor column is now clamped to the remaining line length. Previously `cursorMin(head, anchor)` preserved the original anchor column, which could exceed the shortened line length after deletion.
+
+## Fork non-editor views
+
+Hosts can route same-origin iframe keys explicitly through the version 1 view API.
+This does not install iframe textarea observers or permit cross-origin access.
+The fork adds `vim.ob.view.keymap.set/del`, `vim.ob.view.whichkey.add`,
+`vim.ob.actions.run/list`, and `vim.ob.context`; Neovim API parity counts are unchanged.
+
+The fork view API now limits global fall-through to leader/workspace mappings;
+mode definitions can disable it for temporary pickers. Leader menus do not
+execute a bare leader action on timeout. View hints use a responsive grid and
+restore immediate menus when focus returns.

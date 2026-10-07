@@ -1,0 +1,6 @@
+[
+    { "keys": ["2", "j"], "action": "down", "count": 2 },
+    { "keys": ["g", "g"], "action": "top", "count": 0 },
+    { "keys": ["1", "0", "j"], "action": "down", "count": 10 },
+    { "keys": ["<Space>", "q"], "action": "question", "count": 0 }
+]

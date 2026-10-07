@@ -1,3 +1,5 @@
+// fork: keys in a registered view belong to its scope.
+import { ownsViewKeyTarget } from '../integrations/view-key-targets';
 import type { App } from 'obsidian';
 import type { VimMotionsSettings } from '../settings';
 import type { VimModeTracker } from '../vim/mode-tracker';
@@ -253,6 +255,17 @@ export class GlobalKeyHandler {
         };
     }
 
+    // fork: synchronous dispatch for iframe/non-editor scope fall-through.
+    dispatchEntry(entry: GlobalMapEntry, count: number): void {
+        const previous = this.count;
+        this.count = count;
+        try {
+            this.dispatch(entry, { inFileExplorer: false, sendKey: () => {} });
+        } finally {
+            this.count = previous;
+        }
+    }
+
     private dispatch(entry: GlobalMapEntry, ctx: GlobalDispatchContext): void {
         const action = entry.action;
         if (action.type === 'obcommand') {
@@ -274,6 +287,7 @@ export class GlobalKeyHandler {
 
     private onKeydown(e: KeyboardEvent, doc: Document): void {
         if (this.translatedFileExplorerEvents.delete(e)) return;
+        if (ownsViewKeyTarget(e.target)) return; // fork: the view host routes these.
 
         // Observe before workspace/editor/hint gates, including insert-mode
         // text that does not emit the adapter's vim-keypress event.
@@ -290,6 +304,12 @@ export class GlobalKeyHandler {
         }
 
         if (e.isComposing) return;
+
+        // ZotFlow: modal results own y/dd too; cancel any workspace chord.
+        if (isModalOpen(doc)) {
+            this.resetSequence();
+            return;
+        }
 
         const key = normalizeKeyEvent(e);
         const prospectiveSeq = [...this.keyBuffer, key].join('');

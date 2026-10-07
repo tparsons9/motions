@@ -1,6 +1,8 @@
 import { ConfigurationTracker } from './configuration/tracker';
 import { createConfigurationApi } from './configuration/inspect';
 import type { ConfigurationApi } from './configuration/types';
+// fork: non-editor view integration.
+import { installViewApi, uninstallViewApi } from './integrations/view-api';
 import {
     FileSystemAdapter,
     MarkdownView,
@@ -3019,6 +3021,41 @@ export default class VimMotionsPlugin extends Plugin {
             },
         );
         installEditorApi(this.editorApi);
+        // fork: non-editor scopes reuse global mappings and status reporting.
+        installViewApi({
+            leader: () => this.leaderRegistry?.getLeaderKey() ?? ' ',
+            timeout: () =>
+                Number(getVimApi()?.getOption?.('timeoutlen') ?? 1000),
+            hints: () => ({
+                enabled: this.settings.whichKeyMode !== 'off',
+                delay: this.settings.whichKeyDelay,
+                order: this.settings.whichKeySortOrder,
+            }),
+            setMode: (mode, label) =>
+                this.modeTracker?.setViewMode(mode, label),
+            globalMappings: (modes) =>
+                (this.globalRegistry?.getAllEntries() ?? [])
+                    .filter(
+                        (entry) =>
+                            entry.keys.startsWith('<C-w>') ||
+                            entry.keys.startsWith(
+                                this.leaderRegistry?.getLeaderKey() ?? ' ',
+                            ) ||
+                            entry.keys.startsWith('<leader>') ||
+                            entry.keys.startsWith('<Space>'),
+                    )
+                    .map((entry) => ({
+                        modes,
+                        lhs: entry.keys,
+                        action: `view.global:${entry.keys}`,
+                        desc: entry.label ?? entry.name ?? entry.keys,
+                    })),
+            runGlobal: (key, count) => {
+                const entry = this.globalRegistry?.resolve(key);
+                if (entry?.type === 'exact')
+                    this.globalKeyHandler?.dispatchEntry(entry.entry, count);
+            },
+        });
 
         this.initializing = false;
         this.app.workspace.trigger(EDITOR_API_READY_EVENT);
@@ -3182,6 +3219,7 @@ export default class VimMotionsPlugin extends Plugin {
 
         if (this.editorApi) {
             this.app.workspace.trigger(EDITOR_API_UNLOAD_EVENT);
+            uninstallViewApi(); // fork: release view instances first.
             uninstallEditorApi();
             this.editorApi = null;
         }

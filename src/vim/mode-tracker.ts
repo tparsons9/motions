@@ -51,6 +51,7 @@ export class VimModeTracker {
     private searchCountEl: HTMLElement | null = null;
     private modeLabels: Record<string, string>;
     private currentMode = 'normal';
+    private viewMode: { mode: string; label?: string } | null = null; // fork: focused non-editor mode.
     private externalMode: string | null = null;
     private recording: string | null = null;
     private modeHandler: ((mode: VimModeChange) => void) | null = null;
@@ -403,9 +404,17 @@ export class VimModeTracker {
         this.updateDisplay();
     }
 
+    // fork: focused view modes take precedence over the RPC backend.
+    setViewMode(mode: string | null, label?: string): void {
+        this.viewMode = mode ? { mode, label } : null;
+        this.updateDisplay();
+    }
+
     private updateDisplay(): void {
-        const displayedMode = this.externalMode ?? this.currentMode;
+        const displayedMode =
+            this.viewMode?.mode ?? this.externalMode ?? this.currentMode;
         const modeLabel =
+            this.viewMode?.label ??
             this.modeLabels[displayedMode] ??
             DEFAULT_MODE_LABELS[displayedMode] ??
             displayedMode.toUpperCase();

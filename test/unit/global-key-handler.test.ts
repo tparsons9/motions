@@ -23,6 +23,7 @@ type KeydownListener = (e: Partial<KeyboardEvent>) => void;
 let capturedListener: KeydownListener | null = null;
 let pointerListener: ((e: Partial<PointerEvent>) => void) | null = null;
 let focusListener: ((e: Partial<FocusEvent>) => void) | null = null;
+let modalOpen = false;
 let activeViewType = 'graph';
 let rootSplitViewType = 'markdown';
 let focusedElement: Element | null = null;
@@ -75,7 +76,8 @@ function makeMockDoc(): Document {
         get activeElement() {
             return focusedElement;
         },
-        querySelector: () => null,
+        querySelector: (selector: string) =>
+            selector === '.modal-container' && modalOpen ? {} : null,
         defaultView: {
             KeyboardEvent: MockKeyboardEvent,
         },
@@ -172,6 +174,7 @@ describe('GlobalKeyHandler', () => {
         capturedListener = null;
         pointerListener = null;
         focusListener = () => {};
+        modalOpen = false;
         activeViewType = 'graph';
         rootSplitViewType = 'markdown';
         focusedElement = null;
@@ -191,6 +194,33 @@ describe('GlobalKeyHandler', () => {
         handler.destroy();
         vi.useRealTimers();
         vi.clearAllMocks();
+    });
+
+    it('leaves modal confirmation and delete keys alone, including pending hints', () => {
+        const action = vi.fn();
+        registry.addMapping(
+            'yf',
+            { type: 'builtin', fn: action },
+            { source: 'default', gate: 'hint' },
+        );
+        registry.addMapping(
+            'df',
+            { type: 'builtin', fn: action },
+            { source: 'default', gate: 'hint' },
+        );
+        // Negative control: workspace hints still work outside a modal.
+        pressKey('y');
+        pressKey('f');
+        expect(action).toHaveBeenCalledTimes(1);
+        pressKey('d');
+        modalOpen = true;
+        for (const key of ['y', 'd', 'd', 'f', 'Escape']) {
+            expect(pressKey(key).preventDefault).not.toHaveBeenCalled();
+        }
+        expect(action).toHaveBeenCalledTimes(1);
+        modalOpen = false;
+        pressKey('f');
+        expect(action).toHaveBeenCalledTimes(1);
     });
 
     describe('file explorer navigation', () => {

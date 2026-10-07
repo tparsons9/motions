@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Fork-only non-editor view API: scoped modes, counted key sequences, dynamic maps, Lua overrides, which-key swatches/details and source-note contexts. Focused view status takes precedence over RPC status.
+
+### Fixed
+
+- ZotFlow: modal results retain `y` and `dd`; global hint chords and pending workspace sequences no longer consume modal confirmation/deletion keys.
+- View hints use a responsive grid, isolate temporary label modes from global bindings, and reappear on refocus. A leader timeout no longer runs the bare leader action. Forwarded iframe keys establish focus, and scope actions run immediately ahead of longer global sequences sharing their prefix.
+
+### Tests
+
+- Modal hint isolation regression fails before the fix and passes with it; ordinary workspace hint chords remain usable.
+- Regression coverage for leader timeouts, label isolation, and immediate hints on refocus. Forwarded-key focus and scope/global prefix tests failed before the fix (`unhandled` and `pending`, respectively, instead of `consumed`) and pass after restoration.
+- Shared ZotFlow/Motions routing fixtures and Lua state cleanup coverage for view mappings.
+
+### Documentation
+
+- Added the view API contract and Lua configuration examples; clarified explicit iframe routing.
+
 ## [1.1.0] - 2026-10-07
 
 ## [1.0.4] - 2026-10-03
