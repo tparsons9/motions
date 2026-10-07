@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
+- Configuration palette assertions use the manifest display name. Both reject deliberately broken command titles in a live Obsidian negative control.
+
 - Four review regressions demonstrated failures before the fixes: two post-detach status updates, one stale timeout action, `count: 3`/`reading` instead of `0`/`labels`, and `"001"` coerced to `1`.
 
 - Modal hint isolation regression fails before the fix and passes with it; ordinary workspace hint chords remain usable.

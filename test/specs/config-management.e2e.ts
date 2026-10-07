@@ -1,3 +1,4 @@
+import manifest from '../../manifest.json';
 import { browser, expect } from '@wdio/globals';
 import { obsidianPage } from 'wdio-obsidian-service';
 import {
@@ -409,8 +410,8 @@ describe('Config management commands (#168)', function () {
 
         it('should appear in the palette as the name requested in #182', async function () {
             const name = await commandName('open-configuration-directory');
-            expect(name).toBe(
-                'Vim Motions: Open configuration directory in system explorer',
+            await expect(name).toBe(
+                `${manifest.name}: Open configuration directory in system explorer`,
             );
         });
 
@@ -419,8 +420,8 @@ describe('Config management commands (#168)', function () {
                 'open-configuration-directory',
             );
             const fileName = await commandName('open-configuration');
-            expect(fileName).toBe(
-                'Vim Motions: Open configuration in default editor',
+            await expect(fileName).toBe(
+                `${manifest.name}: Open configuration in default editor`,
             );
             // Without this, a missing command yields null, and null !== fileName
             // would satisfy the inequality below while proving nothing.
