@@ -14,9 +14,10 @@ import { runCleanups } from '../util/cleanup';
 
 function readValue(L: lua_State, index: number, depth = 0): unknown {
     if (depth > 12) return null;
-    if (lua.lua_isstring(L, index) && !lua.lua_isnumber(L, index))
+    if (lua.lua_type(L, index) === lua.LUA_TSTRING)
         return readLuaString(L, index);
-    if (lua.lua_isnumber(L, index)) return lua.lua_tonumber(L, index);
+    if (lua.lua_type(L, index) === lua.LUA_TNUMBER)
+        return lua.lua_tonumber(L, index);
     if (lua.lua_isboolean(L, index)) return lua.lua_toboolean(L, index);
     if (!lua.lua_istable(L, index)) return null;
     const abs = lua.lua_absindex(L, index);

@@ -13,10 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- View API review: detached handles cannot revive UI; focus transfers cancel stale sequences; direct actions use current mode without stale counts; Lua numeric strings retain their type.
+    - Plugin: `src/integrations/view-api.ts`, `src/integrations/view-lua-api.ts`.
+
 - ZotFlow: modal results retain `y` and `dd`; global hint chords and pending workspace sequences no longer consume modal confirmation/deletion keys.
 - View hints use a responsive grid, isolate temporary label modes from global bindings, and reappear on refocus. A leader timeout no longer runs the bare leader action. Forwarded iframe keys establish focus, and scope actions run immediately ahead of longer global sequences sharing their prefix.
 
 ### Tests
+
+- Four review regressions demonstrated failures before the fixes: two post-detach status updates, one stale timeout action, `count: 3`/`reading` instead of `0`/`labels`, and `"001"` coerced to `1`.
 
 - Modal hint isolation regression fails before the fix and passes with it; ordinary workspace hint chords remain usable.
 - Regression coverage for leader timeouts, label isolation, and immediate hints on refocus. Forwarded-key focus and scope/global prefix tests failed before the fix (`unhandled` and `pending`, respectively, instead of `consumed`) and pass after restoration.
@@ -24,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Added the view API contract and Lua configuration examples; clarified explicit iframe routing.
+- Updated `AGENTS.md`, `CONTRIBUTING.md`, `README.md`, `KNOWN_LIMITATIONS.md`, `CHANGELOG.md`, `docs/development/index.md`, `docs/development/view-api.md`, and `docs/configuration/lua-config.md` for the view API contract, lifecycle, Lua configuration and explicit iframe routing.
 
 ## [1.1.0] - 2026-10-07
 

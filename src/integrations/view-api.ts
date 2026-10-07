@@ -38,11 +38,16 @@ export class ViewApi implements MotionsViewApi {
     >();
     private scopes = new Map<string, MotionsViewScope>();
     private active: MotionsActionContext | null = null;
+    private disposed = false;
+    private assertLive(): void {
+        if (this.disposed) throw new Error('View API is disposed');
+    }
     constructor(private hooks: ViewApiHooks) {}
     getLeaderKey(): string {
         return this.hooks.leader();
     }
     registerAction(def: MotionsViewActionDef): () => void {
+        this.assertLive();
         this.actions.set(def.id, def);
         return () => {
             if (this.actions.get(def.id) === def) this.actions.delete(def.id);
@@ -74,6 +79,7 @@ export class ViewApi implements MotionsViewApi {
         name: string,
         resolve: (path: string) => MotionsBufferContext | null,
     ): () => void {
+        this.assertLive();
         this.contexts.set(name, resolve);
         return () => {
             if (this.contexts.get(name) === resolve) this.contexts.delete(name);
@@ -83,10 +89,13 @@ export class ViewApi implements MotionsViewApi {
         return this.contexts.get(name)?.(path) ?? null;
     }
     registerScope(def: MotionsViewScopeDef): MotionsViewScope {
+        this.assertLive();
         this.scopes.get(def.id)?.dispose();
+        let disposed = false;
         const instances = new Set<MotionsViewInstance>();
         const scope: MotionsViewScope = {
             attach: (options) => {
+                if (disposed) throw new Error('View scope is disposed');
                 const containerEl = options.containerEl;
                 const isFocused = () => options.isFocused();
                 let mode = def.defaultMode;
@@ -124,7 +133,7 @@ export class ViewApi implements MotionsViewApi {
                     {
                         pending: display,
                         run: (mapping, count, keys) => {
-                            this.active = {
+                            const context = {
                                 scope: def.id,
                                 instance,
                                 mode,
@@ -140,7 +149,7 @@ export class ViewApi implements MotionsViewApi {
                                 try {
                                     this.actions
                                         .get(mapping.action)
-                                        ?.run(mapping.args ?? {}, this.active);
+                                        ?.run(mapping.args ?? {}, context);
                                 } catch (error) {
                                     console.error(
                                         'Vim Motions: view action failed',
@@ -247,21 +256,29 @@ export class ViewApi implements MotionsViewApi {
                         return router.handle(token, mode);
                     },
                     setMode: (id, label) => {
+                        if (detached) return;
                         router.cancel();
                         mode = id;
+                        if (this.active?.instance === instance)
+                            this.active.mode = id;
                         if (focused)
                             this.hooks.setMode(id, label ?? modeDef()?.label);
                         display();
                     },
                     setLayer: (name, mappings, groups = []) => {
+                        if (detached) return;
                         dynamic.set(name, { mappings, groups });
                         refresh();
                     },
                     cancel: () => {
+                        if (detached) return;
                         router.cancel();
                         overlay.hide();
                     },
                     setFocused: (value) => {
+                        if (detached) return;
+                        if (value && this.active?.instance !== instance)
+                            this.active?.instance?.setFocused(false);
                         focused = value;
                         if (value) {
                             this.active = {
@@ -284,8 +301,8 @@ export class ViewApi implements MotionsViewApi {
                     },
                     detach: () => {
                         if (detached) return;
-                        detached = true;
                         instance.setFocused(false);
+                        detached = true;
                         unsubscribe();
                         releaseKeyTarget();
                         router.dispose();
@@ -299,6 +316,8 @@ export class ViewApi implements MotionsViewApi {
                 return instance;
             },
             dispose: () => {
+                if (disposed) return;
+                disposed = true;
                 runCleanups(
                     [...instances].map((instance) => () => instance.detach()),
                     'view scope',
@@ -311,6 +330,8 @@ export class ViewApi implements MotionsViewApi {
         return scope;
     }
     dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
         runCleanups(
             [...this.scopes.values()].map((scope) => () => scope.dispose()),
             'view API',

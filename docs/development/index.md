@@ -41,6 +41,10 @@ See [[picker-api]] for how external plugins can register custom picker sources v
 
 See [[editor-api]] for how external plugins attach Vim to editors they own, and provide hover, definition, quick fix, format and diagnostics to `gd`, `K`, `]d`/`[d` and `vim.lsp`.
 
+## Non-editor view API
+
+See [[view-api]] for scoped mappings, actions, source-note context and focus/lifecycle responsibilities for companion views.
+
 ## Full development guide
 
 The comprehensive development guide — including testing strategy, Neovim golden comparison infrastructure, file conventions, and contribution guidelines — is maintained in [AGENTS.md](https://github.com/saberzero1/motions/blob/main/AGENTS.md) in the repository root.

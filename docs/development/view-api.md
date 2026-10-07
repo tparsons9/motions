@@ -42,7 +42,10 @@ configured delay and sorting and adds color swatches and `?` detail expansion.
 `cancel()` clears pending input. Focused view mode wins over RPC and editor modes.
 Host plugins must report focus changes, including modal focus. A forwarded
 `handleKey` call establishes focus even if the host callback still reports false
-(for example during an iframe focus transition). Detached instances remain inert.
+(for example during an iframe focus transition). Detached instances remain inert; disposed scopes and APIs reject new attachments
+and registrations. Focusing an instance cancels the previous instance's pending
+sequence and hides its hints. Direct `runAction` calls use the current mode with
+`count: 0` and empty `keys`; a prior key-driven action's count is not reused.
 Scope default actions also suppress global mappings that extend the same prefix
 in that mode: `<leader>r` runs immediately instead of waiting for a global
 `<leader>rf`. Unrelated global sequences still fall through; Lua scope mappings

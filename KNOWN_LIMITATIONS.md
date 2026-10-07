@@ -2537,3 +2537,7 @@ The fork view API now limits global fall-through to leader/workspace mappings;
 mode definitions can disable it for temporary pickers. Leader menus do not
 execute a bare leader action on timeout. View hints use a responsive grid and
 restore immediate menus when focus returns.
+
+Source-note metadata is exposed through `vim.ob.context(name)` only; registering
+a resolver does not populate `vim.b[name]`. Hosts must report focus loss when
+leaving a view, including when opening modals.

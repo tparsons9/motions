@@ -1,6 +1,6 @@
 /**
  * Contract with Vim Motions' view API (window.VimMotions.view, apiVersion 1).
- * Mirrored by motions/src/integrations/view-api-types.ts — keep the two equal.
+ * Canonical host contract for this fork.
  *
  * A host plugin with a non-editor view (ZotFlow's reader) registers a scope
  * with modes, default mappings and named actions. Motions owns routing
@@ -111,8 +111,7 @@ export interface MotionsViewApi {
     registerAction(def: MotionsViewActionDef): () => void;
     runAction(id: string, args?: Record<string, unknown>): Promise<unknown>;
     /**
-     * Expose host context for a note to Lua as `vim.ob.context(name)` (and
-     * `vim.b[name]`), e.g. ZotFlow source-note metadata.
+     * Expose host context for a note to Lua as `vim.ob.context(name)`, e.g. ZotFlow source-note metadata.
      */
     registerBufferContext(
         name: string,

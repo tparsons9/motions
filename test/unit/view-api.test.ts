@@ -91,6 +91,116 @@ const attach = () =>
         .attach({ containerEl: {} as HTMLElement, isFocused: () => true });
 
 describe('non-editor view API', () => {
+    it('keeps detached handles inert and rejects attachments to disposed scopes', () => {
+        const api = getViewApi()!;
+        const scope = api.registerScope(scopeDef);
+        const instance = scope.attach({
+            containerEl: {} as HTMLElement,
+            isFocused: () => true,
+        });
+        instance.detach();
+        setMode.mockClear();
+        overlayShow.mockClear();
+        instance.setFocused(true);
+        instance.setMode('labels');
+        instance.setLayer('late', [
+            { modes: ['labels'], lhs: 'x', action: 'late' },
+        ]);
+        expect.soft(setMode.mock.calls).toEqual([]);
+        expect.soft(overlayShow.mock.calls).toEqual([]);
+        scope.dispose();
+        expect
+            .soft(() =>
+                scope.attach({
+                    containerEl: {} as HTMLElement,
+                    isFocused: () => true,
+                }),
+            )
+            .toThrow('disposed');
+        api.dispose();
+        expect.soft(() => api.registerScope(scopeDef)).toThrow('disposed');
+    });
+    it('cancels the previous view prefix when another instance gains focus', () => {
+        vi.useFakeTimers();
+        const run = vi.fn();
+        getViewApi()!.registerAction({ id: 'short', desc: 'Short', run });
+        const scope = getViewApi()!.registerScope({
+            ...scopeDef,
+            mappings: [
+                { modes: ['reading'], lhs: 'g', action: 'short' },
+                { modes: ['reading'], lhs: 'gg', action: 'long' },
+            ],
+        });
+        const first = scope.attach({
+            containerEl: {} as HTMLElement,
+            isFocused: () => true,
+        });
+        const second = scope.attach({
+            containerEl: {} as HTMLElement,
+            isFocused: () => false,
+        });
+        first.handleKey('g');
+        second.setFocused(true);
+        vi.advanceTimersByTime(200);
+        expect.soft(run).not.toHaveBeenCalled();
+        setMode.mockClear();
+        first.setMode('labels');
+        expect.soft(setMode.mock.calls).toEqual([]);
+    });
+    it('uses the current view mode without leaking a previous action count', async () => {
+        const run = vi.fn();
+        getViewApi()!.registerAction({ id: 'down', desc: 'Down', run });
+        const instance = attach();
+        instance.handleKey('3');
+        instance.handleKey('j');
+        instance.setMode('labels');
+        await getViewApi()!.runAction('down');
+        expect
+            .soft(run)
+            .toHaveBeenLastCalledWith(
+                {},
+                expect.objectContaining({
+                    mode: 'labels',
+                    count: 0,
+                    keys: [],
+                    instance,
+                }),
+            );
+    });
+    it('preserves numeric strings in Lua view modes and action arguments', () => {
+        const L = createSandboxedState();
+        states.push(L);
+        injectVimApi(L, {
+            onSettingOverride: () => {},
+            handleExCommand: () => {},
+            getVaultName: () => 'vault',
+            onKeymap: () => {},
+            onKeymapDel: () => {},
+            autocmdManager: new AutocmdManager(L),
+        });
+        const result = evalLua(
+            L,
+            `vim.ob.view.keymap.set('numeric', '1', 'j', 'down', {args={id='001', count=2, enabled=false}})`,
+        );
+        expect.soft(result).toEqual({ ok: true });
+        evalLua(
+            L,
+            `vim.ob.view.keymap.set('numeric', 'reading', 'k', 'down', {args={id='001', count=2, enabled=false}})`,
+        );
+        expect
+            .soft(viewScopes.resolve('numeric').mappings)
+            .toEqual([
+                expect.objectContaining({
+                    modes: ['1'],
+                    args: { id: '001', count: 2, enabled: false },
+                }),
+                expect.objectContaining({
+                    modes: ['reading'],
+                    args: { id: '001', count: 2, enabled: false },
+                }),
+            ]);
+    });
+
     it('routes forwarded keys even when the host focus report lags', () => {
         const run = vi.fn();
         getViewApi()!.registerAction({ id: 'down', desc: 'Down', run });

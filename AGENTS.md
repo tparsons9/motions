@@ -591,3 +591,24 @@ this.registerInterval(
 - `src/lua/buffer-hints.ts` composes buffer descriptions and groups over shared hints.
 - `src/lua/local-options.ts` owns per-buffer option values and removable per-view indentation compartments.
 - External attachment, focus, reload, and release feed these mechanisms from the plugin lifecycle. Filetype identifies language independently of editor ownership.
+
+### Non-editor view integration
+
+The fork's `window.VimMotions.view` contract is documented in `docs/development/view-api.md`.
+
+```text
+src/integrations/
+  view-api-types.ts    # Public host contract
+  view-api.ts          # Scope, focus, action and instance lifecycle
+  view-router.ts       # Counts, key sequences and layer precedence
+  view-keys.ts         # Key notation parsing and display
+  view-key-targets.ts  # Host containers excluded from global capture
+  view-scopes.ts       # Lua-owned mappings and groups
+  view-lua-api.ts      # Lua bindings and state cleanup
+  view-which-key.ts    # View hint overlay
+```
+
+Only one instance owns focus at a time; transferring focus cancels the old
+instance's pending keys and hints. Detached instances are inert, and disposed
+scopes/APIs reject new registrations or attachments. Action count and keys belong
+to that invocation; direct `runAction` calls use the current mode with zero count.
