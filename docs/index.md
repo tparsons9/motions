@@ -33,11 +33,11 @@ A polished, Neovim-native experience inside [Obsidian](https://obsidian.md). Vim
 - **[[settings|Settings reference]]** — all 100 configurable items with defaults and vimrc equivalents
 - **[[known-limitations|Known limitations]]** — architectural constraints and workarounds
 
-## What's new in 1.4.0
+## What's new in 1.2.0
 
-- **Repeated snippet tabstops survive typing in Live Preview** — with a body like `$1 *a$2* *b$2* $0`, Tab placed both cursors correctly, but the first keystroke moved them outside the emphasis and outside the snippet's own fields, so the session was dropped and a second keystroke produced `*az*y *ybz*` where `*azy* *bzy*` was wanted. The guard that covers a tabstop jump now also covers the first edit at a tabstop ([[snippets|snippets]])
-- **`<Esc>` now honours your own mappings** — `:imap <Esc> …` and `:vmap <Esc> …` did nothing at all, because the built-in mode exit ran before the mapping table was ever consulted. Only exact matches win, matching Neovim; `<C-[>` follows the mapping because it _is_ Escape, while `<C-c>` stays a dependable escape hatch, and a recursive `imap <Esc> <Esc>` falls back to the built-in exit ([[remapping|remapping]], [[vimrc|vimrc]])
-- **`:stopinsert` (`:stopi`) exists** — it had been documented in three places without being implemented, so the published recipes for handing insert mode to another plugin silently left the editor in insert mode. It lands the cursor where `<Esc>` would and is a no-op outside insert mode ([[ex-commands|ex commands]])
-- **Two previously unreported table defects are now recorded** — a snippet tabstop inside a table in Live Preview, and `set tablewidget=raw` not accepting typed text inside a table in Live Preview, where a typed character lands at the end of the document instead ([[known-limitations|known limitations]])
+- **Vim controls for companion views** — plugins can register non-editor modes, counted key sequences, named actions and source-note context through the [[view-api|view API]].
+- **Lua mappings and completion** — configure view-specific mappings and which-key groups in [[lua-config#Fork view scopes|Lua]], with matching definitions for companion Lua editors through the [[configuration-api|configuration API]].
+- **Which-key in reader views** — responsive hints support color swatches, expanded descriptions and temporary label modes. Global shortcuts stay out of isolated pickers, and leader menus do not run a bare leader action on timeout.
+- **Reliable focus and cleanup** — switching views cancels pending keys, detached views cannot revive their UI, and modal confirmation and deletion keys remain with the modal. Direct actions use the current mode without inheriting an earlier key count.
 
 See the [[changelog|full changelog]] for details.
