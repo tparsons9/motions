@@ -1,3 +1,5 @@
+import { mappingSource } from '../configuration/source';
+import type { MappingSource } from '../configuration/types';
 import { lua, lauxlib, to_jsstring, to_luastring } from '../lib/fengari';
 import type { lua_State } from '../lib/fengari';
 import type {
@@ -49,6 +51,7 @@ const luaRawset = (
 ).lua_rawset;
 
 export interface LuaKeymap {
+    source?: MappingSource;
     mode: MapContext;
     lhs: string;
     rhs?: string;
@@ -144,6 +147,7 @@ export interface LuaKeymapDelete {
 }
 
 export interface LuaGlobalKeymap {
+    source?: MappingSource;
     lhs: string;
     rhs: string;
     desc?: string;
@@ -2367,6 +2371,7 @@ export function injectVimApi(
             const lhs = replaceLeaderKey(lhsRaw, leaderKey);
             const rhsValue = rhs ? replaceLeaderKey(rhs, leaderKey) : undefined;
             const keymap: LuaKeymap = {
+                source: mappingSource(state),
                 mode: context,
                 lhs,
                 rhs: rhsValue,
@@ -2839,6 +2844,7 @@ export function injectVimApi(
             noremap,
         });
         callbacks.onBufferKeymap?.(filePath, {
+            source: mappingSource(state),
             mode: context,
             lhs,
             rhs,
@@ -3364,6 +3370,7 @@ export function injectVimApi(
             return 0;
         }
         callbacks.onKeymap({
+            source: mappingSource(state),
             mode: context,
             lhs,
             rhs,

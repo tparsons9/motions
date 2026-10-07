@@ -1,3 +1,4 @@
+import { mappingSource } from '../configuration/source';
 import { lua, lauxlib, to_jsstring, to_luastring } from '../lib/fengari';
 import type { lua_State } from '../lib/fengari';
 import {
@@ -180,7 +181,12 @@ export function injectObsidianApi(
         }
         const leaderKey = getLeaderKey();
         const lhs = replaceLeaderKey(lhsRaw, leaderKey);
-        callbacks.onGlobalKeymap?.({ lhs, rhs, desc });
+        callbacks.onGlobalKeymap?.({
+            lhs,
+            rhs,
+            desc,
+            source: mappingSource(state),
+        });
         return 0;
     });
     lua.lua_setfield(L, obsKeymapIndex, to_luastring('set'));

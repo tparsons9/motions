@@ -1,3 +1,4 @@
+import { compileNamed } from '../configuration/source';
 import {
     lua,
     lauxlib,
@@ -313,8 +314,9 @@ export async function evalLuaAsync(
     L: lua_State,
     code: string,
     runner: CoroutineRunner,
+    sourceName?: string,
 ): Promise<{ ok: boolean; error?: string }> {
-    const loadStatus = lauxlib.luaL_loadstring(L, to_luastring(code));
+    const loadStatus = compileNamed(L, to_luastring(code), sourceName);
     if (loadStatus !== lua.LUA_OK) {
         const msg = lua.lua_tolstring(L, -1);
         const error = msg ? to_jsstring(msg) : 'Lua syntax error';

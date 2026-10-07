@@ -1,3 +1,6 @@
+import { ConfigurationTracker } from './configuration/tracker';
+import { createConfigurationApi } from './configuration/inspect';
+import type { ConfigurationApi } from './configuration/types';
 import {
     FileSystemAdapter,
     MarkdownView,
@@ -532,6 +535,8 @@ export default class VimMotionsPlugin extends Plugin {
     private matcher: ManagedMatcher | null = null;
     pickerAPI: PickerAPI | null = null;
     editorApi: VimMotionsEditorApi | null = null;
+    configurationApi: ConfigurationApi | null = null;
+    private configurationTracker = new ConfigurationTracker();
     private oilKeybindingManager: OilKeybindingManager | null = null;
     private oilManager: OilManager | null = null;
     private snippetRegistry: SnippetRegistry | null = null;
@@ -843,6 +848,25 @@ export default class VimMotionsPlugin extends Plugin {
     }
 
     async onload() {
+        this.configurationApi = createConfigurationApi(
+            this.app,
+            this.configurationTracker,
+            {
+                backend: () =>
+                    this.settings?.neovimRpcEnabled
+                        ? 'neovim'
+                        : isBundledVimActive()
+                          ? 'bundled'
+                          : 'builtin',
+                vim: () => getVimApi(),
+                buffers: () => this.bufferKeymapManager,
+                workspace: () => this.globalRegistry,
+            },
+        );
+        this.register(() => {
+            this.configurationTracker.dispose();
+            this.configurationApi = null;
+        });
         this.registerDomEvent(
             this.app.workspace.containerEl.ownerDocument,
             'focusin',
@@ -5597,6 +5621,7 @@ export default class VimMotionsPlugin extends Plugin {
         const luaResult = await loadInitLua(this.app, vim, {
             leaderRegistry: this.leaderRegistry ?? undefined,
             onSettingOverride: onLuaSettingOverride,
+            configuration: this.configurationTracker,
             customPath: customLuaPath,
             globalConfigSearch: this.settings.globalConfigSearch,
             bufferKeymapManager: this.bufferKeymapManager,
