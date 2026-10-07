@@ -2420,3 +2420,7 @@ Use buffer-local `expandtab`, `tabstop`, `shiftwidth`, and `textwidth` for behav
 `vim.lsp.buf.signature_help()` dispatches to the optional `signatureHelp` language-provider method. Like format and quick fix, this function uses the registered provider; Motions does not start a language server.
 
 See [[editor-api]] and [[which-key#Buffer-local hints]]. CCC supplies a complete `examples/lua/coding.lua` module for code navigation, language options, project actions, and contextual hints. Copy it into `lua/` next to `init.lua`, set the shared leader first, then call `require("coding").setup()`.
+
+## Configuration tooling
+
+Compatible Copilot Codeblocks releases can consume Motions' optional [[configuration-api|configuration API]] for LuaLS definitions and loaded keymap inspection. Definitions target the bundled Lua 5.3 runtime and mark unsupported compatibility stubs. Inspection is read-only and reports mapping sources, observed replacements, buffer shadowing, prefix overlaps, and potential Obsidian shortcut conflicts. It does not inspect native Neovim or execute unsaved configuration.

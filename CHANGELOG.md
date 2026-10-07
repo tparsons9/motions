@@ -6357,3 +6357,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Leader key bindings table (add/remove key-to-command mappings without editing vimrc)
 - Scrolloff slider (0–20 lines)
 - EasyMotion label character customization
+
+## Unreleased — configuration tooling
+
+- Add an optional, read-only configuration API for companion Lua editors, with versioned LuaLS definitions, loaded keymap snapshots, and source navigation metadata.
+- Preserve Lua chunk filenames through existing loading entry points. Mapping observations and conflict analysis live in separate modules; key dispatch and precedence are unchanged.

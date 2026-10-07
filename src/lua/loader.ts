@@ -1,3 +1,8 @@
+import { bindConfiguration } from '../configuration/source';
+import {
+    observeMappings,
+    type ConfigurationTracker,
+} from '../configuration/tracker';
 import {
     MarkdownView,
     Notice,
@@ -297,6 +302,7 @@ async function readLuaFile(app: App, path: string): Promise<string | null> {
 }
 
 export interface LoadInitLuaOptions {
+    configuration?: ConfigurationTracker;
     leaderRegistry?: LeaderRegistry;
     onSettingOverride?: (
         key: string,
@@ -398,8 +404,10 @@ export async function loadInitLua(
     const doc = app.workspace.containerEl.ownerDocument;
     const highlightManager = new HighlightManager(doc);
 
+    options.configuration?.begin();
     const content = found ? await readLuaFile(app, path) : null;
     if (content === null) {
+        options.configuration?.complete('Configuration file unavailable');
         return {
             found: false,
             ready: true,
@@ -1409,9 +1417,14 @@ export async function loadInitLua(
         setActiveDecorationProviderManager(null);
     });
     callbacks.decorationProviders = decorationProviders;
+    bindConfiguration(L, options.configuration);
+    if (options.configuration)
+        bufferKeymapManager?.onRelease((file) =>
+            options.configuration?.release(file),
+        );
     const { globals, getBufferOption, getWindowOption } = injectVimApi(
         L,
-        callbacks,
+        observeMappings(callbacks, options.configuration),
     );
     injectUiApi(
         L,
@@ -1872,7 +1885,8 @@ export async function loadInitLua(
         }
     });
 
-    const result = await evalLuaAsync(L, content, runner);
+    const result = await evalLuaAsync(L, content, runner, '@' + path);
+    options.configuration?.complete(result.error);
     const initialFilePath = app.workspace.getActiveFile()?.path ?? null;
     autocmdManager.activate(
         {

@@ -1,3 +1,4 @@
+import { compileNamed } from '../configuration/source';
 import { lua, lauxlib, to_jsstring, to_luastring } from '../lib/fengari';
 import type { lua_State } from '../lib/fengari';
 import type { LuaModuleSnapshot } from './module-snapshot';
@@ -54,7 +55,12 @@ function injectSandboxedLoad(L: lua_State): void {
             return 2;
         }
 
-        const status = lauxlib.luaL_loadstring(state, chunkBytes);
+        const name = lua.lua_tolstring(state, 2);
+        const status = compileNamed(
+            state,
+            chunkBytes,
+            name ? to_jsstring(name) : undefined,
+        );
         if (status !== lua.LUA_OK) {
             const errMsg = lua.lua_tolstring(state, -1);
             lua.lua_pop(state, 1);
