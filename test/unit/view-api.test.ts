@@ -155,17 +155,15 @@ describe('non-editor view API', () => {
         instance.handleKey('j');
         instance.setMode('labels');
         await getViewApi()!.runAction('down');
-        expect
-            .soft(run)
-            .toHaveBeenLastCalledWith(
-                {},
-                expect.objectContaining({
-                    mode: 'labels',
-                    count: 0,
-                    keys: [],
-                    instance,
-                }),
-            );
+        expect.soft(run).toHaveBeenLastCalledWith(
+            {},
+            expect.objectContaining({
+                mode: 'labels',
+                count: 0,
+                keys: [],
+                instance,
+            }),
+        );
     });
     it('preserves numeric strings in Lua view modes and action arguments', () => {
         const L = createSandboxedState();
@@ -187,18 +185,16 @@ describe('non-editor view API', () => {
             L,
             `vim.ob.view.keymap.set('numeric', 'reading', 'k', 'down', {args={id='001', count=2, enabled=false}})`,
         );
-        expect
-            .soft(viewScopes.resolve('numeric').mappings)
-            .toEqual([
-                expect.objectContaining({
-                    modes: ['1'],
-                    args: { id: '001', count: 2, enabled: false },
-                }),
-                expect.objectContaining({
-                    modes: ['reading'],
-                    args: { id: '001', count: 2, enabled: false },
-                }),
-            ]);
+        expect.soft(viewScopes.resolve('numeric').mappings).toEqual([
+            expect.objectContaining({
+                modes: ['1'],
+                args: { id: '001', count: 2, enabled: false },
+            }),
+            expect.objectContaining({
+                modes: ['reading'],
+                args: { id: '001', count: 2, enabled: false },
+            }),
+        ]);
     });
 
     it('routes forwarded keys even when the host focus report lags', () => {

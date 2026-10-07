@@ -4,7 +4,7 @@ import type { Completion } from './view-router';
 
 export class ViewWhichKey {
     private el: HTMLElement;
-    private timer: ReturnType<typeof setTimeout> | undefined;
+    private timer: number | undefined;
     private details = false;
     constructor(container: HTMLElement) {
         this.el = container.createDiv({
@@ -22,7 +22,7 @@ export class ViewWhichKey {
         delay: number,
         order: 'which-key' | 'groups-first',
     ): void {
-        if (this.timer) clearTimeout(this.timer);
+        if (this.timer) window.clearTimeout(this.timer);
         const draw = () => {
             this.el.empty();
             this.el.hidden = !entries.length;
@@ -72,10 +72,10 @@ export class ViewWhichKey {
                 });
         };
         if (delay <= 0 || !this.el.hidden) draw();
-        else this.timer = setTimeout(draw, delay);
+        else this.timer = window.setTimeout(draw, delay);
     }
     hide(): void {
-        if (this.timer) clearTimeout(this.timer);
+        if (this.timer) window.clearTimeout(this.timer);
         this.timer = undefined;
         this.el.hidden = true;
     }

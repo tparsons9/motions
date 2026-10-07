@@ -13,6 +13,10 @@ The fork exposes `plugin.configurationApi` separately from editor API v1. Consum
 - `snapshot(buffer?)` returns backend, generation, load status, bounded source snapshots, and mappings. Pass the same buffer identity used for editor attachment, including `file:` for CCC external files. Entries carry normalized keys, mode, scope, action/description, origin, optional source path/one-based line, and informational findings.
 - `subscribe(callback)` returns an unsubscribe function. Notifications are batched; consumers must dispose subscriptions. Inspector reads never trigger reloads or evaluate Lua. Consumers should also handle editor API ready/unload events and provide explicit refresh for focus, backend, and host-hotkey changes.
 
+The definitions include `vim.ob.view`, `vim.ob.actions`, and `vim.ob.context`.
+View-scope mappings are not included in `snapshot()`; its inspection covers editor
+and workspace mappings.
+
 Only the bundled backend supports mapping inspection. Unobserved engine/Vimrc mappings have no source location or replacement history. Dynamic/generated chunks may have no source location. Active buffer overlays can conceal an unobserved underlying engine mapping; observation does not temporarily remove overlays to reconstruct it. Host hotkey access is capability-checked and reports unavailable data instead of assuming defaults. Potential host conflicts do not prove which component will handle a key.
 
 Limits are 5,000 observed mappings, 128 loaded sources, and 2 MiB of retained source text. Source text remains in memory and is returned locally so a companion can distinguish loaded configuration from edited buffers. No network requests, persistent snapshots, or source logging are introduced.

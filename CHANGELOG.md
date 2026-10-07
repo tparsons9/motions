@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- LuaLS configuration definitions include the view, action and source-context APIs (definition version `1.1.0`); inspection remains limited to editor/workspace mappings.
 - Fork-only non-editor view API: scoped modes, counted key sequences, dynamic maps, Lua overrides, which-key swatches/details and source-note contexts. Focused view status takes precedence over RPC status.
 
 ### Fixed
@@ -29,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Updated `AGENTS.md`, `CONTRIBUTING.md`, `README.md`, `KNOWN_LIMITATIONS.md`, `CHANGELOG.md`, `docs/development/index.md`, `docs/development/view-api.md`, and `docs/configuration/lua-config.md` for the view API contract, lifecycle, Lua configuration and explicit iframe routing.
+- Updated `AGENTS.md`, `CONTRIBUTING.md`, `README.md`, `KNOWN_LIMITATIONS.md`, `CHANGELOG.md`, `docs/development/index.md`, `docs/development/configuration-api.md`, `docs/development/view-api.md`, and `docs/configuration/lua-config.md` for the view API contract, lifecycle, Lua configuration and explicit iframe routing.
 
 ## [1.1.0] - 2026-10-07
 

@@ -1,7 +1,7 @@
 import { additionalDefinitions } from './definition-surface';
 /** Versioned, deliberately bounded configuration surface; not a Neovim compatibility claim. */
 const core = {
-    version: '1.0.0',
+    version: '1.1.0',
     text: `---@meta
 ---@class MotionsMapOptions
 ---@field desc? string
@@ -163,6 +163,40 @@ function vim.obsidian.pick(source, opts) end
 ---@param path string
 ---@return string
 function vim.obsidian.fs.read(path) end
+---@class MotionsViewActionContext
+---@field count integer Zero means no explicit count.
+---@field mode string
+---@field scope string
+---@class MotionsViewMapOptions
+---@field args? table<string, any>
+---@field desc? string
+---@field color? string
+---@field detail? string
+---@field icon? string
+vim.obsidian.view = { keymap = {}, whichkey = {} }
+---@param scope string
+---@param modes string|string[]
+---@param lhs string
+---@param action string|fun(args:table, ctx:MotionsViewActionContext)
+---@param opts? MotionsViewMapOptions
+function vim.obsidian.view.keymap.set(scope, modes, lhs, action, opts) end
+---@param scope string
+---@param modes string|string[]
+---@param lhs string
+function vim.obsidian.view.keymap.del(scope, modes, lhs) end
+---@param scope string
+---@param groups table[] Prefix groups with mode, group, color and detail fields.
+function vim.obsidian.view.whichkey.add(scope, groups) end
+vim.obsidian.actions = {}
+---@param id string
+---@param args? table<string, any>
+function vim.obsidian.actions.run(id, args) end
+---@param prefix? string
+---@return {id:string, desc:string}[]
+function vim.obsidian.actions.list(prefix) end
+---@param name string
+---@return table<string, any>?
+function vim.obsidian.context(name) end
 vim.ob = vim.obsidian
 ---Additional Motions APIs are documented in configuration/lua-config.md.
 ---These definitions cover the common configuration surface; absence here is not proof of runtime absence.
